@@ -48,8 +48,7 @@ namespace TeamODD.ODDB.Editors.Window
             _dataService = new ODDBDataService();
 
             var settingFiles = Resources.Load<ODDBSettings>("ODDBSettings");
-            
-            if(string.IsNullOrEmpty(settingFiles.Path)) 
+            if(!settingFiles.IsInitialized) 
             {
                 var pathSelector = new ODDBPathUtility();
                 settingFiles.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
