@@ -94,7 +94,7 @@ namespace TeamODD.ODDB.Editors.Window
                         _database = database;
                     }
                 });
-            var tableDataView = root.Q<ODDBMultiColumnListView>("table-data-view");
+            var tableDataView = root.Q<ODDBTableDataView>("table-data-view");
             var tableListView = root.Q<ODDBTableListView>("table-list-view");
             tableListView.SetDatabase(_database);
             tableListView.OnTableSelected += tableDataView.SetTable;
@@ -118,10 +118,12 @@ namespace TeamODD.ODDB.Editors.Window
             testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMeta1", DataType = ODDBDataType.String });
             testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMet3", DataType = ODDBDataType.Int });
             testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMet6", DataType = ODDBDataType.Float });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMe2", DataType = ODDBDataType.String });
+            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMe2", DataType = ODDBDataType.Sprite });
+            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestBool", DataType = ODDBDataType.Bool });
+            testTable.AddTableMeta(new ODDBTableMeta() { Name = "Prefab", DataType = ODDBDataType.Prefab });
             
-            testTable.AddRow(new ODDBRow(new string[] { "Test1", "1", "1.1", "Test2" }));
-            testTable.AddRow(new ODDBRow(new string[] { "Test3", "2", "2.34" , "Test4" }));
+            testTable.AddRow(new ODDBRow(new string[] { "Test1", "1", "1.1", null, "true", null }));
+            testTable.AddRow(new ODDBRow(new string[] { "Test3", "2", "2.34" ,null, "false", null}));
             
             testDataBase.Tables.Add(testTable);
             return testDataBase;

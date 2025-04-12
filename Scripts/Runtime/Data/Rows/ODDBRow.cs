@@ -19,23 +19,28 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         }
         public object GetData(int index)
         {
+            if (index >= _fields.Count || index < 0)
+                return null;
             return _fields[index];
         }
         public void SetData(int index, string data)
         {
+            if (index >= _fields.Count || index < 0)
+                return;
             _fields[index] = data;
         }
         public void InsertData(int index, string data)
         {
+            if (index >= _fields.Count || index < 0)
+                return;
             _fields.Insert(index, data);
         }
 
         public void RemoveData(int index)
         {
-            if (index >= 0 && index < _fields.Count)
-            {
-                _fields.RemoveAt(index);
-            }
+            if (index >= _fields.Count || index < 0)
+                return;
+            _fields.RemoveAt(index);
         }
 
         public void SwapData(int indexA, int indexB)

@@ -1,4 +1,5 @@
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI.Fields
 {
@@ -13,6 +14,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields
                 ODDBDataType.Float => new ODDBNumberField(false),
                 ODDBDataType.Bool => new ODDBBoolField(),
                 ODDBDataType.Prefab => new ODDBPrefabField(),
+                ODDBDataType.Sprite => new ODDBSpriteField(),
                 _ => new ODDBStringField() // 기본값으로 문자열 필드 사용
             };
         }
