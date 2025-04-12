@@ -13,7 +13,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields
         {
             // Create container
             _container = new VisualElement();
-            _container.style.flexGrow = 1;
+            _container.style.flexGrow = 0;
             _container.style.alignItems = Align.Center;
             _container.style.justifyContent = Justify.Center;
 

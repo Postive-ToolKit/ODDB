@@ -18,14 +18,9 @@ namespace TeamODD.ODDB.Editors.UI
 #if !UNITY_2022_2_OR_NEWER
         public new class UxmlFactory : UxmlFactory<ODDBTableListView, ListView.UxmlTraits> { }
 #endif
-        public bool IsDirty
-        {
-            get => _isDirty;
-            set => _isDirty = value;
-        }
+        public bool IsDirty { get; set; }
         private ODDatabase _database;
         public event Action<ODDBTable> OnTableSelected;
-        private bool _isDirty = false;
         public ODDBTableListView()
         {
             selectionType = SelectionType.Single;
@@ -77,9 +72,9 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void Update()
         {
-            if(_isDirty)
+            if(IsDirty)
             {
-                _isDirty = false;
+                IsDirty = false;
                 UpdateItemSource();
                 Rebuild();
             }

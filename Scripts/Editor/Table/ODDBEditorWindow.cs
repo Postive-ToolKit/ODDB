@@ -121,12 +121,12 @@ namespace TeamODD.ODDB.Editors.Window
             var testTable = new ODDBTable();
             testTable.Name = "TestTable";
             testTable.Key = "TestKey";
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMeta1", DataType = ODDBDataType.String });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMet3", DataType = ODDBDataType.Int });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMet6", DataType = ODDBDataType.Float });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestMe2", DataType = ODDBDataType.Sprite });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "TestBool", DataType = ODDBDataType.Bool });
-            testTable.AddTableMeta(new ODDBTableMeta() { Name = "Prefab", DataType = ODDBDataType.Prefab });
+            testTable.AddField(new ODDBTableMeta() { Name = "TestMeta1", DataType = ODDBDataType.String });
+            testTable.AddField(new ODDBTableMeta() { Name = "TestMet3", DataType = ODDBDataType.Int });
+            testTable.AddField(new ODDBTableMeta() { Name = "TestMet6", DataType = ODDBDataType.Float });
+            testTable.AddField(new ODDBTableMeta() { Name = "TestMe2", DataType = ODDBDataType.Sprite });
+            testTable.AddField(new ODDBTableMeta() { Name = "TestBool", DataType = ODDBDataType.Bool });
+            testTable.AddField(new ODDBTableMeta() { Name = "Prefab", DataType = ODDBDataType.Prefab });
             
             testTable.AddRow(new ODDBRow(new string[] { "Test1", "1", "1.1", null, "true", null }));
             testTable.AddRow(new ODDBRow(new string[] { "Test3", "2", "2.34" ,null, "false", "SV/GameObject"}));

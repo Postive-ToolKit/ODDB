@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {
@@ -26,7 +27,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
                 return;
             _tableMetas.AddRange(tableMetas);
         }
-        public void AddTableMeta(ODDBTableMeta tableMeta)
+        public void AddField(ODDBTableMeta tableMeta)
         {
             _tableMetas.Add(tableMeta);
             // TODO : Add all data of index in this table
@@ -61,6 +62,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
                 row = new ODDBRow(_tableMetas.Count);
             }
             _rows.Add(row);
+            Debug.Log(_rows.Count);
         }
         
         public void InsertRow(int index, ODDBRow row)

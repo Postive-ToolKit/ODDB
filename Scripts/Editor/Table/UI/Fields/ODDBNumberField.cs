@@ -17,12 +17,12 @@ namespace TeamODD.ODDB.Editors.UI.Fields
             if (isInteger)
             {
                 _intField = new IntegerField();
-                _intField.style.flexGrow = 1;
+                _intField.style.flexGrow = 0;
             }
             else
             {
                 _floatField = new FloatField();
-                _floatField.style.flexGrow = 1;
+                _floatField.style.flexGrow = 0;
             }
         }
 

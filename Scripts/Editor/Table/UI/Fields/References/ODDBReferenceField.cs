@@ -22,12 +22,12 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
         {
             _root = new VisualElement();
             _root.style.flexDirection = FlexDirection.Row;
-            _root.style.flexGrow = 1;
+            _root.style.flexGrow = 0;
             _objectField = new ObjectField()
             {
                 objectType = typeof(T),
                 allowSceneObjects = false,
-                style = { flexGrow = 1 }
+                style = { flexGrow = 0 }
             };
             _root.Add(_objectField);
             
@@ -46,20 +46,14 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
             }
 
             var dataPath = ODDBDataConverter<string>.TryConvert(value);
-            Debug.Log("Reference data is path : " + dataPath);
             if (TryGetValue(dataPath, out var convertedValue)) 
             {
                 _currentPath = dataPath;
                 _objectField.value = convertedValue;
-
-                // ping convertedValue
-                EditorGUIUtility.PingObject(convertedValue);
-                // 에셋과 경로 모두 감시 시작
+                // Register watcher for the asset and path
                 RegisterWatcher(convertedValue, dataPath);
                 return;
             }
-            
-            Debug.LogWarning("Failed to find the asset at resources : " + dataPath);
             _currentPath = string.Empty;
             _objectField.value = null;
         }

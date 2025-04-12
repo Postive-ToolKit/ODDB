@@ -11,7 +11,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields
         public ODDBStringField()
         {
             _textField = new TextField();
-            _textField.style.flexGrow = 1;
+            _textField.style.flexGrow = 0;
         }
 
         public void SetValue(object value)
