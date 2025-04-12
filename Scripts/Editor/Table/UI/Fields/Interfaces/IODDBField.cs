@@ -1,3 +1,4 @@
+using System;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI.Fields
@@ -7,6 +8,6 @@ namespace TeamODD.ODDB.Editors.UI.Fields
         VisualElement Root { get; }
         void SetValue(object value);
         object GetValue();
-        void RegisterValueChangedCallback(System.Action<object> callback);
+        void RegisterValueChangedCallback(Action<object> callback);
     }
 } 

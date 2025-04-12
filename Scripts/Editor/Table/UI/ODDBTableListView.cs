@@ -37,7 +37,7 @@ namespace TeamODD.ODDB.Editors.UI
             };
             bindItem = CreateVisualElement;
 
-            onSelectionChange += OnSelectionChanged;
+            selectionChanged += OnSelectionChanged;
 
             // 스타일 설정
             style.flexGrow = 1;

@@ -53,6 +53,14 @@ namespace TeamODD.ODDB.Editors.Window
                 var pathSelector = new ODDBPathUtility();
                 settingFiles.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
             }
+            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(settingFiles);
+
+            if (string.IsNullOrEmpty(assetPath))
+                return;
+            assetPath = assetPath.Replace("Assets/Resources/", "");
+            //remove file extension
+            assetPath = Path.ChangeExtension(assetPath, null);
+            Debug.Log(assetPath);
             
             string fullPath = Path.Combine(settingFiles.Path, settingFiles.DBName);
             
@@ -79,20 +87,18 @@ namespace TeamODD.ODDB.Editors.Window
             root.Q<Button>("button-save")
                 .RegisterCallback<ClickEvent>(e =>
                 {
-                    var path = settingFiles.Path;
-                    var testDataBase = CreateTestDatabase();
-                    _dataService.SaveDatabase(testDataBase, path + "/test.db");
+                    if (_dataService.SaveDatabase(_database, fullPath))
+                    {
+                        //AssetDatabase.Refresh();
+                    }
                 });
 
             root.Q<Button>("button-load")
                 .RegisterCallback<ClickEvent>(e =>
                 {
                     var path = settingFiles.Path;
-                    if (_dataService.LoadDatabase(path + "/test.db", out var database))
-                    {
-                        Debug.Log($"Loaded database has {database.Tables.Count} tables.");
-                        _database = database;
-                    }
+                    var testDataBase = CreateTestDatabase();
+                    _dataService.SaveDatabase(testDataBase, path + "/test.db");
                 });
             var tableDataView = root.Q<ODDBTableDataView>("table-data-view");
             var tableListView = root.Q<ODDBTableListView>("table-list-view");
@@ -123,7 +129,7 @@ namespace TeamODD.ODDB.Editors.Window
             testTable.AddTableMeta(new ODDBTableMeta() { Name = "Prefab", DataType = ODDBDataType.Prefab });
             
             testTable.AddRow(new ODDBRow(new string[] { "Test1", "1", "1.1", null, "true", null }));
-            testTable.AddRow(new ODDBRow(new string[] { "Test3", "2", "2.34" ,null, "false", null}));
+            testTable.AddRow(new ODDBRow(new string[] { "Test3", "2", "2.34" ,null, "false", "SV/GameObject"}));
             
             testDataBase.Tables.Add(testTable);
             return testDataBase;

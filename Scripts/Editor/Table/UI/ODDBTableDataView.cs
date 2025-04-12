@@ -1,3 +1,4 @@
+using System;
 using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
@@ -12,6 +13,10 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly TextField _tableKeyInput;
         private readonly GroupBox _toolBox;
         private readonly ODDBMultiColumnListView _multiColumnListView;
+
+        public event Action<ODDBTable> OnTableNameChanged;
+        
+        private ODDBTable _table;
         public ODDBTableDataView()
         {
             style.flexGrow = 1;
@@ -30,6 +35,7 @@ namespace TeamODD.ODDB.Editors.UI
             _tableNameInput = new TextField(label: "Table Name");
             _tableNameInput.style.flexGrow = 1;
             _tableNameInput.style.flexShrink = 0;
+            _tableNameInput.RegisterValueChangedCallback(OnTableNameChangedEvent);
             tableInfo.Add(_tableNameInput);
 
             // add input field for table key
@@ -54,9 +60,26 @@ namespace TeamODD.ODDB.Editors.UI
         }
         public void SetTable(ODDBTable table)
         {
-            _tableNameInput.value = table.Name;
-            _tableKeyInput.value = table.Key;
+            _table = table;
+            if (table == null) {
+                _tableNameInput.SetEnabled(false);
+                _tableNameInput.value = string.Empty;
+                _tableKeyInput.value = string.Empty;
+                return;
+            }
+            _tableNameInput.SetEnabled(true);
+            _tableNameInput.value = _table.Name;
+            _tableKeyInput.value = _table.Key;
             _multiColumnListView.SetTable(table);
+        }
+        private void OnTableNameChangedEvent(ChangeEvent<string> evt)
+        {
+            if (evt.newValue.Equals(_table.Name))
+                return;
+            if (_table == null)
+                return;
+            _table.Name = evt.newValue;
+            OnTableNameChanged?.Invoke(_table);
         }
     }
 }

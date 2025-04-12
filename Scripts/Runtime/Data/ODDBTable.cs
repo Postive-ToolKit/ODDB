@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
 
@@ -8,12 +9,15 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
 {
     public class ODDBTable : IODDBHasUniqueKey, IODDBHasName, IODDBHasTableMeta, IODDBAvailableSerialize
     {
+        private const char DELIMITER = ',';
+        private const char QUOTE = '"';
+        private const string DOUBLE_QUOTE = "\"\"";
+
         public string Key { get; set; }
         public string Name { get; set; }
-        private readonly List<ODDBTableMeta> _tableMetas = new List<ODDBTableMeta>();
-        private readonly List<ODDBRow> _rows = new List<ODDBRow>();
+        private readonly List<ODDBTableMeta> _tableMetas = new();
+        private readonly List<ODDBRow> _rows = new();
         public List<ODDBTableMeta> TableMetas => _tableMetas;
-        
         public IReadOnlyList<ODDBRow> ReadOnlyRows => _rows.AsReadOnly();
         
         public ODDBTable(IEnumerable<ODDBTableMeta> tableMetas = null)
@@ -100,27 +104,142 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
             return ODDBTypeMapper.GetEnumType(tableMeta.DataType);
         }
 
+        #region Serialization
         public string Serialize()
         {
-            var data = string.Empty;
-            foreach (var tableMeta in _tableMetas)
-            {
-                data += tableMeta.Name + ",";
-            }
-            data = data.TrimEnd(',');
-            data += "\n";
-            
+            var data = new StringBuilder();
             foreach (var row in _rows)
             {
-                for (int i = 0; i < _tableMetas.Count; i++)
-                {
-                    var value = row.GetData(i);
-                    data += value + ",";
-                }
-                data = data.TrimEnd(',');
-                data += "\n";
+                SerializeRow(row, data);
+                data.AppendLine();
             }
-            return data;
+            return data.ToString();
         }
+
+        private void SerializeRow(ODDBRow row, StringBuilder builder)
+        {
+            for (int i = 0; i < _tableMetas.Count; i++)
+            {
+                var value = row.GetData(i)?.ToString() ?? string.Empty;
+                builder.Append(EscapeCSV(value));
+                
+                if (i < _tableMetas.Count - 1)
+                    builder.Append(DELIMITER);
+            }
+        }
+
+        private string EscapeCSV(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            
+            bool needsQuotes = value.Contains(DELIMITER) || 
+                             value.Contains(QUOTE) || 
+                             value.Contains("\n");
+            
+            if (!needsQuotes) return value;
+
+            return $"{QUOTE}{value.Replace(QUOTE.ToString(), DOUBLE_QUOTE)}{QUOTE}";
+        }
+        #endregion
+
+        #region Deserialization
+        public void Deserialize(string data)
+        {
+            _rows.Clear();
+            if (string.IsNullOrEmpty(data)) return;
+
+            var lines = NormalizeLineEndings(data).Split('\n');
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                DeserializeLine(line);
+            }
+        }
+
+        private void DeserializeLine(string line)
+        {
+            var values = ParseCSVLine(line);
+            NormalizeValues(values);
+            _rows.Add(new ODDBRow(values.ToArray()));
+        }
+
+        private string NormalizeLineEndings(string data)
+        {
+            return data.Replace("\r\n", "\n").Replace("\r", "\n");
+        }
+
+        private void NormalizeValues(List<string> values)
+        {
+            // 메타데이터 개수에 맞춰 값 조정
+            while (values.Count < _tableMetas.Count)
+            {
+                values.Add(string.Empty);
+            }
+            if (values.Count > _tableMetas.Count)
+            {
+                values.RemoveRange(_tableMetas.Count, values.Count - _tableMetas.Count);
+            }
+        }
+
+        private List<string> ParseCSVLine(string line)
+        {
+            var values = new List<string>();
+            if (string.IsNullOrEmpty(line)) return values;
+
+            var currentValue = new StringBuilder();
+            bool inQuotes = false;
+            
+            for (int i = 0; i < line.Length; i++)
+            {
+                char currentChar = line[i];
+                
+                if (currentChar == QUOTE)
+                {
+                    if (inQuotes && HasNextDoubleQuote(line, i))
+                    {
+                        currentValue.Append(QUOTE);
+                        i++; // Skip next quote
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (currentChar == DELIMITER && !inQuotes)
+                {
+                    values.Add(UnescapeCSV(currentValue.ToString()));
+                    currentValue.Clear();
+                }
+                else
+                {
+                    currentValue.Append(currentChar);
+                }
+            }
+            
+            if (currentValue.Length > 0)
+            {
+                values.Add(UnescapeCSV(currentValue.ToString()));
+            }
+
+            return values;
+        }
+
+        private bool HasNextDoubleQuote(string line, int currentIndex)
+        {
+            return currentIndex + 1 < line.Length && line[currentIndex + 1] == QUOTE;
+        }
+
+        private string UnescapeCSV(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            
+            if (value.StartsWith(QUOTE.ToString()) && value.EndsWith(QUOTE.ToString()))
+            {
+                return value.Substring(1, value.Length - 2).Replace(DOUBLE_QUOTE, QUOTE.ToString());
+            }
+            
+            return value;
+        }
+        #endregion
     }
 }

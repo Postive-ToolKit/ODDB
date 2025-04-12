@@ -81,14 +81,13 @@ namespace TeamODD.ODDB.Editors.UI
                     {
                         var value = _table.GetValue(index, columnIndex);
                         field.SetValue(value);
-
                         field.RegisterValueChangedCallback(newValue =>
                         {
                             if (_table != null && index < _table.ReadOnlyRows.Count)
                             {
                                 var row = _table.ReadOnlyRows[index];
-                                // TODO: 값 변경 처리 - 테이블 데이터 업데이트 메서드 필요
-                                Debug.Log($"Value changed at [{index}, {columnIndex}]: {newValue}");
+                                
+                                row.SetData(columnIndex, newValue.ToString());
                             }
                         });
                     }

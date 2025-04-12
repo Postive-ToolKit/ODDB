@@ -40,14 +40,7 @@ namespace TeamODD.ODDB.Runtime.Settings.Data
                 table.Key = convertTargets.Key;
                 // convert convertTargets.Data to TextStream
                 var data = convertTargets.Data;
-                var rows = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                // ignore first line
-                for (int i = 1; i < rows.Length; i++)
-                {
-                    var row = rows[i].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    var oddbRow = new ODDBRow(row);
-                    table.AddRow(oddbRow);
-                }
+                table.Deserialize(data);
                 return true;
             }
             catch (Exception e)

@@ -1,5 +1,4 @@
 using UnityEngine.UIElements;
-using UnityEngine;
 using System;
 
 namespace TeamODD.ODDB.Editors.UI.Fields
