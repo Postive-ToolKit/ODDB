@@ -1,0 +1,17 @@
+﻿namespace Plugins.ODDB.Scripts.Runtime.Data.Enum
+{
+    public enum ODDBDataType
+    {
+        String = 0,
+        Int = 1,
+        Float = 2,
+        Bool = 3,
+        
+        // Reference Type Start with 1000
+        ScriptableObject = 1000,
+        Prefab = 1001,
+        Sprite = 1002,
+        
+        
+    }
+}
