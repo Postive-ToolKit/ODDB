@@ -32,16 +32,10 @@ namespace TeamODD.ODDB.Editors.UI
 
             BuildInfoBox();
             BuildToolBox();
-
-            var multiColumnContainer = new ScrollView();
-            multiColumnContainer.style.flexGrow = 1;
-            multiColumnContainer.mode = ScrollViewMode.VerticalAndHorizontal;
             
             _multiColumnListView = new ODDBMultiColumnListView();
-
-            multiColumnContainer.Add(_multiColumnListView);
             
-            Add(multiColumnContainer);
+            Add(_multiColumnListView);
         }
         private void BuildInfoBox()
         {

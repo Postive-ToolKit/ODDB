@@ -30,18 +30,13 @@ namespace TeamODD.ODDB.Editors.UI
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
-            horizontalScrollingEnabled = false;
-            style.flexGrow = 0;
-            style.flexShrink = 1;
-            style.alignItems = Align.FlexStart;
-            style.flexWrap = Wrap.Wrap;
-            // set columns flex grow 0
-
+            horizontalScrollingEnabled = true;
+            style.flexGrow = 1;
+            
 
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
             schedule.Execute(Update).Every(100);
         }
-
         private void Update()
         {
             if (IsDirty)
@@ -78,9 +73,8 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     title = columnName,
                     name = columnName,
-                    maxWidth = 150,
                     width = 75,
-                    minWidth = 10,
+                    minWidth = 60,
                 };
 
                 
@@ -139,7 +133,32 @@ namespace TeamODD.ODDB.Editors.UI
         private VisualElement CreateCell(ODDBDataType dataType)
         {
             var container = new VisualElement();
-            container.style.flexShrink = 1;
+            container.style.flexGrow = 1;
+            container.style.paddingBottom = 0;
+            container.style.paddingTop = 0;
+            container.style.paddingLeft = 0;
+            container.style.paddingRight = 0;
+            
+            container.style.marginBottom = 0;
+            container.style.marginTop = 0;
+            container.style.marginLeft = 0;
+            container.style.marginRight = 0;
+            container.style.borderBottomLeftRadius = 0;
+            container.style.borderBottomRightRadius = 0;
+            container.style.borderTopLeftRadius = 0;
+            container.style.borderTopRightRadius = 0;
+
+            container.style.borderBottomColor = new StyleColor(Color.black);
+            container.style.borderBottomWidth = 1;
+            container.style.borderBottomLeftRadius = 0;
+            container.style.borderBottomRightRadius = 0;
+            container.style.borderTopColor = new StyleColor(Color.black);
+            container.style.borderTopWidth = 1;
+            container.style.borderTopLeftRadius = 0;
+            container.style.borderTopRightRadius = 0;
+            container.style.borderLeftColor = new StyleColor(Color.black);
+            container.style.borderLeftWidth = 1;
+            
             var field = ODDBFieldFactory.CreateField(dataType);
             container.Add(field.Root);
             container.userData = field;
@@ -183,16 +202,16 @@ namespace TeamODD.ODDB.Editors.UI
             if (columns.Count > 0)
             {
                 float totalWidth = evt.newRect.width - DELETE_COLUMN_WIDTH;
-                float columnWidth = totalWidth / (columns.Count - 1); // 삭제 버튼 컬럼 제외
+                //float columnWidth = totalWidth / (columns.Count - 1); // 삭제 버튼 컬럼 제외
                 
-                // 데이터 컬럼들의 너비 설정
-                for (int i = 0; i < columns.Count - 1; i++)
-                {
-                    columns[i].width = new Length(Mathf.Max(columnWidth, columns[i].minWidth.value));
-                }
+                // // 데이터 컬럼들의 너비 설정
+                // for (int i = 0; i < columns.Count - 1; i++)
+                // {
+                //     columns[i].width = new Length(Mathf.Max(columnWidth, columns[i].minWidth.value));
+                // }
 
                 // 삭제 버튼 컬럼 너비 고정
-                columns[^1].width = DELETE_COLUMN_WIDTH;
+                // columns[^1].width = DELETE_COLUMN_WIDTH;
             }
         }
     }
