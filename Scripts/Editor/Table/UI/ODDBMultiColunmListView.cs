@@ -110,8 +110,9 @@ namespace TeamODD.ODDB.Editors.UI
             var header = element as Label;
             header!.RegisterCallback<MouseDownEvent>(evt =>
             {
-                if (evt.button != 0)
+                if (evt.button != 1)
                     return;
+                evt.StopPropagation();
                 //create context menu
                 var menu = new GenericMenu();
                 menu.AddItem(new GUIContent("Delete"), false, () =>
@@ -133,6 +134,7 @@ namespace TeamODD.ODDB.Editors.UI
                     });
                     changeNameDialog.Build();
                 });
+                
                 menu.ShowAsContext();
             });
         }
