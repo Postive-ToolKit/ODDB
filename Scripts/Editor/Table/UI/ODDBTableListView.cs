@@ -4,6 +4,7 @@ using TeamODD.ODDB.Editors.UI.Interfaces;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
+using UnityEditor;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -20,6 +21,7 @@ namespace TeamODD.ODDB.Editors.UI
 #endif
         public bool IsDirty { get; set; }
         private ODDatabase _database;
+        private ODDBTable _table;
         public event Action<ODDBTable> OnTableSelected;
         public ODDBTableListView()
         {
@@ -38,6 +40,33 @@ namespace TeamODD.ODDB.Editors.UI
             style.flexGrow = 1;
             showBorder = true;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
+            // add context menu when right click
+            RegisterCallback<ContextClickEvent>(evt =>
+            {
+                if (evt.button != 1)
+                    return;
+                if (_database == null)
+                    return;
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Add"), false, () =>
+                {
+                    var newTable = _database.CreateTable();
+                    newTable.Name = "New Table";
+                    IsDirty = true;
+                });
+                menu.AddItem(new GUIContent("Remove"), false, () =>
+                {
+                    if (_table == null)
+                        return;
+                    if (!_database.Tables.Contains(_table))
+                        return;
+                    _database.Tables.Remove(_table);
+                    _table = null;
+                    OnTableSelected?.Invoke(null);
+                    IsDirty = true;
+                });
+                menu.ShowAsContext();
+            });
             
             schedule.Execute(Update).Every(100);
         }
@@ -84,9 +113,23 @@ namespace TeamODD.ODDB.Editors.UI
         {
             foreach (var item in selectedItems)
             {
-                if(item is ODDBTable table)
+                if (item is ODDBTable table)
+                {
+                    _table = table;
                     OnTableSelected?.Invoke(table);
+                    return;
+                }
+                    
             }
+        }
+
+        public void UpdateTable(ODDBTable table)
+        {
+            // find table index and update it
+            if (_database == null)
+                return;
+            var index = _database.Tables.IndexOf(table);
+            this.RefreshItem(index);
         }
     }
 }

@@ -4,7 +4,7 @@ using Plugins.ODDB.Scripts.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 
-namespace TeamODD.ODDB.Runtime.Settings
+namespace TeamODD.ODDB.Runtime
 {
     public class ODDBExporter
     {
@@ -32,6 +32,7 @@ namespace TeamODD.ODDB.Runtime.Settings
                     .SetKey(table)
                     .SetSerialization(table)
                     .SetTableMeta(table)
+                    .SetBindType(table)
                     .Build();
                 return true;
             }

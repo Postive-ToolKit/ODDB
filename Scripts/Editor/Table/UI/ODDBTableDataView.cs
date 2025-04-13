@@ -1,8 +1,5 @@
 using System;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
-using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Scripts.Runtime.Data;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -16,6 +13,7 @@ namespace TeamODD.ODDB.Editors.UI
 
         #region ToolBox
         private GroupBox _toolBox;
+        private ODDBBindClassSelectView _bindClassSelectView;
         private Toggle _tableAutoWidthToggle;
         private Button _createRowButton;
         #endregion
@@ -107,23 +105,28 @@ namespace TeamODD.ODDB.Editors.UI
             _tableAutoWidthToggle.text = "Auto Width";
             _tableAutoWidthToggle.style.flexGrow = 0;
             _tableAutoWidthToggle.style.flexShrink = 1;
-            _tableAutoWidthToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
-            {
-                if (_table == null)
-                    return;
-                if (evt.newValue)
-                {
-                    var currentWidth = _multiColumnContainer.resolvedStyle.width;
-                    _multiColumnListView.UpdateMaxWidth(currentWidth);
-                    return;
-                }
-                _multiColumnListView.UpdateMaxWidth();
-                
-            });
+            _tableAutoWidthToggle.RegisterCallback<ChangeEvent<bool>>(OnAutoWidthToggleChanged);
             _toolBox.Add(_tableAutoWidthToggle);
+            
+            _bindClassSelectView = new ODDBBindClassSelectView();
+            _bindClassSelectView.OnBindClassChanged += OnTableTypeChangedEvent;
+            _toolBox.Add(_bindClassSelectView);
             
             Add(_toolBox);
             _toolBox.SetEnabled(false);
+        }
+
+        private void OnAutoWidthToggleChanged(ChangeEvent<bool> evt)
+        {
+            if (_table == null) return;
+            if (evt.newValue)
+            {
+                var currentWidth = _multiColumnContainer.resolvedStyle.width;
+                _multiColumnListView.UpdateMaxWidth(currentWidth);
+                return;
+            }
+
+            _multiColumnListView.UpdateMaxWidth();
         }
 
         private void OnAddRowClicked()
@@ -142,6 +145,7 @@ namespace TeamODD.ODDB.Editors.UI
                 _tableNameInput.SetEnabled(false);
                 _tableNameInput.value = string.Empty;
                 _tableKeyInput.value = string.Empty;
+                _bindClassSelectView.SetType(null);
                 return;
             }
             _toolBox.SetEnabled(true);
@@ -149,15 +153,23 @@ namespace TeamODD.ODDB.Editors.UI
             _tableNameInput.value = _table.Name;
             _tableKeyInput.value = _table.Key;
             _multiColumnListView.SetTable(table);
+            _bindClassSelectView.SetType(table.BindType);
         }
         private void OnTableNameChangedEvent(ChangeEvent<string> evt)
         {
-            if (evt.newValue.Equals(_table.Name))
-                return;
             if (_table == null)
+                return;
+            if (evt.newValue.Equals(_table.Name))
                 return;
             _table.Name = evt.newValue;
             OnTableNameChanged?.Invoke(_table);
+        }
+
+        private void OnTableTypeChangedEvent(Type type)
+        {
+            if (_table == null)
+                return;
+            _table.BindType = type;
         }
     }
 }

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {
-    public class ODDBTable : IODDBHasUniqueKey, IODDBHasName, IODDBHasTableMeta, IODDBAvailableSerialize
+    public class ODDBTable : IODDBHasUniqueKey, IODDBHasName, IODDBHasTableMeta, IODDBAvailableSerialize, IODDBHasBindType
     {
         private const char DELIMITER = ',';
         private const char QUOTE = '"';
@@ -16,6 +16,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
 
         public string Key { get; set; }
         public string Name { get; set; }
+        public Type BindType { get; set; }
         private readonly List<ODDBTableMeta> _tableMetas = new();
         private readonly List<ODDBRow> _rows = new();
         public List<ODDBTableMeta> TableMetas => _tableMetas;

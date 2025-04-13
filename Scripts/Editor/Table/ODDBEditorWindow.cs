@@ -104,15 +104,9 @@ namespace TeamODD.ODDB.Editors.Window
             var tableListView = root.Q<ODDBTableListView>("table-list-view");
             tableListView.SetDatabase(_database);
             tableListView.OnTableSelected += tableDataView.SetTable;
-            tableListView.OnTableSelected += OnTableSelected;
-
-
-            
-        }
-
-        private void OnTableSelected(ODDBTable table)
-        {
-            Debug.Log($"Table selected: {table.Name}");
+            tableDataView.OnTableNameChanged += (table) => {
+                tableListView.UpdateTable(table);
+            };
         }
 
         private ODDatabase CreateTestDatabase()

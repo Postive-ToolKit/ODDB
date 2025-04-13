@@ -17,7 +17,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         {
             _fields.AddRange(data);
         }
-        public object GetData(int index)
+        public string GetData(int index)
         {
             if (index >= _fields.Count || index < 0)
                 return null;

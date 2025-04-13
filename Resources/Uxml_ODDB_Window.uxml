@@ -6,10 +6,6 @@
     </engine:GroupBox>
     <odd:ODDBSplitView fixed-pane-initial-dimension="200">
         <engine:VisualElement name="left-container" style="flex-grow: 1;">
-            <engine:GroupBox style="align-items: auto; flex-direction: row; background-color: rgb(37, 37, 37); align-content: flex-start; align-self: auto; justify-content: flex-start;">
-                <engine:Button text="+" name="add-table" style="height: 20px; flex-wrap: wrap; flex-shrink: 1; width: 20px; flex-grow: 1;" />
-                <engine:Button text="-" name="remove-table" style="height: 20px; flex-wrap: wrap; flex-shrink: 0; width: 20px; flex-grow: 1;" />
-            </engine:GroupBox>
             <odd:ODDBTableListView name="table-list-view" />
         </engine:VisualElement>
         <odd:ODDBTableDataView name="table-data-view" />

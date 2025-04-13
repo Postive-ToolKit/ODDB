@@ -10,13 +10,15 @@ namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
         public string Key { get; set; }
         public List<ODDBTableMeta> TableMetas { get; set; }
         public string Data;
+        public string BindType { get; set; }
 
-        private ODDBTableDTO(string name, string key,List<ODDBTableMeta> tableMetas, string data)
+        private ODDBTableDTO(string name, string key,List<ODDBTableMeta> tableMetas, string data, string bindType)
         {
             Name = name;
             Key = key;
-            Data = data;
             TableMetas = tableMetas;
+            Data = data;
+            BindType = bindType;
         }
         public class Builder
         {
@@ -24,6 +26,7 @@ namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
             private IODDBHasUniqueKey _keyInterface;
             private IODDBAvailableSerialize _serializationInterface;
             private IODDBHasTableMeta _tableMetaInterface;
+            private IODDBHasBindType _bindTypeInterface;
             
             public Builder SetName(IODDBHasName nameInterface)
             {
@@ -49,6 +52,12 @@ namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
                 return this;
             }
             
+            public Builder SetBindType(IODDBHasBindType bindTypeInterface)
+            {
+                _bindTypeInterface = bindTypeInterface;
+                return this;
+            }
+            
             public ODDBTableDTO Build()
             {
                 var name = _nameInterface?.Name ?? string.Empty;
@@ -57,8 +66,8 @@ namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
                 var tableMetas = _tableMetaInterface?.TableMetas ?? null;
 
                 var convertedMeta = tableMetas == null ? new List<ODDBTableMeta>() : new List<ODDBTableMeta>(tableMetas);
-                
-                return new ODDBTableDTO(name, key,convertedMeta, data);
+                var convertedBindType = _bindTypeInterface?.BindType?.FullName ?? string.Empty;
+                return new ODDBTableDTO(name, key,convertedMeta, data,convertedBindType);
             }
         }
     }
