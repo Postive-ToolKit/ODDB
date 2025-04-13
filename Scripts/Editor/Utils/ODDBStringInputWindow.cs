@@ -25,8 +25,7 @@ namespace TeamODD.ODDB.Editors.UI
             GUILayout.Space(10);
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            
-            Debug.Log(Event.current.keyCode);
+
             var isEnterPressed = (Event.current.keyCode == KeyCode.Return && Event.current.type == EventType.KeyDown);
             if ((GUILayout.Button("Confirm", GUILayout.Width(60)) || isEnterPressed) && !string.IsNullOrEmpty(_inputValue))
             {

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using System.Collections.Generic;
@@ -31,13 +32,8 @@ namespace TeamODD.ODDB.Editors.UI
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
             horizontalScrollingEnabled = false;
-            //style.flexGrow = 1;
             style.flexShrink = 1;
-            
 
-            RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-            // Add Resize Window Listener
-            // add call back on culumn
             schedule.Execute(Update).Every(100);
         }
 
@@ -77,69 +73,69 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     title = columnName,
                     name = columnName,
-                    maxWidth = 300,  // 기본 너비를 더 크게 설정
-                    width = 60,  // 기본 너비를 더 크게 설정
+                    maxWidth = 300,
+                    width = 60,
                     minWidth = 60,
                     stretchable = true,
-                    resizable = true
+                    resizable = true,
                 };
 
                 var dataType = meta.DataType;
                 var columnIndex = i;
-
+                column.makeHeader = () => CreateHeaderElement(meta);
+                column.bindHeader = (element) => BindHeaderElement(element, column, meta, columnIndex);
                 column.makeCell = () => CreateCell(dataType);
                 column.bindCell = (element, index) => BindCell(element, index, columnIndex);
 
                 columns.Add(column);
             }
-
-            // 삭제 버튼 컬럼 추가
-            var deleteColumn = new Column()
-            {
-                title = "",
-                name = "DeleteColumn",
-                maxWidth = DELETE_COLUMN_WIDTH,
-                width = DELETE_COLUMN_WIDTH,
-                minWidth = DELETE_COLUMN_WIDTH,
-                stretchable = false,
-                resizable = false
-            };
-
-            deleteColumn.makeCell = () =>
-            {
-                var button = new Button()
-                {
-                    text = "-",
-                    style = 
-                    {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        unityTextAlign = TextAnchor.MiddleCenter
-                    }
-                };
-                return button;
-            };
-
-            deleteColumn.bindCell = (element, index) =>
-            {
-                var button = element as Button;
-                if (button != null)
-                {
-                    button.clicked += () =>
-                    {
-                        if (_table != null && index < _table.ReadOnlyRows.Count)
-                        {
-                            _table.RemoveRow(index);
-                            IsDirty = true;
-                        }
-                    };
-                }
-            };
-
-            columns.Add(deleteColumn);
+            
+            columns.Add(CreateToolColumn());
             UpdateMaxWidth();
         }
-
+        private VisualElement CreateHeaderElement(ODDBTableMeta tableMeta)
+        {
+            var header = new Label(tableMeta.Name) {
+                style =
+                {
+                    flexGrow = 1,
+                    paddingLeft = 8,
+                    unityTextAlign = TextAnchor.MiddleLeft,
+                }
+            };
+            return header;
+        }
+        private void BindHeaderElement(VisualElement element, Column column, ODDBTableMeta meta,int columnIndex)
+        {
+            var header = element as Label;
+            header!.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button != 0)
+                    return;
+                //create context menu
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Delete"), false, () =>
+                {
+                    _table.RemoveTableMeta(columnIndex);
+                    IsDirty = true;
+                });
+                menu.AddItem(new GUIContent("Change Name"), false, () =>
+                {
+                    // Show a dialog to change the name
+                    var changeNameDialog = new ODDBStringInputWindow.Builder();
+                    changeNameDialog.SetTitle("Change Field Name");
+                    changeNameDialog.SetOnConfirm(newName =>
+                    {
+                        _table.TableMetas[columnIndex] = new ODDBTableMeta(meta.DataType, newName);
+                        column.title = newName;
+                        _columnNames[columnIndex] = newName;
+                        IsDirty = true;
+                    });
+                    changeNameDialog.Build();
+                });
+                menu.ShowAsContext();
+            });
+        }
         private VisualElement CreateCell(ODDBDataType dataType)
         {
             var container = new VisualElement();
@@ -160,12 +156,8 @@ namespace TeamODD.ODDB.Editors.UI
 
             container.style.borderBottomColor = new StyleColor(Color.black);
             container.style.borderBottomWidth = 1;
-            container.style.borderBottomLeftRadius = 0;
-            container.style.borderBottomRightRadius = 0;
             container.style.borderTopColor = new StyleColor(Color.black);
             container.style.borderTopWidth = 1;
-            container.style.borderTopLeftRadius = 0;
-            container.style.borderTopRightRadius = 0;
             container.style.borderLeftColor = new StyleColor(Color.black);
             container.style.borderLeftWidth = 1;
             
@@ -194,7 +186,106 @@ namespace TeamODD.ODDB.Editors.UI
                 });
             }
         }
+        private Column CreateToolColumn()
+        {
+            var toolColumn = new Column()
+            {
+                title = "",
+                name = "DeleteColumn",
+                maxWidth = DELETE_COLUMN_WIDTH,
+                width = DELETE_COLUMN_WIDTH,
+                minWidth = DELETE_COLUMN_WIDTH,
+                stretchable = false,
+                resizable = false
+            };
+            // field will work like add field button
+            toolColumn.makeHeader = () =>
+            {
+                var header = new Label()
+                {
+                    text = "+",
+                    style =
+                    {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        unityTextAlign = TextAnchor.MiddleCenter
+                    }
+                };
+                return header;
+            };
 
+            toolColumn.bindHeader = (element) =>
+            {
+                var header = element as Label;
+                header!.RegisterCallback<MouseDownEvent>(evt =>
+                {
+                    if (evt.button != 0)
+                        return;
+                    OnAddTableColumnClicked();
+                });
+            };
+            
+            // row will work like delete row button
+            toolColumn.makeCell = () =>
+            {
+                var button = new Button()
+                {
+                    text = "-",
+                    style =
+                    {
+                        flexGrow = 0,
+                        flexShrink = 0,
+                        unityTextAlign = TextAnchor.MiddleCenter
+                    }
+                };
+                return button;
+            };
+
+            toolColumn.bindCell = (element, index) =>
+            {
+                var button = element as Button;
+                if (button != null)
+                {
+                    button.clicked += () =>
+                    {
+                        if (_table != null && index < _table.ReadOnlyRows.Count)
+                        {
+                            _table.RemoveRow(index);
+                            IsDirty = true;
+                        }
+                    };
+                }
+            };
+
+            return toolColumn;
+        }
+        
+        private void OnAddTableColumnClicked()
+        {
+            if (_table == null)
+                return;
+            // create context menu
+            var menu = new GenericMenu();
+            
+            foreach (ODDBDataType dataType in Enum.GetValues(typeof(ODDBDataType)))
+            {
+                menu.AddItem(new GUIContent(dataType.ToString()), false, () => {
+                    if (_table == null)
+                        return;
+                    var dialogBuilder = new ODDBStringInputWindow.Builder();
+                    dialogBuilder.SetTitle("Please enter field name");
+                    dialogBuilder.SetOnConfirm((input) =>
+                    {
+                        _table.AddField(new ODDBTableMeta(dataType, input));
+                        IsDirty = true;
+                    });
+                    dialogBuilder.Build();
+                });
+            }
+            // 메뉴 표시
+            menu.ShowAsContext();
+        }
+        
         private void RefreshItems()
         {
             if (_table == null) return;
@@ -206,26 +297,6 @@ namespace TeamODD.ODDB.Editors.UI
             }
             Rebuild();
         }
-
-        private void OnGeometryChanged(GeometryChangedEvent evt)
-        {
-            if (columns.Count > 0)
-            {
-                float totalWidth = evt.newRect.width - DELETE_COLUMN_WIDTH;
-                Debug.Log($"Total Width: {totalWidth}");
-                //float columnWidth = totalWidth / (columns.Count - 1); // 삭제 버튼 컬럼 제외
-                
-                // // 데이터 컬럼들의 너비 설정
-                // for (int i = 0; i < columns.Count - 1; i++)
-                // {
-                //     columns[i].width = new Length(Mathf.Max(columnWidth, columns[i].minWidth.value));
-                // }
-
-                // 삭제 버튼 컬럼 너비 고정
-                // columns[^1].width = DELETE_COLUMN_WIDTH;
-            }
-        }
-
         public void UpdateMaxWidth(float maxWidth = -1f)
         {
             if (maxWidth > 0)
@@ -233,14 +304,12 @@ namespace TeamODD.ODDB.Editors.UI
                 style.maxWidth = maxWidth;
                 return;
             }
-            // 모든 자식의 너비를 합친 값을 계산하고 그 값보다 300 큰 값으로 maxWidth 설정
-            Debug.Log("UpdateMaxWidth");
             float totalWidth = 0;
             foreach (var column in columns)
             {
                 totalWidth += column.maxWidth.value;
             }
-
+            //style.width = totalWidth;
             style.maxWidth = totalWidth;
         }
     }

@@ -18,8 +18,6 @@ namespace TeamODD.ODDB.Editors.UI
         private GroupBox _toolBox;
         private Toggle _tableAutoWidthToggle;
         private Button _createRowButton;
-        private Button _addTableColumnButton;
-        private Button _removeTableColumnButton;
         #endregion
 
         private ScrollView _multiColumnContainer;
@@ -104,14 +102,6 @@ namespace TeamODD.ODDB.Editors.UI
             _createRowButton.style.flexShrink = 1;
             _toolBox.Add(_createRowButton);
             
-            // add button to add field
-            _addTableColumnButton = new Button();
-            _addTableColumnButton.text = "Add Field";
-            _addTableColumnButton.style.flexGrow = 0;
-            _addTableColumnButton.style.flexShrink = 1;
-            _addTableColumnButton.clicked += OnAddTableColumnClicked;
-            _toolBox.Add(_addTableColumnButton);
-            
             _tableAutoWidthToggle = new Toggle();
             _tableAutoWidthToggle.value = true;
             _tableAutoWidthToggle.text = "Auto Width";
@@ -134,35 +124,6 @@ namespace TeamODD.ODDB.Editors.UI
             
             Add(_toolBox);
             _toolBox.SetEnabled(false);
-        }
-
-        private void OnAddTableColumnClicked()
-        {
-            if (_table == null)
-                return;
-            // _table.AddColumn();
-            // _multiColumnListView.RefreshColumns();
-            // _multiColumnListView.IsDirty = true;
-            // create context menu
-            var menu = new GenericMenu();
-            
-            foreach (ODDBDataType dataType in Enum.GetValues(typeof(ODDBDataType)))
-            {
-                menu.AddItem(new GUIContent(dataType.ToString()), false, () => {
-                    if (_table == null)
-                        return;
-                    var dialogBuilder = new ODDBStringInputWindow.Builder();
-                    dialogBuilder.SetTitle("Please enter field name");
-                    dialogBuilder.SetOnConfirm((input) =>
-                    {
-                        _table.AddField(new ODDBTableMeta(dataType, input));
-                        _multiColumnListView.IsDirty = true;
-                    });
-                    dialogBuilder.Build();
-                });
-            }
-            // 메뉴 표시
-            menu.ShowAsContext();
         }
 
         private void OnAddRowClicked()
