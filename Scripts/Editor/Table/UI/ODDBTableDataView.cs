@@ -13,11 +13,16 @@ namespace TeamODD.ODDB.Editors.UI
     {
         private TextField _tableNameInput;
         private TextField _tableKeyInput;
-        
+
+        #region ToolBox
+        private GroupBox _toolBox;
+        private Toggle _tableAutoWidthToggle;
         private Button _createRowButton;
         private Button _addTableColumnButton;
         private Button _removeTableColumnButton;
-        
+        #endregion
+
+        private ScrollView _multiColumnContainer;
         private ODDBMultiColumnListView _multiColumnListView;
 
         public event Action<ODDBTable> OnTableNameChanged;
@@ -32,10 +37,24 @@ namespace TeamODD.ODDB.Editors.UI
 
             BuildInfoBox();
             BuildToolBox();
-            
+
+            _multiColumnContainer = new ScrollView();
+            //multiColumnContainer.style.flexGrow = 1;
+            _multiColumnContainer.mode = ScrollViewMode.VerticalAndHorizontal;
             _multiColumnListView = new ODDBMultiColumnListView();
+            _multiColumnContainer.RegisterCallback<GeometryChangedEvent> (evt =>
+            {
+                if (_tableAutoWidthToggle.value)
+                {
+                    var currentWidth = _multiColumnContainer.resolvedStyle.width;
+                    _multiColumnListView.UpdateMaxWidth(currentWidth);
+                    return;
+                }
+                _multiColumnListView.UpdateMaxWidth();
+            });
+            _multiColumnContainer.Add(_multiColumnListView);
             
-            Add(_multiColumnListView);
+            Add(_multiColumnContainer);
         }
         private void BuildInfoBox()
         {
@@ -65,17 +84,17 @@ namespace TeamODD.ODDB.Editors.UI
         }
         private void BuildToolBox()
         {
-            var toolBox = new GroupBox();
-            toolBox.style.flexShrink = 1;
-            toolBox.style.flexDirection = FlexDirection.Row;
-            toolBox.style.paddingBottom = 0;
-            toolBox.style.paddingTop = 0;
-            toolBox.style.paddingLeft = 0;
-            toolBox.style.paddingRight = 0;
-            toolBox.style.marginBottom = 0;
-            toolBox.style.marginTop = 0;
-            toolBox.style.marginLeft = 0;
-            toolBox.style.marginRight = 0;
+            _toolBox = new GroupBox();
+            _toolBox.style.flexShrink = 1;
+            _toolBox.style.flexDirection = FlexDirection.Row;
+            _toolBox.style.paddingBottom = 0;
+            _toolBox.style.paddingTop = 0;
+            _toolBox.style.paddingLeft = 0;
+            _toolBox.style.paddingRight = 0;
+            _toolBox.style.marginBottom = 0;
+            _toolBox.style.marginTop = 0;
+            _toolBox.style.marginLeft = 0;
+            _toolBox.style.marginRight = 0;
             
             // add button to create new row
             _createRowButton = new Button();
@@ -83,7 +102,7 @@ namespace TeamODD.ODDB.Editors.UI
             _createRowButton.clicked += OnAddRowClicked;
             _createRowButton.style.flexGrow = 0;
             _createRowButton.style.flexShrink = 1;
-            toolBox.Add(_createRowButton);
+            _toolBox.Add(_createRowButton);
             
             // add button to add field
             _addTableColumnButton = new Button();
@@ -91,10 +110,30 @@ namespace TeamODD.ODDB.Editors.UI
             _addTableColumnButton.style.flexGrow = 0;
             _addTableColumnButton.style.flexShrink = 1;
             _addTableColumnButton.clicked += OnAddTableColumnClicked;
-            toolBox.Add(_addTableColumnButton);
+            _toolBox.Add(_addTableColumnButton);
             
-
-            Add(toolBox);
+            _tableAutoWidthToggle = new Toggle();
+            _tableAutoWidthToggle.value = true;
+            _tableAutoWidthToggle.text = "Auto Width";
+            _tableAutoWidthToggle.style.flexGrow = 0;
+            _tableAutoWidthToggle.style.flexShrink = 1;
+            _tableAutoWidthToggle.RegisterCallback<ChangeEvent<bool>>(evt =>
+            {
+                if (_table == null)
+                    return;
+                if (evt.newValue)
+                {
+                    var currentWidth = _multiColumnContainer.resolvedStyle.width;
+                    _multiColumnListView.UpdateMaxWidth(currentWidth);
+                    return;
+                }
+                _multiColumnListView.UpdateMaxWidth();
+                
+            });
+            _toolBox.Add(_tableAutoWidthToggle);
+            
+            Add(_toolBox);
+            _toolBox.SetEnabled(false);
         }
 
         private void OnAddTableColumnClicked()
@@ -138,11 +177,13 @@ namespace TeamODD.ODDB.Editors.UI
         {
             _table = table;
             if (table == null) {
+                _toolBox.SetEnabled(false);
                 _tableNameInput.SetEnabled(false);
                 _tableNameInput.value = string.Empty;
                 _tableKeyInput.value = string.Empty;
                 return;
             }
+            _toolBox.SetEnabled(true);
             _tableNameInput.SetEnabled(true);
             _tableNameInput.value = _table.Name;
             _tableKeyInput.value = _table.Key;

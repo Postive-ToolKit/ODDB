@@ -30,13 +30,17 @@ namespace TeamODD.ODDB.Editors.UI
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
-            horizontalScrollingEnabled = true;
-            style.flexGrow = 1;
+            horizontalScrollingEnabled = false;
+            //style.flexGrow = 1;
+            style.flexShrink = 1;
             
 
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+            // Add Resize Window Listener
+            // add call back on culumn
             schedule.Execute(Update).Every(100);
         }
+
         private void Update()
         {
             if (IsDirty)
@@ -73,11 +77,13 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     title = columnName,
                     name = columnName,
-                    width = 75,
+                    maxWidth = 300,  // 기본 너비를 더 크게 설정
+                    width = 60,  // 기본 너비를 더 크게 설정
                     minWidth = 60,
+                    stretchable = true,
+                    resizable = true
                 };
 
-                
                 var dataType = meta.DataType;
                 var columnIndex = i;
 
@@ -94,7 +100,9 @@ namespace TeamODD.ODDB.Editors.UI
                 name = "DeleteColumn",
                 maxWidth = DELETE_COLUMN_WIDTH,
                 width = DELETE_COLUMN_WIDTH,
-                minWidth = DELETE_COLUMN_WIDTH
+                minWidth = DELETE_COLUMN_WIDTH,
+                stretchable = false,
+                resizable = false
             };
 
             deleteColumn.makeCell = () =>
@@ -105,6 +113,7 @@ namespace TeamODD.ODDB.Editors.UI
                     style = 
                     {
                         flexGrow = 0,
+                        flexShrink = 0,
                         unityTextAlign = TextAnchor.MiddleCenter
                     }
                 };
@@ -128,6 +137,7 @@ namespace TeamODD.ODDB.Editors.UI
             };
 
             columns.Add(deleteColumn);
+            UpdateMaxWidth();
         }
 
         private VisualElement CreateCell(ODDBDataType dataType)
@@ -202,6 +212,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (columns.Count > 0)
             {
                 float totalWidth = evt.newRect.width - DELETE_COLUMN_WIDTH;
+                Debug.Log($"Total Width: {totalWidth}");
                 //float columnWidth = totalWidth / (columns.Count - 1); // 삭제 버튼 컬럼 제외
                 
                 // // 데이터 컬럼들의 너비 설정
@@ -213,6 +224,24 @@ namespace TeamODD.ODDB.Editors.UI
                 // 삭제 버튼 컬럼 너비 고정
                 // columns[^1].width = DELETE_COLUMN_WIDTH;
             }
+        }
+
+        public void UpdateMaxWidth(float maxWidth = -1f)
+        {
+            if (maxWidth > 0)
+            {
+                style.maxWidth = maxWidth;
+                return;
+            }
+            // 모든 자식의 너비를 합친 값을 계산하고 그 값보다 300 큰 값으로 maxWidth 설정
+            Debug.Log("UpdateMaxWidth");
+            float totalWidth = 0;
+            foreach (var column in columns)
+            {
+                totalWidth += column.maxWidth.value;
+            }
+
+            style.maxWidth = totalWidth;
         }
     }
 }
