@@ -11,21 +11,19 @@ namespace TeamODD.ODDB.Runtime.Settings
             get => Application.dataPath + DBPath;
             set{
                 _dbPath = value.Replace(Application.dataPath,"");
-                var curPath = value.Replace(BASE_PATH + "/", "");
+                var curPath = _dbPath.Replace("/Resources/", "");
                 _pathFromResources = curPath;
                 _isInitialized = true;
             }
         }
         public string DBPath => _dbPath;
         public string PathFromResources => _pathFromResources;
-        public string DBName {
-            get => _dbName;
-        }
+        public string DBName => _dbName;
         [HideInInspector] private bool _isInitialized = false;
         [ODDBPathSelector(true)]
         [SerializeField] private string _dbPath;
         [SerializeField] private string _pathFromResources;
-        [SerializeField] private string _dbName = "ODDB.db";
+        [SerializeField] private string _dbName = "ODDB.xml";
         private void OnValidate()
         {
             if(!string.IsNullOrEmpty(_dbPath))

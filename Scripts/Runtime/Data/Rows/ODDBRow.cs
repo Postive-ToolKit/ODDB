@@ -1,20 +1,25 @@
 ﻿using System.Collections.Generic;
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
+using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {
-    public partial class ODDBRow
+    public class ODDBRow : IODDBHasUniqueKey
     {
+        public string Key { get; set; } = new ODDBID().ID;
         private List<string> _fields = new List<string>();
         public ODDBRow(int dataCount)
         {
+            Key = new ODDBID().ID;
             for (int i = 0; i < dataCount; i++)
             {
                 _fields.Add(null);
             }
         }
-        public ODDBRow(IEnumerable<string> data)
+        public ODDBRow(string key,IEnumerable<string> data)
         {
+            Key = key;
             _fields.AddRange(data);
         }
         public string GetData(int index)
@@ -49,6 +54,12 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
             {
                 (_fields[indexA], _fields[indexB]) = (_fields[indexB], _fields[indexA]);
             }
+        }
+
+
+        public void AddData(string data)
+        {
+            _fields.Add(data);
         }
     }
 }

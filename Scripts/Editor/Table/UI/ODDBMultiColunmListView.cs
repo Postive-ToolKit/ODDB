@@ -61,6 +61,8 @@ namespace TeamODD.ODDB.Editors.UI
 
             columns.Clear();
             _columnNames.Clear();
+            
+            columns.Add(CreateKeyColumn());
 
             // 데이터 컬럼 추가
             for (int i = 0; i < _table.TableMetas.Count; i++)
@@ -93,6 +95,38 @@ namespace TeamODD.ODDB.Editors.UI
             columns.Add(CreateToolColumn());
             UpdateMaxWidth();
         }
+
+        private Column CreateKeyColumn()
+        {
+            var keyColumn = new Column()
+            {
+                title = "Key",
+                name = "Key",
+                maxWidth = 100,
+                minWidth = 100,
+                stretchable = true,
+                resizable = true
+            };
+            keyColumn.makeCell =
+                () => new TextField()
+                {
+                    style =
+                    {
+                        flexShrink = 1,
+                        unityTextAlign = TextAnchor.MiddleLeft
+                    },
+                    isReadOnly = true,
+                };
+            keyColumn.bindCell = (element, index) =>
+            {
+                if (index >= _table.ReadOnlyRows.Count)
+                    return;
+                var container = element as TextField;
+                container!.value = _table.ReadOnlyRows[index].Key;
+            };
+            return keyColumn;
+        }
+
         private VisualElement CreateHeaderElement(ODDBTableMeta tableMeta)
         {
             var header = new Label(tableMeta.Name) {

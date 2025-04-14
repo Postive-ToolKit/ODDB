@@ -31,16 +31,14 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         public void AddField(ODDBTableMeta tableMeta)
         {
             _tableMetas.Add(tableMeta);
-            // TODO : Add all data of index in this table
             foreach (var row in _rows)
             {
-                row.InsertData(_tableMetas.Count - 1, null);
+                row.AddData(null);
             }
         }
         public void RemoveTableMeta(int index)
         {
             _tableMetas.RemoveAt(index);
-            // TODO : Remove all data of index in this table
             foreach (var row in _rows)
             {
                 row.RemoveData(index);
@@ -63,7 +61,6 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
                 row = new ODDBRow(_tableMetas.Count);
             }
             _rows.Add(row);
-            Debug.Log(_rows.Count);
         }
         
         public void InsertRow(int index, ODDBRow row)
@@ -85,7 +82,6 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         {
             _rows.Clear();
         }
-        
         
         public object GetValue(int rowIndex, int columnIndex)
         {
@@ -121,6 +117,8 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
 
         private void SerializeRow(ODDBRow row, StringBuilder builder)
         {
+            builder.Append(EscapeCSV(row.Key));
+            builder.Append(DELIMITER);
             for (int i = 0; i < _tableMetas.Count; i++)
             {
                 var value = row.GetData(i)?.ToString() ?? string.Empty;
@@ -162,8 +160,10 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         private void DeserializeLine(string line)
         {
             var values = ParseCSVLine(line);
+            var key = values[0];
+            values.RemoveAt(0);
             NormalizeValues(values);
-            _rows.Add(new ODDBRow(values.ToArray()));
+            _rows.Add(new ODDBRow(key, values.ToArray()));
         }
 
         private string NormalizeLineEndings(string data)

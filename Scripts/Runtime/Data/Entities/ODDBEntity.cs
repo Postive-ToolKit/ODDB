@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
 
@@ -25,17 +26,23 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var targetType = field.FieldType;
                 var rawValue = row.GetData(i);
                 var convertedValue = converter.Convert(rawValue, meta.DataType);
+                
+                //Debug.Log("[ODDBImporter] Converted value: " + convertedValue + " for field: " + field.Name);
 
                 if (targetType.IsInstanceOfType(convertedValue))
                 {
                     field.SetValue(this, convertedValue);
-                    fieldIndex++;
                 }
                 else
                 {
-                    Debug.LogError($"[Import Error] Field '{field.Name}' expects type '{targetType}', " +
-                                   $"but got '{convertedValue?.GetType()}' from meta '{meta.Name}'");
+                    // change above to exception to string builder
+                    var stringBuilder = new StringBuilder();
+                    stringBuilder.Append($"[Import Error] Field '{field.Name}' expects type '{targetType}', ");
+                    stringBuilder.Append($"but got '{convertedValue?.GetType()}' from meta '{meta.Name}'");
+                    stringBuilder.AppendLine();
+                    Debug.LogError(stringBuilder.ToString());
                 }
+                fieldIndex++;
             }
 
         }
