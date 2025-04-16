@@ -1,0 +1,18 @@
+﻿{
+  "name": "com.team-odd.oddb",
+  "version": "1.0.0",
+  "displayName": "ODDB",
+  "description": "ODDB is a simple and easy to use database system for Unity3D.",
+  "unity": "2019.4",
+  "author": {
+    "name": "TeamODD",
+    "url": "https://teamodd.pages.dev/"
+  },
+  "contributors": [
+    {
+      "name": "postive12",
+      "email": "postive12@gmail.com",
+      "url": "https://postiveground.com"
+    }
+  ]
+}

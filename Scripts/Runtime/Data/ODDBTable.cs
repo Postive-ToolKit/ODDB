@@ -107,6 +107,8 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         public string Serialize()
         {
             var data = new StringBuilder();
+            // Append header
+            data.AppendLine("Key" + DELIMITER + string.Join(DELIMITER.ToString(), _tableMetas.ConvertAll(meta => EscapeCSV(meta.Name))));
             foreach (var row in _rows)
             {
                 SerializeRow(row, data);
@@ -150,6 +152,11 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
             if (string.IsNullOrEmpty(data)) return;
 
             var lines = NormalizeLineEndings(data).Split('\n');
+            // remove headers
+            if (lines.Length > 0)
+            {
+                lines = lines[1..];
+            }
             foreach (var line in lines)
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;

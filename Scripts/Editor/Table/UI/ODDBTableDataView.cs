@@ -1,5 +1,8 @@
 using System;
+using System.IO;
+using System.Text;
 using TeamODD.ODDB.Scripts.Runtime.Data;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -13,9 +16,11 @@ namespace TeamODD.ODDB.Editors.UI
 
         #region ToolBox
         private GroupBox _toolBox;
-        private ODDBBindClassSelectView _bindClassSelectView;
-        private Toggle _tableAutoWidthToggle;
         private Button _createRowButton;
+        private Toggle _tableAutoWidthToggle;
+        private ODDBBindClassSelectView _bindClassSelectView;
+        private Button _exportButton;
+        private Button _importButton;
         #endregion
 
         private ScrollView _multiColumnContainer;
@@ -111,6 +116,41 @@ namespace TeamODD.ODDB.Editors.UI
             _bindClassSelectView = new ODDBBindClassSelectView();
             _bindClassSelectView.OnBindClassChanged += OnTableTypeChangedEvent;
             _toolBox.Add(_bindClassSelectView);
+            
+            _exportButton = new Button();
+            _exportButton.text = "Export";
+            _exportButton.style.flexGrow = 0;
+            _exportButton.style.flexShrink = 1;
+            _exportButton.clicked += () =>
+            {
+                if (_table == null)
+                    return;
+                var path = EditorUtility.SaveFilePanel("Export Table", "", _table.Name + ".csv", "csv");
+                if (string.IsNullOrEmpty(path))
+                    return;
+                var data = _table.Serialize();
+                var utf8WithBom = new UTF8Encoding(true);
+                File.WriteAllText(path, data, utf8WithBom);
+            };
+            _toolBox.Add(_exportButton);
+            
+            _importButton = new Button();
+            _importButton.text = "Import";
+            _importButton.style.flexGrow = 0;
+            _importButton.style.flexShrink = 1;
+            _importButton.clicked += () =>
+            {
+                if (_table == null)
+                    return;
+                var path = EditorUtility.OpenFilePanel("Import Table", "", "csv");
+                if (string.IsNullOrEmpty(path))
+                    return;
+                var utf8WithBom = new UTF8Encoding(true);
+                var data = File.ReadAllText(path, utf8WithBom);
+                _table.Deserialize(data);
+                _multiColumnListView.IsDirty = true;
+            };
+            _toolBox.Add(_importButton);
             
             Add(_toolBox);
             _toolBox.SetEnabled(false);
