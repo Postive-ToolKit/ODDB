@@ -10,17 +10,8 @@ using TeamODD.ODDB.Editors.UI.Interfaces;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-#if UNITY_2022_2_OR_NEWER
-    [UxmlElement]
     public partial class ODDBMultiColumnListView : MultiColumnListView, IODDBUpdateUI
-#else
-    public class ODDBMultiColumnListView : MultiColumnListView
-#endif
     {
-#if !UNITY_2022_2_OR_NEWER
-        public new class UxmlFactory : UxmlFactory<ODDBMultiColumnListView, MultiColumnListView.UxmlTraits> { }
-#endif
-
         private ODDBTable _table;
         private List<string> _columnNames = new List<string>();
         public bool IsDirty { get; set; }
@@ -174,29 +165,7 @@ namespace TeamODD.ODDB.Editors.UI
         }
         private VisualElement CreateCell(ODDBDataType dataType)
         {
-            var container = new VisualElement();
-            container.style.flexGrow = 1;
-            container.style.paddingBottom = 0;
-            container.style.paddingTop = 0;
-            container.style.paddingLeft = 0;
-            container.style.paddingRight = 0;
-            
-            container.style.marginBottom = 0;
-            container.style.marginTop = 0;
-            container.style.marginLeft = 0;
-            container.style.marginRight = 0;
-            container.style.borderBottomLeftRadius = 0;
-            container.style.borderBottomRightRadius = 0;
-            container.style.borderTopLeftRadius = 0;
-            container.style.borderTopRightRadius = 0;
-
-            container.style.borderBottomColor = new StyleColor(Color.black);
-            container.style.borderBottomWidth = 1;
-            container.style.borderTopColor = new StyleColor(Color.black);
-            container.style.borderTopWidth = 1;
-            container.style.borderLeftColor = new StyleColor(Color.black);
-            container.style.borderLeftWidth = 1;
-            
+            var container = new ODDBFieldBase();
             var field = ODDBFieldFactory.CreateField(dataType);
             container.Add(field.Root);
             container.userData = field;

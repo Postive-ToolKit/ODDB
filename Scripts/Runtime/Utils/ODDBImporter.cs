@@ -58,6 +58,7 @@ namespace TeamODD.ODDB.Runtime
             catch (Exception e)
             {
                 table = null;
+                Debug.LogError("ODDBImporter.TryConvertTable cannot convert table : " + e.Message);
                 return false;
             }
         }

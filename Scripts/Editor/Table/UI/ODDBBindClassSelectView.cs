@@ -66,7 +66,5 @@ namespace TeamODD.ODDB.Editors.UI
                 value = BIND_CLASS_NOT_FOUND;
             }
         }
-
-        
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Plugins.ODDB.Scripts.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
 {
@@ -39,6 +40,7 @@ namespace TeamODD.ODDB.Runtime
             catch (Exception e)
             {
                 tableDto = default;
+                Debug.LogError("ODDBExporter.TryConvertTable cannot convert table to dto : " + e.Message);
                 return false;
             }
         }

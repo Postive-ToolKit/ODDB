@@ -2,54 +2,44 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {
-    public class ODDBTable : IODDBHasUniqueKey, IODDBHasName, IODDBHasTableMeta, IODDBAvailableSerialize, IODDBHasBindType
+    public sealed class ODDBTable : ODDBView, IODDBAvailableSerialize
     {
         private const char DELIMITER = ',';
         private const char QUOTE = '"';
         private const string DOUBLE_QUOTE = "\"\"";
-
-        public string Key { get; set; }
-        public string Name { get; set; }
-        public Type BindType { get; set; }
-        private readonly List<ODDBTableMeta> _tableMetas = new();
         private readonly List<ODDBRow> _rows = new();
-        public List<ODDBTableMeta> TableMetas => _tableMetas;
+
         public IReadOnlyList<ODDBRow> ReadOnlyRows => _rows.AsReadOnly();
         
-        public ODDBTable(IEnumerable<ODDBTableMeta> tableMetas = null)
+        public ODDBTable(IEnumerable<ODDBTableMeta> tableMetas = null) : base(tableMetas)
         {
-            if (tableMetas == null)
-                return;
-            _tableMetas.AddRange(tableMetas);
+            
         }
-        public void AddField(ODDBTableMeta tableMeta)
+
+        protected override void OnAddTableMeta(ODDBTableMeta tableMeta)
         {
-            _tableMetas.Add(tableMeta);
-            foreach (var row in _rows)
-            {
+            foreach (var row in _rows) {
                 row.AddData(null);
             }
         }
-        public void RemoveTableMeta(int index)
+
+        protected override void OnRemoveTableMeta(int index)
         {
-            _tableMetas.RemoveAt(index);
-            foreach (var row in _rows)
-            {
+            foreach (var row in _rows) {
                 row.RemoveData(index);
             }
         }
-        
-        public void SwapTableMeta(int indexA, int indexB)
+
+        protected override void OnSwapTableMeta(int indexA, int indexB)
         {
-            (_tableMetas[indexA], _tableMetas[indexB]) = (_tableMetas[indexB], _tableMetas[indexA]);
-            foreach (var row in _rows)
-            {
+            foreach (var row in _rows) {
                 row.SwapData(indexA, indexB);
             }
         }
@@ -58,7 +48,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         {
             if (row == null)
             {
-                row = new ODDBRow(_tableMetas.Count);
+                row = new ODDBRow(TableMetas.Count);
             }
             _rows.Add(row);
         }
@@ -88,19 +78,11 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
             if (rowIndex < 0 || rowIndex >= _rows.Count) {
                 return null;
             }
-            if (columnIndex < 0 || columnIndex >= _tableMetas.Count) {
+            if (columnIndex < 0 || columnIndex >= TableMetas.Count) {
                 return null;
             }
             var row = _rows[rowIndex];
             return row.GetData(columnIndex);
-        }
-        public Type GetTypeOfColumn(int columnIndex)
-        {
-            if (columnIndex < 0 || columnIndex >= _tableMetas.Count) {
-                return null;
-            }
-            var tableMeta = _tableMetas[columnIndex];
-            return ODDBTypeMapper.GetEnumType(tableMeta.DataType);
         }
 
         #region Serialization
@@ -108,7 +90,7 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         {
             var data = new StringBuilder();
             // Append header
-            data.AppendLine("Key" + DELIMITER + string.Join(DELIMITER.ToString(), _tableMetas.ConvertAll(meta => EscapeCSV(meta.Name))));
+            data.AppendLine("Key" + DELIMITER + string.Join(DELIMITER.ToString(), TableMetas.ConvertAll(meta => EscapeCSV(meta.Name))));
             foreach (var row in _rows)
             {
                 SerializeRow(row, data);
@@ -121,12 +103,12 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         {
             builder.Append(EscapeCSV(row.Key));
             builder.Append(DELIMITER);
-            for (int i = 0; i < _tableMetas.Count; i++)
+            for (int i = 0; i < TableMetas.Count; i++)
             {
                 var value = row.GetData(i)?.ToString() ?? string.Empty;
                 builder.Append(EscapeCSV(value));
                 
-                if (i < _tableMetas.Count - 1)
+                if (i < TableMetas.Count - 1)
                     builder.Append(DELIMITER);
             }
         }
@@ -181,13 +163,13 @@ namespace TeamODD.ODDB.Scripts.Runtime.Data
         private void NormalizeValues(List<string> values)
         {
             // 메타데이터 개수에 맞춰 값 조정
-            while (values.Count < _tableMetas.Count)
+            while (values.Count < TableMetas.Count)
             {
                 values.Add(string.Empty);
             }
-            if (values.Count > _tableMetas.Count)
+            if (values.Count > TableMetas.Count)
             {
-                values.RemoveRange(_tableMetas.Count, values.Count - _tableMetas.Count);
+                values.RemoveRange(TableMetas.Count, values.Count - TableMetas.Count);
             }
         }
 

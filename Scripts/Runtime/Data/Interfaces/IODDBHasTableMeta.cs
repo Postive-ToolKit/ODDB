@@ -5,6 +5,6 @@ namespace Plugins.ODDB.Scripts.Runtime.Data.Interfaces
 {
     public interface IODDBHasTableMeta
     {
-        public List<ODDBTableMeta> TableMetas { get; }
+        List<ODDBTableMeta> TableMetas { get; }
     }
 }
