@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
-using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {

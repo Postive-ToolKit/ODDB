@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data;
-using Plugins.ODDB.Scripts.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
 
-namespace TeamODD.ODDB.Runtime
+namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBExporter
     {

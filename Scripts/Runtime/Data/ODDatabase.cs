@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 
 namespace TeamODD.ODDB.Runtime.Settings.Data

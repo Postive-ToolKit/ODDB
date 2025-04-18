@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
-using TeamODD.ODDB.Scripts.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 
-namespace Plugins.ODDB.Scripts.Runtime.Data
+namespace TeamODD.ODDB.Runtime.Data
 {
-    public class ODDBView : IODDBHasUniqueKey, IODDBHasName, IODDBHasTableMeta, IODDBHasBindType, IODDBTableMetaHandler
+    public class ODDBView : IODDBView
     {
         public string Key { get; set; }
         public string Name { get; set; }
         public Type BindType { get; set; }
+        public IODDBView ParentView { get; set; }
         public List<ODDBTableMeta> TableMetas => _tableMetas;
         private readonly List<ODDBTableMeta> _tableMetas = new();
         public ODDBView(IEnumerable<ODDBTableMeta> tableMetas = null)

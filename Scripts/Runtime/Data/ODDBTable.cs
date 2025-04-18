@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text;
-using Plugins.ODDB.Scripts.Runtime.Data;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
-using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
-using UnityEngine;
+using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Scripts.Runtime.Data
 {

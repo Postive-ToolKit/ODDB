@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Plugins.ODDB.Scripts.Runtime.Data;
-using Plugins.ODDB.Scripts.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
 
-namespace TeamODD.ODDB.Runtime
+namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBImporter
     {

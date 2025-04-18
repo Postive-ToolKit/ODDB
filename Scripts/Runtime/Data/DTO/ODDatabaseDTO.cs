@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Data;
 
-namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
+namespace TeamODD.ODDB.Runtime.Data.DTO
 {
     public struct ODDatabaseDTO
     {

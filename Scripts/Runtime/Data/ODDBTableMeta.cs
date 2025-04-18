@@ -1,6 +1,6 @@
 ﻿using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 
-namespace TeamODD.ODDB.Scripts.Runtime.Data
+namespace TeamODD.ODDB.Runtime.Data
 {
     public struct ODDBTableMeta
     {

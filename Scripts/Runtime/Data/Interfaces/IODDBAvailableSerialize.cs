@@ -1,4 +1,4 @@
-﻿namespace Plugins.ODDB.Scripts.Runtime.Data.Interfaces
+﻿namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
     public interface IODDBAvailableSerialize
     {

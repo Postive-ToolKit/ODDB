@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Plugins.ODDB.Scripts.Runtime.Data;
 using TeamODD.ODDB.Editors.UI.Interfaces;
+using TeamODD.ODDB.Runtime.Data;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;

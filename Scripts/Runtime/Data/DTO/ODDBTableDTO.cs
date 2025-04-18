@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data.Interfaces;
-using TeamODD.ODDB.Scripts.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 
-namespace Plugins.ODDB.Scripts.Runtime.Data.DTO
+namespace TeamODD.ODDB.Runtime.Data.DTO
 {
     public struct ODDBTableDTO : IODDBHasName, IODDBHasUniqueKey, IODDBHasTableMeta
     {
