@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using Plugins.ODDB.Scripts.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
@@ -17,14 +19,24 @@ namespace TeamODD.ODDB.Runtime
             try
             {
                 database = new ODDatabase();
-                var convertTargets = databaseDto.Tables;
-                foreach (var target in convertTargets)
+                var tableDTOs = databaseDto.Tables;
+                foreach (var tableDto in tableDTOs)
                 {
-                    if(TryConvertTable(target, out var table))
+                    if(TryConvertTable(tableDto, out var table))
                     {
                         database.Tables.Add(table);
                     }
                 }
+                
+                var viewDTOs = databaseDto.Views;
+                foreach (var viewDto in viewDTOs)
+                {
+                    if(TryConvertView(viewDto, out var view))
+                    {
+                        database.Views.Add(view);
+                    }
+                }
+                
                 return true;
             }
             catch (Exception e)
@@ -35,6 +47,31 @@ namespace TeamODD.ODDB.Runtime
             }
         }
 
+        private bool TryConvertView(ODDBViewDTO viewDto, out ODDBView view)
+        {
+            try
+            {
+                view = new ODDBView(viewDto.TableMetas);
+                view.Name = viewDto.Name;
+                view.Key = viewDto.Key;
+                if (TryConvertBindType(viewDto.BindType, out var bindType)) {
+                    view.BindType = bindType;
+                }
+                else
+                {
+                    Debug.Log("ODDBImporter.TryConvertView cannot convert bind type : " + viewDto.BindType);
+                }
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                view = null;
+                Debug.LogError("ODDBImporter.TryConvertView cannot convert view to dto : " + e.Message);
+                return false;
+            }
+        }
+        
         private bool TryConvertTable(ODDBTableDTO convertTargets, out ODDBTable table)
         {
             try

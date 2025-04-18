@@ -20,6 +20,13 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDBDataService _dataService;
         private ODDBSettings _settings;
 
+        #region Layout
+        
+        private ODDBSplitView _splitView;
+        private ODDatabaseListView tableListView;
+        private ODDBEditorView editorView;
+        #endregion
+
         [MenuItem("Window/ODDB Editor")]
         public static void ShowExample()
         {
@@ -42,11 +49,48 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void CreateGUI()
         {
-            var visualTree = Resources.Load<VisualTreeAsset>("Uxml_ODDB_Window");
-            // Instantiate UXML
-            var root = rootVisualElement;
-            visualTree.CloneTree(root);
+            Initialize();
+            CreateLayout();
+            
+            tableListView.SetDatabase(_database);
+            tableListView.OnViewSelected += editorView.SetListView;
+            editorView.OnViewNameChanged += (view) => {
+                tableListView.UpdateView(view);
+            };
+            
+            // bind save key to window not view
+            rootVisualElement.RegisterCallback<KeyDownEvent>(evt =>
+            {
+                if (evt.keyCode == KeyCode.S && evt.ctrlKey)
+                {
+                    var fullPath = Path.Combine(_settings.Path, _settings.DBName);
+                    _dataService.SaveDatabase(_database, fullPath);
+                }
+            });
+        }
 
+        private void CreateLayout()
+        {
+            _splitView = new ODDBSplitView
+            {
+                style = {
+                    flexGrow = 1
+                },
+                fixedPaneIndex = 0,
+                fixedPaneInitialDimension = 200
+            };
+            
+            tableListView = new ODDatabaseListView();
+            _splitView.Add(tableListView);
+            
+            editorView = new ODDBEditorView();
+            _splitView.Add(editorView);
+            
+            rootVisualElement.Add(_splitView);
+        }
+
+        private void Initialize()
+        {
             _dataService = new ODDBDataService();
 
             _settings = Resources.Load<ODDBSettings>("ODDBSettings");
@@ -55,7 +99,7 @@ namespace TeamODD.ODDB.Editors.Window
                 var pathSelector = new ODDBPathUtility();
                 _settings.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
             }
-            string fullPath = Path.Combine(_settings.Path, _settings.DBName);
+            var fullPath = Path.Combine(_settings.Path, _settings.DBName);
             
             if (!File.Exists(fullPath))
             {
@@ -74,22 +118,6 @@ namespace TeamODD.ODDB.Editors.Window
                     return;
                 }
             }
-            var tableDataView = root.Q<ODDBTableDataView>("table-data-view");
-            var tableListView = root.Q<ODDBTableListView>("table-list-view");
-            tableListView.SetDatabase(_database);
-            tableListView.OnTableSelected += tableDataView.SetTable;
-            tableDataView.OnTableNameChanged += (table) => {
-                tableListView.UpdateTable(table);
-            };
-            
-            // bind save key to window not view
-            root.RegisterCallback<KeyDownEvent>(evt =>
-            {
-                if (evt.keyCode == KeyCode.S && evt.ctrlKey)
-                {
-                    _dataService.SaveDatabase(_database, fullPath);
-                }
-            });
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Runtime.Settings.Data;
@@ -9,21 +10,14 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-#if UNITY_2022_2_OR_NEWER
-    [UxmlElement]
-    public partial class ODDBTableListView : ListView, IODDBUpdateUI
-#else
-    public class ODDBTableListView : ListView
-#endif
+    public class ODDatabaseListView : ListView, IODDBUpdateUI
     {
-#if !UNITY_2022_2_OR_NEWER
-        public new class UxmlFactory : UxmlFactory<ODDBTableListView, ListView.UxmlTraits> { }
-#endif
         public bool IsDirty { get; set; }
+
         private ODDatabase _database;
-        private ODDBTable _table;
-        public event Action<ODDBTable> OnTableSelected;
-        public ODDBTableListView()
+        private ODDBView _view;
+        public event Action<ODDBView> OnViewSelected;
+        public ODDatabaseListView()
         {
             selectionType = SelectionType.Single;
             makeItem = () => new Label() {
@@ -47,25 +41,7 @@ namespace TeamODD.ODDB.Editors.UI
                     return;
                 if (_database == null)
                     return;
-                var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Add"), false, () =>
-                {
-                    var newTable = _database.CreateTable();
-                    newTable.Name = "New Table";
-                    IsDirty = true;
-                });
-                menu.AddItem(new GUIContent("Remove"), false, () =>
-                {
-                    if (_table == null)
-                        return;
-                    if (!_database.Tables.Contains(_table))
-                        return;
-                    _database.Tables.Remove(_table);
-                    _table = null;
-                    OnTableSelected?.Invoke(null);
-                    IsDirty = true;
-                });
-                menu.ShowAsContext();
+                CreateDatabaseContextMenu(evt);
             });
             
             schedule.Execute(Update).Every(100);
@@ -74,9 +50,10 @@ namespace TeamODD.ODDB.Editors.UI
         private void CreateVisualElement(VisualElement element, int index)
         {
             var label = (Label)element;
-            if (_database != null && index < _database.Tables.Count)
+            if (_database != null && index < _database.Count)
             {
-                label.text = _database.Tables[index].Name;
+                var view = itemsSource[index] as ODDBView;
+                label.text = view!.Name;
             }
         }
 
@@ -89,12 +66,15 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void UpdateItemSource()
         {
-            var items = new List<ODDBTable>();
+            var items = new List<ODDBView>();
             if (_database == null)
                 return;
             
             foreach (var table in _database.Tables)
                 items.Add(table);
+            
+            foreach (var view in _database.Views)
+                items.Add(view);
             
             itemsSource = items;
         }
@@ -113,23 +93,58 @@ namespace TeamODD.ODDB.Editors.UI
         {
             foreach (var item in selectedItems)
             {
-                if (item is ODDBTable table)
+                if (item is ODDBView view)
                 {
-                    _table = table;
-                    OnTableSelected?.Invoke(table);
+                    _view = view;
+                    OnViewSelected?.Invoke(view);
                     return;
                 }
                     
             }
         }
 
-        public void UpdateTable(ODDBTable table)
+        public void UpdateView(ODDBView view)
         {
             // find table index and update it
             if (_database == null)
                 return;
-            var index = _database.Tables.IndexOf(table);
+            var index = itemsSource.IndexOf(view);
             this.RefreshItem(index);
+        }
+        
+        private void CreateDatabaseContextMenu(ContextClickEvent evt)
+        {
+            var menu = new GenericMenu();
+            
+            menu.AddItem(new GUIContent("Add/Table"), false, () =>
+            {
+                var newTable = _database.CreateTable();
+                newTable.Name = "New Table";
+                IsDirty = true;
+            });
+            menu.AddItem(new GUIContent("Add/View"), false, () =>
+            {
+                var newView = _database.CreateView();
+                newView.Name = "New View";
+                IsDirty = true;
+            });
+            menu.AddItem(new GUIContent("Delete"), false, () =>
+            {
+                if (_view == null)
+                    return;
+                if (_view is ODDBTable table)
+                {
+                    _database.RemoveTable(table);
+                }
+                else if (_view is ODDBView view)
+                {
+                    _database.RemoveView(view);
+                }
+                _view = null;
+                OnViewSelected?.Invoke(null);
+                IsDirty = true;
+            });
+            menu.ShowAsContext();
         }
     }
 }

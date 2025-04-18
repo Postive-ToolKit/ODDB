@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEditor;
 using UnityEngine;
@@ -9,7 +10,7 @@ using UnityEngine.UIElements;
 namespace TeamODD.ODDB.Editors.UI
 {
     [UxmlElement]
-    public partial class ODDBTableDataView : VisualElement
+    public partial class ODDBEditorView : VisualElement
     {
         private TextField _tableNameInput;
         private TextField _tableKeyInput;
@@ -24,12 +25,12 @@ namespace TeamODD.ODDB.Editors.UI
         #endregion
 
         private ScrollView _multiColumnContainer;
-        private ODDBMultiColumnListView _multiColumnListView;
+        private ODDBMultiColumnView _multiColumnView;
 
-        public event Action<ODDBTable> OnTableNameChanged;
+        public event Action<ODDBView> OnViewNameChanged;
         
-        private ODDBTable _table;
-        public ODDBTableDataView()
+        private ODDBView _view;
+        public ODDBEditorView()
         {
             style.flexGrow = 1;
             style.flexShrink = 0;
@@ -38,22 +39,20 @@ namespace TeamODD.ODDB.Editors.UI
 
             BuildInfoBox();
             BuildToolBox();
-
+            
             _multiColumnContainer = new ScrollView();
-            //multiColumnContainer.style.flexGrow = 1;
             _multiColumnContainer.mode = ScrollViewMode.VerticalAndHorizontal;
-            _multiColumnListView = new ODDBMultiColumnListView();
             _multiColumnContainer.RegisterCallback<GeometryChangedEvent> (evt =>
             {
                 if (_tableAutoWidthToggle.value)
                 {
                     var currentWidth = _multiColumnContainer.resolvedStyle.width;
-                    _multiColumnListView.UpdateMaxWidth(currentWidth);
+                    _multiColumnView?.UpdateMaxWidth(currentWidth);
                     return;
                 }
-                _multiColumnListView.UpdateMaxWidth();
+                _multiColumnView?.UpdateMaxWidth();
             });
-            _multiColumnContainer.Add(_multiColumnListView);
+            _multiColumnContainer.Add(_multiColumnView);
             
             Add(_multiColumnContainer);
         }
@@ -123,12 +122,14 @@ namespace TeamODD.ODDB.Editors.UI
             _exportButton.style.flexShrink = 1;
             _exportButton.clicked += () =>
             {
-                if (_table == null)
+                if (_view == null)
                     return;
-                var path = EditorUtility.SaveFilePanel("Export Table", "", _table.Name + ".csv", "csv");
+                if (_view is not ODDBTable table)
+                    return;
+                var path = EditorUtility.SaveFilePanel("Export Table", "", table.Name + ".csv", "csv");
                 if (string.IsNullOrEmpty(path))
                     return;
-                var data = _table.Serialize();
+                var data = table.Serialize();
                 var utf8WithBom = new UTF8Encoding(true);
                 File.WriteAllText(path, data, utf8WithBom);
             };
@@ -140,15 +141,17 @@ namespace TeamODD.ODDB.Editors.UI
             _importButton.style.flexShrink = 1;
             _importButton.clicked += () =>
             {
-                if (_table == null)
+                if (_view == null)
+                    return;
+                if (_view is not ODDBTable table)
                     return;
                 var path = EditorUtility.OpenFilePanel("Import Table", "", "csv");
                 if (string.IsNullOrEmpty(path))
                     return;
                 var utf8WithBom = new UTF8Encoding(true);
                 var data = File.ReadAllText(path, utf8WithBom);
-                _table.Deserialize(data);
-                _multiColumnListView.IsDirty = true;
+                table.Deserialize(data);
+                _multiColumnView.IsDirty = true;
             };
             _toolBox.Add(_importButton);
             
@@ -158,29 +161,31 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void OnAutoWidthToggleChanged(ChangeEvent<bool> evt)
         {
-            if (_table == null) return;
+            if (_view == null)
+                return;
             if (evt.newValue)
             {
                 var currentWidth = _multiColumnContainer.resolvedStyle.width;
-                _multiColumnListView.UpdateMaxWidth(currentWidth);
+                _multiColumnView.UpdateMaxWidth(currentWidth);
                 return;
             }
 
-            _multiColumnListView.UpdateMaxWidth();
+            _multiColumnView.UpdateMaxWidth();
         }
 
         private void OnAddRowClicked()
         {
-            if (_table == null)
+            if (_view == null)
                 return;
-            _table.AddRow();
-            _multiColumnListView.IsDirty = true;
+            if (_view is ODDBTable table) 
+                table.AddRow();
+            _multiColumnView.IsDirty = true;
         }
 
-        public void SetTable(ODDBTable table)
+        public void SetListView(ODDBView view)
         {
-            _table = table;
-            if (table == null) {
+            _view = view;
+            if (_view == null) {
                 _toolBox.SetEnabled(false);
                 _tableNameInput.SetEnabled(false);
                 _tableNameInput.value = string.Empty;
@@ -190,26 +195,34 @@ namespace TeamODD.ODDB.Editors.UI
             }
             _toolBox.SetEnabled(true);
             _tableNameInput.SetEnabled(true);
-            _tableNameInput.value = _table.Name;
-            _tableKeyInput.value = _table.Key;
-            _multiColumnListView.SetTable(table);
-            _bindClassSelectView.SetType(table.BindType);
+            _tableNameInput.value = _view.Name;
+            _tableKeyInput.value = _view.Key;
+            
+            _bindClassSelectView.SetType(_view.BindType);
+            if(_multiColumnView != null)
+                _multiColumnView.RemoveFromHierarchy();
+            if (_view is ODDBTable)
+                _multiColumnView = new ODDBTableEditorView();
+            else
+                _multiColumnView = new ODDBViewEditorView();
+            _multiColumnView.SetView(_view);
+            _multiColumnContainer.Add(_multiColumnView);
         }
         private void OnTableNameChangedEvent(ChangeEvent<string> evt)
         {
-            if (_table == null)
+            if (_view == null)
                 return;
-            if (evt.newValue.Equals(_table.Name))
+            if (evt.newValue.Equals(_view.Name))
                 return;
-            _table.Name = evt.newValue;
-            OnTableNameChanged?.Invoke(_table);
+            _view.Name = evt.newValue;
+            OnViewNameChanged?.Invoke(_view);
         }
 
         private void OnTableTypeChangedEvent(Type type)
         {
-            if (_table == null)
+            if (_view == null)
                 return;
-            _table.BindType = type;
+            _view.BindType = type;
         }
     }
 }

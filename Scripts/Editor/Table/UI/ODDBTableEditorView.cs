@@ -2,6 +2,7 @@ using System;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using System.Collections.Generic;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using UnityEditor;
 using UnityEngine;
@@ -10,14 +11,13 @@ using TeamODD.ODDB.Editors.UI.Interfaces;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public partial class ODDBMultiColumnListView : MultiColumnListView, IODDBUpdateUI
+    public class ODDBTableEditorView : ODDBMultiColumnView
     {
         private ODDBTable _table;
         private List<string> _columnNames = new List<string>();
-        public bool IsDirty { get; set; }
         private const float DELETE_COLUMN_WIDTH = 30f;
 
-        public ODDBMultiColumnListView()
+        public ODDBTableEditorView()
         {
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
@@ -39,8 +39,10 @@ namespace TeamODD.ODDB.Editors.UI
             }
         }
 
-        public void SetTable(ODDBTable table)
+        public override void SetView(ODDBView view)
         {
+            if (view is not ODDBTable table)
+                return;
             _table = table;
             RefreshColumns();
             RefreshItems();
@@ -302,7 +304,7 @@ namespace TeamODD.ODDB.Editors.UI
             }
             Rebuild();
         }
-        public void UpdateMaxWidth(float maxWidth = -1f)
+        public override void UpdateMaxWidth(float maxWidth = -1f)
         {
             if (maxWidth > 0)
             {

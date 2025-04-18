@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Plugins.ODDB.Scripts.Runtime.Data;
 using Plugins.ODDB.Scripts.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
@@ -20,7 +22,36 @@ namespace TeamODD.ODDB.Runtime
                 }
                 
             }
-            return new ODDatabaseDTO(tables);
+            var views = new List<ODDBViewDTO>();
+            foreach (var view in database.Views)
+            {
+                if (TryConvertView(view, out var viewDto))
+                {
+                    views.Add(viewDto);
+                }
+            }
+            return new ODDatabaseDTO(tables, views);
+        }
+        
+        private bool TryConvertView(ODDBView view, out ODDBViewDTO viewDto)
+        {
+            try
+            {
+                var dtoBuilder = new ODDBViewDTO.Builder();
+                viewDto = dtoBuilder
+                    .SetName(view)
+                    .SetKey(view)
+                    .SetTableMeta(view)
+                    .SetBindType(view)
+                    .Build();
+                return true;
+            }
+            catch (Exception e)
+            {
+                viewDto = default;
+                Debug.LogError("ODDBExporter.TryConvertView cannot convert view to dto : " + e.Message);
+                return false;
+            }
         }
 
         private bool TryConvertTable(ODDBTable table, out ODDBTableDTO tableDto)
