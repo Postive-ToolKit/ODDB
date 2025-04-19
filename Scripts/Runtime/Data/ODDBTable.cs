@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
@@ -98,6 +100,7 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             builder.Append(EscapeCSV(row.Key));
             builder.Append(DELIMITER);
+            // data cut off
             for (int i = 0; i < TableMetas.Count; i++)
             {
                 var value = row.GetData(i)?.ToString() ?? string.Empty;
@@ -146,7 +149,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var values = ParseCSVLine(line);
             var key = values[0];
             values.RemoveAt(0);
-            NormalizeValues(values);
+            //NormalizeValues(values);
             _rows.Add(new ODDBRow(key, values.ToArray()));
         }
 
@@ -157,7 +160,6 @@ namespace TeamODD.ODDB.Runtime.Data
 
         private void NormalizeValues(List<string> values)
         {
-            // 메타데이터 개수에 맞춰 값 조정
             while (values.Count < TableMetas.Count)
             {
                 values.Add(string.Empty);
@@ -206,6 +208,10 @@ namespace TeamODD.ODDB.Runtime.Data
             if (currentValue.Length > 0)
             {
                 values.Add(UnescapeCSV(currentValue.ToString()));
+            }
+            else
+            {
+                values.Add(string.Empty);
             }
 
             return values;
