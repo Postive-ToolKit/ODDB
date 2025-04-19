@@ -192,7 +192,7 @@ namespace TeamODD.ODDB.Editors.UI
             return toolColumn;
         }
         
-        private void RefreshItems()
+        private new void RefreshItems()
         {
             if (_view == null) return;
             

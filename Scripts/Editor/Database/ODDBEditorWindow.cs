@@ -115,7 +115,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void OnDestroy()
         {
-            _editorUseCase.Dispose();
+            _editorUseCase?.Dispose();
             ODDBEditorDI.DisposeAll();
         }
     }

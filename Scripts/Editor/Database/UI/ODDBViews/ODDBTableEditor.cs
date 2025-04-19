@@ -296,7 +296,7 @@ namespace TeamODD.ODDB.Editors.UI
             menu.ShowAsContext();
         }
         
-        private void RefreshItems()
+        private new void RefreshItems()
         {
             if (_table == null) return;
             
