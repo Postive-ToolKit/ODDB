@@ -17,24 +17,14 @@ namespace TeamODD.ODDB.Editors.Utils.Services
                 Debug.LogError($"Database file not found at path: {path}");
                 return false;
             }
-
-            try
-            {
-                var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
-                using (var stream = new FileStream(path, FileMode.Open))
-                {
-                    var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stream);
-                    Debug.Log($"Database loaded from: {path}");
+            var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
+            using var stream = new FileStream(path, FileMode.Open);
+            var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stream);
+            Debug.Log($"Database loaded from: {path}");
                     
-                    var importer = new ODDBImporter();
-                    return importer.TryCreateDatabase(databaseDto, out database);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"Error loading database: {e.Message}");
-                return false;
-            }
+            var importer = new ODDBImporter();
+            database = importer.CreateDatabase(databaseDto);
+            return database != null;
         }
 
         public bool SaveDatabase(ODDatabase database, string path)

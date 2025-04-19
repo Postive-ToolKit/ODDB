@@ -53,9 +53,9 @@ namespace TeamODD.ODDB.Editors.Window
             CreateLayout();
             
             tableListView.SetDatabase(_database);
-            tableListView.OnViewSelected += editorView.SetListView;
-            editorView.OnViewNameChanged += (view) => {
-                tableListView.UpdateView(view);
+            tableListView.OnViewSelected += editorView.SetView;
+            editorView.OnViewDataChanged += (view) => {
+                tableListView.SetView(view);
             };
             
             // bind save key to window not view

@@ -5,6 +5,7 @@ using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using TeamODD.ODDB.Editors.UI.Fields;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEditor;
 using UnityEngine;
@@ -12,13 +13,13 @@ using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public class ODDBViewEditorView : ODDBMultiColumnView
+    public class ODDBViewEditor : ODDBMultiColumnEditor
     {
-        private ODDBView _view;
+        private IODDBView _view;
         private List<string> _columnNames = new List<string>();
         private const float DELETE_COLUMN_WIDTH = 30f;
 
-        public ODDBViewEditorView()
+        public ODDBViewEditor()
         {
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
@@ -39,7 +40,7 @@ namespace TeamODD.ODDB.Editors.UI
                 Rebuild();
             }
         }
-        public override void SetView(ODDBView view)
+        public override void SetView(IODDBView view)
         {
             _view = view;
             RefreshColumns();

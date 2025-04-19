@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
@@ -36,7 +38,7 @@ namespace TeamODD.ODDB.Runtime.Utils
         {
             try
             {
-                var dtoBuilder = new ODDBViewDTO.Builder();
+                var dtoBuilder = new ODDBViewDTOBuilder();
                 viewDto = dtoBuilder
                     .SetName(view)
                     .SetKey(view)
@@ -57,14 +59,14 @@ namespace TeamODD.ODDB.Runtime.Utils
         {
             try
             {
-                var dtoBuilder = new ODDBTableDTO.Builder();
+                var dtoBuilder = new ODDBTableDTOBuilder();
                 tableDto = dtoBuilder
+                    .SetSerialization(table)
                     .SetName(table)
                     .SetKey(table)
-                    .SetSerialization(table)
                     .SetTableMeta(table)
                     .SetBindType(table)
-                    .Build();
+                    .Build() as ODDBTableDTO;
                 return true;
             }
             catch (Exception e)

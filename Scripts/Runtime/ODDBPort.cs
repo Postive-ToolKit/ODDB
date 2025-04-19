@@ -89,20 +89,14 @@ namespace TeamODD.ODDB.Runtime
         private static bool TryConvertData(string xml, out ODDatabase database)
         {
             database = null;
-            try
-            {
-                var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
-                using var stringReader = new StringReader(xml);
-                var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stringReader);
+            var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
+            using var stringReader = new StringReader(xml);
+            var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stringReader);
         
-                var importer = new ODDBImporter();
-                return importer.TryCreateDatabase(databaseDto, out database);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"Error loading database: {e.Message}");
-                return false;
-            }
+            var importer = new ODDBImporter();
+            database = importer.CreateDatabase(databaseDto);
+            
+            return database != null;
         }
         #endregion
         public static T GetEntity<T>(int index = 0) where T : ODDBEntity

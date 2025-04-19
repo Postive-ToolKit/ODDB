@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Plugins.ODDB.Scripts.Runtime.Data;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Scripts.Runtime.Data;
@@ -11,13 +12,13 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public class ODDatabaseListView : ListView, IODDBUpdateUI
+    public class ODDatabaseListView : ListView, IODDBUpdateUI, IODDBHasView
     {
         public bool IsDirty { get; set; }
 
         private ODDatabase _database;
-        private ODDBView _view;
-        public event Action<ODDBView> OnViewSelected;
+        private IODDBView _view;
+        public event Action<IODDBView> OnViewSelected;
         public ODDatabaseListView()
         {
             selectionType = SelectionType.Single;
@@ -71,10 +72,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (_database == null)
                 return;
             
-            foreach (var table in _database.Tables)
-                items.Add(table);
-            
-            foreach (var view in _database.Views)
+            foreach (var view in _database.GetViews())
                 items.Add(view);
             
             itemsSource = items;
@@ -94,7 +92,7 @@ namespace TeamODD.ODDB.Editors.UI
         {
             foreach (var item in selectedItems)
             {
-                if (item is ODDBView view)
+                if (item is IODDBView view)
                 {
                     _view = view;
                     OnViewSelected?.Invoke(view);
@@ -103,8 +101,7 @@ namespace TeamODD.ODDB.Editors.UI
                     
             }
         }
-
-        public void UpdateView(ODDBView view)
+        public void SetView(IODDBView view)
         {
             // find table index and update it
             if (_database == null)
@@ -147,5 +144,7 @@ namespace TeamODD.ODDB.Editors.UI
             });
             menu.ShowAsContext();
         }
+
+
     }
 }

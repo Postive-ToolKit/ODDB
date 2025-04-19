@@ -9,16 +9,17 @@ using UnityEngine;
 using TeamODD.ODDB.Editors.UI.Fields;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public class ODDBTableEditorView : ODDBMultiColumnView
+    public class ODDBTableEditor : ODDBMultiColumnEditor, IODDBGeometryUpdate
     {
         private ODDBTable _table;
         private List<string> _columnNames = new List<string>();
         private const float DELETE_COLUMN_WIDTH = 30f;
 
-        public ODDBTableEditorView()
+        public ODDBTableEditor()
         {
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
@@ -40,7 +41,7 @@ namespace TeamODD.ODDB.Editors.UI
             }
         }
 
-        public override void SetView(ODDBView view)
+        public override void SetView(IODDBView view)
         {
             if (view is not ODDBTable table)
                 return;
@@ -87,7 +88,6 @@ namespace TeamODD.ODDB.Editors.UI
             }
             
             columns.Add(CreateToolColumn());
-            UpdateMaxWidth();
         }
 
         private Column CreateKeyColumn()
@@ -305,8 +305,9 @@ namespace TeamODD.ODDB.Editors.UI
             }
             Rebuild();
         }
-        public override void UpdateMaxWidth(float maxWidth = -1f)
+        public void UpdateGeometry(GeometryChangedEvent evt)
         {
+            var maxWidth = evt.newRect.width;
             if (maxWidth > 0)
             {
                 style.maxWidth = maxWidth;
