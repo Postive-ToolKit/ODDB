@@ -1,9 +1,0 @@
-<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" xmlns:odd="TeamODD.ODDB.Editors.UI" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <Style src="project://database/Assets/Plugins/ODDB/Resources/Uss_ODDB_Window.uss?fileID=7433441132597879392&amp;guid=87a5e40ae69c4054b8807a8af93c2c6a&amp;type=3#Uss_ODDB_Window" />
-    <odd:ODDBSplitView fixed-pane-initial-dimension="200">
-        <engine:VisualElement name="left-container" style="flex-grow: 1;">
-            <odd:ODDBTableListView name="table-list-view" />
-        </engine:VisualElement>
-        <odd:ODDBTableDataView name="table-data-view" />
-    </odd:ODDBSplitView>
-</engine:UXML>
