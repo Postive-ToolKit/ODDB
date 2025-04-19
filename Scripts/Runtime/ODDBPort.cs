@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Xml.Serialization;
+using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
-using TeamODD.ODDB.Runtime.Settings.Data;
 using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 

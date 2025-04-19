@@ -1,6 +1,4 @@
-﻿using TeamODD.ODDB.Scripts.Runtime.Data;
-
-namespace TeamODD.ODDB.Runtime.Data.Interfaces
+﻿namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
     public interface IODDBTableMetaHandler
     {

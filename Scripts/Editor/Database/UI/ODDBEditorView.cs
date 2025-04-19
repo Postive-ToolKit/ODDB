@@ -1,8 +1,5 @@
-using System;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.Interfaces;
-using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI

@@ -1,6 +1,5 @@
 using TeamODD.ODDB.Editors.UI.Fields.References;
 using TeamODD.ODDB.Runtime.Data.Enum;
-using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI.Fields
 {

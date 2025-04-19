@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-namespace TeamODD.ODDB.Runtime.Settings.Attributes
+namespace TeamODD.ODDB.Runtime.Attributes
 {
     public class ODDBPathSelectorAttribute : PropertyAttribute
     {

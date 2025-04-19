@@ -2,7 +2,7 @@
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public partial class ODDBSplitView : TwoPaneSplitView
+    public class ODDBSplitView : TwoPaneSplitView
     {
         public ODDBSplitView() 
         {

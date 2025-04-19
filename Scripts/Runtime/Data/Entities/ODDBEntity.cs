@@ -3,7 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Scripts.Runtime.Data;
+using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Entities

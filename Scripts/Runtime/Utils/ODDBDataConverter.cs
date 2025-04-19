@@ -1,7 +1,7 @@
 ﻿using TeamODD.ODDB.Runtime.Data.Enum;
 using UnityEngine;
 
-namespace TeamODD.ODDB.Runtime
+namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBDataConverter
     {

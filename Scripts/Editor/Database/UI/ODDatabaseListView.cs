@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using UnityEngine.UIElements;
-using TeamODD.ODDB.Runtime.Settings.Data;
-using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEditor;
 using UnityEngine;
 

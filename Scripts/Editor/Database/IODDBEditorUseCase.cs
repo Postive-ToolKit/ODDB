@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Editors.Window

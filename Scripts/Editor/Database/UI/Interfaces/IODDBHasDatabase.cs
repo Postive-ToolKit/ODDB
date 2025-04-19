@@ -1,4 +1,4 @@
-﻿using TeamODD.ODDB.Runtime.Settings.Data;
+﻿using TeamODD.ODDB.Runtime.Data;
 
 namespace TeamODD.ODDB.Editors.UI.Interfaces
 {

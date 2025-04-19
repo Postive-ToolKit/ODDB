@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
-using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 
-namespace TeamODD.ODDB.Scripts.Runtime.Data
+namespace TeamODD.ODDB.Runtime.Data
 {
     public sealed class ODDBTable : ODDBView, IODDBAvailableSerialize
     {

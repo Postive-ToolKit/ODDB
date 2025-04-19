@@ -1,6 +1,4 @@
-﻿using TeamODD.ODDB.Runtime.Data.Interfaces;
-
-namespace TeamODD.ODDB.Editors.UI.Interfaces
+﻿namespace TeamODD.ODDB.Editors.UI.Interfaces
 {
     public interface IODDBHasView
     {

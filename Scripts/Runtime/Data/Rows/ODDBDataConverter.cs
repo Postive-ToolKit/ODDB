@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace TeamODD.ODDB.Scripts.Runtime.Data
+namespace TeamODD.ODDB.Runtime.Data
 {
     public class ODDBDataConverter<T>
     {

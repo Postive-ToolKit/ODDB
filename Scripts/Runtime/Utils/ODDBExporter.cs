@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
-using TeamODD.ODDB.Runtime.Settings.Data;
-using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Utils

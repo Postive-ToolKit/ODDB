@@ -1,7 +1,7 @@
 using System.Text;
 using UnityEditor;
 using UnityEngine;
-namespace TeamODD.ODDB.Editors
+namespace TeamODD.ODDB.Editors.Utils
 {
     public class ODDBPathUtility
     {

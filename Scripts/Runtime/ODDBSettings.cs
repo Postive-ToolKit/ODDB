@@ -1,4 +1,4 @@
-﻿using TeamODD.ODDB.Runtime.Settings.Attributes;
+﻿using TeamODD.ODDB.Runtime.Attributes;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Settings

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TeamODD.ODDB.Runtime
+namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBID
     {

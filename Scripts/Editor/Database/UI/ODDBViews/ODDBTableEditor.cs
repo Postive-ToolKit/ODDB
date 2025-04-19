@@ -1,8 +1,6 @@
 using System;
 using UnityEngine.UIElements;
-using TeamODD.ODDB.Scripts.Runtime.Data;
 using System.Collections.Generic;
-using System.Text;
 using UnityEditor;
 using UnityEngine;
 using TeamODD.ODDB.Editors.UI.Fields;
@@ -11,7 +9,6 @@ using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Enum;
-using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Editors.UI
 {

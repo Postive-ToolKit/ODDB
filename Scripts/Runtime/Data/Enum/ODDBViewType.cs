@@ -1,7 +1,9 @@
-public enum ODDBViewType
+namespace TeamODD.ODDB.Runtime.Data.Enum
 {
-    None,
-    Table,
-    View
-
+    public enum ODDBViewType
+    {
+        None,
+        Table,
+        View
+    }
 }

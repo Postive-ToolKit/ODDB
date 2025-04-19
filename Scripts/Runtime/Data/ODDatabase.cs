@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Scripts.Runtime.Data;
-using UnityEngine;
+using TeamODD.ODDB.Runtime.Utils;
 
-namespace TeamODD.ODDB.Runtime.Settings.Data
+namespace TeamODD.ODDB.Runtime.Data
 {
     public class ODDatabase
     {
