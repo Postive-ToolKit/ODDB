@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
 {
@@ -45,11 +46,11 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
         {
             var name = _nameInterface?.Name ?? string.Empty;
             var key = _keyInterface?.Key ?? string.Empty;
-            var tableMetas = _tableMetaInterface?.TableMetas ?? null;
+            var tableMetas = _tableMetaInterface?.ScopedTableMetas ?? null;
             var convertedMeta = tableMetas == null ? new List<ODDBTableMeta>() : new List<ODDBTableMeta>(tableMetas);
             var convertedBindType = _bindTypeInterface?.BindType?.FullName ?? string.Empty;
-            var parentView = _parentViewInterface?.ParentView?.Name ?? string.Empty;
-                
+            var parentView = _parentViewInterface?.ParentView?.Key ?? string.Empty;
+   
             return new ODDBViewDTO(
                 name,
                 key,

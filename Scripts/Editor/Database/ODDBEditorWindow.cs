@@ -1,5 +1,7 @@
+using System;
 using System.IO;
 using TeamODD.ODDB.Editors.UI;
+using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Utils.Services;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Settings.Data;
@@ -15,12 +17,11 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDatabase _database;
         private ODDBDataService _dataService;
         private ODDBSettings _settings;
-
+        private IODDBEditorUseCase _editorUseCase;
         #region Layout
-        
         private ODDBSplitView _splitView;
-        private ODDatabaseListView tableListView;
-        private ODDBEditorView editorView;
+        private ODDatabaseListView _tableListView;
+        private ODDBEditorView _editorView;
         #endregion
 
         [MenuItem("Window/ODDB Editor")]
@@ -46,13 +47,11 @@ namespace TeamODD.ODDB.Editors.Window
         public void CreateGUI()
         {
             Initialize();
+            ODDBEditorDI.Register(_database);
+            ODDBEditorDI.RegisterSelfAndInterfaces(new ODDBEditorUseCase(_database));
             CreateLayout();
             
-            tableListView.SetDatabase(_database);
-            tableListView.OnViewSelected += editorView.SetView;
-            editorView.OnViewDataChanged += (view) => {
-                tableListView.SetView(view);
-            };
+            _tableListView.OnViewSelected += _editorView.SetView;
             
             // bind save key to window not view
             rootVisualElement.RegisterCallback<KeyDownEvent>(evt =>
@@ -76,11 +75,11 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneInitialDimension = 200
             };
             
-            tableListView = new ODDatabaseListView();
-            _splitView.Add(tableListView);
+            _tableListView = new ODDatabaseListView();
+            _splitView.Add(_tableListView);
             
-            editorView = new ODDBEditorView();
-            _splitView.Add(editorView);
+            _editorView = new ODDBEditorView();
+            _splitView.Add(_editorView);
             
             rootVisualElement.Add(_splitView);
         }
@@ -114,6 +113,12 @@ namespace TeamODD.ODDB.Editors.Window
                     return;
                 }
             }
+        }
+
+        private void OnDestroy()
+        {
+            _editorUseCase.Dispose();
+            ODDBEditorDI.DisposeAll();
         }
     }
 }

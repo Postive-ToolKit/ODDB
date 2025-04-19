@@ -43,6 +43,7 @@ namespace TeamODD.ODDB.Runtime.Utils
                     .SetKey(view)
                     .SetTableMeta(view)
                     .SetBindType(view)
+                    .SetParentView(view)
                     .Build();
                 return true;
             }
@@ -65,6 +66,7 @@ namespace TeamODD.ODDB.Runtime.Utils
                     .SetKey(table)
                     .SetTableMeta(table)
                     .SetBindType(table)
+                    .SetParentView(table)
                     .Build() as ODDBTableDTO;
                 return true;
             }

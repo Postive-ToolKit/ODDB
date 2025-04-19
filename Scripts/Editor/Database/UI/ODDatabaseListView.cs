@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TeamODD.ODDB.Editors.UI.Interfaces;
+using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using UnityEngine.UIElements;
@@ -11,15 +14,19 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public class ODDatabaseListView : ListView, IODDBUpdateUI, IODDBHasView
+    public class ODDatabaseListView : ListView, IODDBUpdateUI
     {
         public bool IsDirty { get; set; }
-
-        private ODDatabase _database;
+        private readonly ODDatabase _database;
+        private readonly IODDBEditorUseCase _editorUseCase;
         private IODDBView _view;
-        public event Action<IODDBView> OnViewSelected;
+        public event Action<string> OnViewSelected;
         public ODDatabaseListView()
         {
+            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
+            _database = ODDBEditorDI.Resolve<ODDatabase>();
+            _editorUseCase.OnViewChanged += UpdateView;
+            
             selectionType = SelectionType.Single;
             makeItem = () => new Label() {
                 style = {
@@ -46,6 +53,9 @@ namespace TeamODD.ODDB.Editors.UI
             });
             
             schedule.Execute(Update).Every(100);
+
+            UpdateItemSource();
+            Rebuild();
         }
 
         private void CreateVisualElement(VisualElement element, int index)
@@ -57,14 +67,6 @@ namespace TeamODD.ODDB.Editors.UI
                 label.text = view!.Name;
             }
         }
-
-        public void SetDatabase(ODDatabase database)
-        {
-            _database = database;
-            UpdateItemSource();
-            Rebuild();
-        }
-
         private void UpdateItemSource()
         {
             var items = new List<ODDBView>();
@@ -86,28 +88,6 @@ namespace TeamODD.ODDB.Editors.UI
                 Rebuild();
             }
         }
-
-        private void OnSelectionChanged(IEnumerable<object> selectedItems)
-        {
-            foreach (var item in selectedItems)
-            {
-                if (item is IODDBView view)
-                {
-                    _view = view;
-                    OnViewSelected?.Invoke(view);
-                    return;
-                }
-                    
-            }
-        }
-        public void SetView(IODDBView view)
-        {
-            // find table index and update it
-            if (_database == null)
-                return;
-            var index = itemsSource.IndexOf(view);
-            this.RefreshItem(index);
-        }
         
         private void CreateDatabaseContextMenu(ContextClickEvent evt)
         {
@@ -115,14 +95,12 @@ namespace TeamODD.ODDB.Editors.UI
             
             menu.AddItem(new GUIContent("Add/Table"), false, () =>
             {
-                var newTable = _database.CreateTable();
-                newTable.Name = "New Table";
+                _database.CreateTable();
                 IsDirty = true;
             });
             menu.AddItem(new GUIContent("Add/View"), false, () =>
             {
-                var newView = _database.CreateView();
-                newView.Name = "New View";
+                _database.CreateView();
                 IsDirty = true;
             });
             menu.AddItem(new GUIContent("Delete"), false, () =>
@@ -144,6 +122,25 @@ namespace TeamODD.ODDB.Editors.UI
             menu.ShowAsContext();
         }
 
-
+        private void OnSelectionChanged(IEnumerable<object> selectedItems)
+        {
+            foreach (var item in selectedItems)
+            {
+                if (item is IODDBView view)
+                {
+                    _view = view;
+                    OnViewSelected?.Invoke(view.Key);
+                    return;
+                }
+                    
+            }
+        }
+        
+        private void UpdateView(string viewId)
+        {
+            var view = _database.GetViewByKey(viewId);
+            var index = itemsSource.IndexOf(view);
+            RefreshItem(index);
+        }
     }
 }

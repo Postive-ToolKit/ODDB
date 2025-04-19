@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using TeamODD.ODDB.Editors.UI.Fields;
+using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using UnityEngine;
@@ -12,9 +14,10 @@ namespace TeamODD.ODDB.Editors.UI
         private IODDBView _view;
         private List<string> _columnNames = new List<string>();
         private const float DELETE_COLUMN_WIDTH = 30f;
-
+        private readonly IODDBEditorUseCase _editorUseCase;
         public ODDBViewEditor()
         {
+            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
@@ -34,9 +37,12 @@ namespace TeamODD.ODDB.Editors.UI
                 Rebuild();
             }
         }
-        public override void SetView(IODDBView view)
+        public override void SetView(string viewKey)
         {
-            _view = view;
+            _view = _editorUseCase.GetViewByKey(viewKey);
+            if (_view == null) {
+                return;
+            }
             RefreshColumns();
             RefreshItems();
         }

@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using TeamODD.ODDB.Editors.UI.Interfaces;
+using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Editors.Window;
+using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -15,7 +19,6 @@ namespace TeamODD.ODDB.Editors.UI
     /// </summary>
     public class ODDBDataEditor : VisualElement, IODDBHasView
     {
-        public event Action<IODDBView> OnViewDataChanged;
         public readonly ODDBViewType Type;
         private readonly IODDBView _view;
         private readonly List<IODDBHasView> _viewListeners = new();
@@ -23,8 +26,10 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly VisualElement _upperView;
         private readonly GroupBox _toolBox;
         private readonly ScrollView _contentView;
+        private readonly IODDBEditorUseCase _editorUseCase;
         private ODDBDataEditor(IODDBView view, ODDBViewType type)
         {
+            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             Type = type;
             _view = view;
             style.flexDirection = FlexDirection.Column;
@@ -39,6 +44,8 @@ namespace TeamODD.ODDB.Editors.UI
             style.marginTop = 0;
             style.marginLeft = 0;
             style.marginRight = 0;
+
+            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
 
             _upperView = BuildUpperView();
             base.Add(_upperView);
@@ -123,25 +130,28 @@ namespace TeamODD.ODDB.Editors.UI
             if (listener is not IODDBHasView view)
                 return;
             _viewListeners.Add(view);
-            view.SetView(_view);
+            view.SetView(_view.Key);
         }
         
-        public void SetView(IODDBView view)
+        public void SetView(string viewKey)
         {
+            var view = _editorUseCase.GetViewByKey(viewKey);
             if (view == null)
                 return;
-            _viewListeners.ForEach(v => v.SetView(view));
-        }
-
-        public void NotifyViewDataChanged()
-        {
-            OnViewDataChanged?.Invoke(_view);
+            _viewListeners.ForEach(v => v.SetView(viewKey));
         }
         
         public class Factory
         {
-            public ODDBDataEditor Create(IODDBView view, ODDBViewType type)
+            private readonly IODDBEditorUseCase _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
+            public ODDBDataEditor Create(string viewId)
             {
+                var view = _editorUseCase.GetViewByKey(viewId);
+                if (view == null)
+                    return null;
+                
+                var type = _editorUseCase.GetViewTypeByKey(viewId);
+                
                 var editor = new ODDBDataEditor(view, type);
                 switch (type)
                 {
@@ -157,14 +167,49 @@ namespace TeamODD.ODDB.Editors.UI
             private ODDBDataEditor BuildODDBViewEditor(IODDBView view, ODDBDataEditor editor)
             {
                 var viewInfoView = new ODDBViewInfoView();
-                viewInfoView.OnViewNameChanged += name => {
-                    view.Name = name;
-                    editor.NotifyViewDataChanged();
-                };
+                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.Key, name);
                 editor.Add(viewInfoView);
                 
                 var viewEditor = new ODDBViewEditor();
                 editor.AddContent(viewEditor);
+                
+                var createRow = new Button();
+                createRow.text = "Add Metadata";
+                createRow.clicked += () =>
+                {
+                    view.AddField(new ODDBTableMeta());
+                    viewEditor.IsDirty = true;
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                };
+                createRow.style.flexGrow = 0;
+                createRow.style.flexShrink = 1;
+                editor.AddToolBoxView(createRow);
+                
+                Type parentBind = null;
+                if(view.ParentView != null && view.ParentView.BindType != null)
+                    parentBind = view.ParentView.BindType;
+                var bindClassSelectView = new ODDBBindClassSelectView(parentBind);
+                if (view.BindType != null)
+                    bindClassSelectView.value = view.BindType.Name;
+                
+                bindClassSelectView.OnBindClassChanged += bindType =>
+                {
+                    Debug.Log(bindType);
+                    view.BindType = bindType;
+                    viewEditor.IsDirty = true;
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                };
+                editor.AddToolBoxView(bindClassSelectView);
+                
+                var inheritSelectView = new ODDBInheritSelectView();
+                inheritSelectView.SetCurrentParent(view.ParentView);
+                inheritSelectView.OnParentViewChanged += parentView =>
+                {
+                    view.ParentView = parentView;
+                    viewEditor.IsDirty = true;
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                };
+                editor.AddToolBoxView(inheritSelectView);
                 
                 return editor;
             }
@@ -174,10 +219,7 @@ namespace TeamODD.ODDB.Editors.UI
                 var table = view as ODDBTable;
                 
                 var viewInfoView = new ODDBViewInfoView();
-                viewInfoView.OnViewNameChanged += name => {
-                    view.Name = name;
-                    editor.NotifyViewDataChanged();
-                };
+                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.Key, name);
                 editor.Add(viewInfoView);
                 
                 var tableEditor = new ODDBTableEditor();
@@ -190,7 +232,7 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     table!.AddRow();
                     tableEditor.IsDirty = true;
-                    editor.NotifyViewDataChanged();
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
                 };
                 createRow.style.flexGrow = 0;
                 createRow.style.flexShrink = 1;
@@ -204,24 +246,37 @@ namespace TeamODD.ODDB.Editors.UI
                 // autoWidth.RegisterCallback<ChangeEvent<bool>>(OnAutoWidthToggleChanged);
                 // editor.AddToolBoxView(autoWidth);
                 
-                var bindClassSelectView = new ODDBBindClassSelectView();
+                Type parentBind = null;
+                if(view.ParentView != null && view.ParentView.BindType != null)
+                    parentBind = view.ParentView.BindType;
+                var bindClassSelectView = new ODDBBindClassSelectView(parentBind);
+                if (view.BindType != null)
+                    bindClassSelectView.value = view.BindType.Name;
+                
                 bindClassSelectView.OnBindClassChanged += bindType =>
                 {
                     view.BindType = bindType;
                     tableEditor.IsDirty = true;
-                    editor.NotifyViewDataChanged();
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
                 };
                 editor.AddToolBoxView(bindClassSelectView);
+                
+                var inheritSelectView = new ODDBInheritSelectView();
+                inheritSelectView.SetCurrentParent(view.ParentView);
+                inheritSelectView.OnParentViewChanged += parentView =>
+                {
+                    view.ParentView = parentView;
+                    tableEditor.IsDirty = true;
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                };
+                editor.AddToolBoxView(inheritSelectView);
+                
                 var exportButton = new Button();
                 exportButton.text = "Export";
                 exportButton.style.flexGrow = 0;
                 exportButton.style.flexShrink = 1;
                 exportButton.clicked += () =>
                 {
-                    if (view == null)
-                        return;
-                    if (view is not ODDBTable table)
-                        return;
                     var path = EditorUtility.SaveFilePanel("Export Table", "", table.Name + ".csv", "csv");
                     if (string.IsNullOrEmpty(path))
                         return;
@@ -229,26 +284,22 @@ namespace TeamODD.ODDB.Editors.UI
                     var utf8WithBom = new UTF8Encoding(true);
                     File.WriteAllText(path, data, utf8WithBom);
                 };
-                
                 editor.AddToolBoxView(exportButton);
+                
                 var importButton = new Button();
                 importButton.text = "Import";
                 importButton.style.flexGrow = 0;
                 importButton.style.flexShrink = 1;
                 importButton.clicked += () =>
                 {
-                    if (view == null)
-                        return;
-                    if (view is not ODDBTable table)
-                        return;
                     var path = EditorUtility.OpenFilePanel("Import Table", "", "csv");
                     if (string.IsNullOrEmpty(path))
                         return;
                     var utf8WithBom = new UTF8Encoding(true);
                     var data = File.ReadAllText(path, utf8WithBom);
-                    table.Deserialize(data);
+                    table!.Deserialize(data);
                     tableEditor.IsDirty = true;
-                    editor.NotifyViewDataChanged();
+                    _editorUseCase.NotifyViewDataChanged(view.Key);
                 };
                 editor.AddToolBoxView(importButton);
                 

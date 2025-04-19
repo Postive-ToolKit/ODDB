@@ -3,17 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using TeamODD.ODDB.Runtime.Entities;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
     public sealed class ODDBBindClassSelectView : DropdownField
     {
-        private const string BIND_CLASS_NOT_FOUND = "Bind class not found";
+        private const string BIND_CLASS_NOT_FOUND = "None";
+        private readonly Type _baseType;
         private readonly Dictionary<string,Type> _bindableClasses = new();
         public event Action<Type> OnBindClassChanged;
-        public ODDBBindClassSelectView()
+        public ODDBBindClassSelectView(Type baseType)
         {
+            _baseType = baseType;
+            if(_baseType == null) 
+                _baseType = typeof(ODDBEntity);
             CreateDropDown();
             label = "Bind Class";
             labelElement.style.minWidth = 0;
@@ -22,7 +27,7 @@ namespace TeamODD.ODDB.Editors.UI
         
         private void CreateDropDown()
         {
-            var baseType = typeof(ODDBEntity);
+            var baseType = _baseType;
             var allTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(asm => {
                     try {
@@ -36,6 +41,17 @@ namespace TeamODD.ODDB.Editors.UI
                 .Where(t => t != null && t.IsSubclassOf(baseType) && !t.IsAbstract)
                 .ToArray();
 
+            // add "None" option if baseType is ODDBEntity
+            if(_baseType == typeof(ODDBEntity)) 
+                choices.Add(BIND_CLASS_NOT_FOUND);
+            
+            if (!baseType.IsAbstract)
+            {
+                _bindableClasses.Add(baseType.Name, baseType);
+                choices.Add(baseType.Name);
+            }
+                
+            
             foreach (var type in allTypes)
             {
                 _bindableClasses[type.Name] = type;
@@ -44,16 +60,6 @@ namespace TeamODD.ODDB.Editors.UI
             value = BIND_CLASS_NOT_FOUND;
             
             RegisterCallback<ChangeEvent<string>>(OnDropDownValueChanged);
-        }
-        
-        public void SetType(Type type)
-        {
-            if (type == null) {
-                value = BIND_CLASS_NOT_FOUND;
-                return;
-            }
-            var typeName = type.Name;
-            value = typeName;
         }
         private void OnDropDownValueChanged(ChangeEvent<string> evt)
         {

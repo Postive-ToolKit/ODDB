@@ -26,7 +26,8 @@ namespace TeamODD.ODDB.Runtime.Settings.Data
                 newid = new ODDBID().ID;
             }
             newTable.Key = newid;
-            _tables.Add(newTable);
+            newTable.Name = "Table " + newid;
+            AddTable(newTable);
             return newTable;
         }
 
@@ -41,9 +42,9 @@ namespace TeamODD.ODDB.Runtime.Settings.Data
             {
                 newid = new ODDBID().ID;
             }
-
             newView.Key = newid;
-            _views.Add(newView);
+            newView.Name = "View " + newid;
+            AddView(newView);
             return newView;
         }
         

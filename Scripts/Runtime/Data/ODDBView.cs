@@ -25,6 +25,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 return tableMetas;
             }
         }
+        public List<ODDBTableMeta> ScopedTableMetas => _tableMetas;
         private readonly List<ODDBTableMeta> _tableMetas = new();
         public ODDBView(IEnumerable<ODDBTableMeta> tableMetas = null)
         {
