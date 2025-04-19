@@ -2,6 +2,7 @@ using System;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using System.Collections.Generic;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using TeamODD.ODDB.Editors.UI.Fields;
@@ -62,11 +63,11 @@ namespace TeamODD.ODDB.Editors.UI
             
             columns.Add(CreateKeyColumn());
 
-            // 데이터 컬럼 추가
+            // add data columns
             for (int i = 0; i < _table.TableMetas.Count; i++)
             {
                 var meta = _table.TableMetas[i];
-                var columnName = meta.Name;
+                var columnName = $"{meta.Name}[{meta.DataType}]";
                 _columnNames.Add(columnName);
 
                 var column = new Column()
@@ -126,7 +127,8 @@ namespace TeamODD.ODDB.Editors.UI
 
         private VisualElement CreateHeaderElement(ODDBTableMeta tableMeta)
         {
-            var header = new Label(tableMeta.Name) {
+            var columnTitle = $"{tableMeta.Name}[{tableMeta.DataType}]";
+            var header = new Label(columnTitle) {
                 style =
                 {
                     flexGrow = 1,
