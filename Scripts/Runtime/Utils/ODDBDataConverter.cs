@@ -1,4 +1,4 @@
-﻿using Plugins.ODDB.Scripts.Runtime.Data.Enum;
+﻿using TeamODD.ODDB.Runtime.Data.Enum;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime

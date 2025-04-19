@@ -1,12 +1,8 @@
-using System;
 using System.IO;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using TeamODD.ODDB.Editors.UI;
-using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Utils.Services;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Settings.Data;
-using TeamODD.ODDB.Scripts.Runtime.Data;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;

@@ -1,4 +1,4 @@
-﻿namespace Plugins.ODDB.Scripts.Runtime.Data.Enum
+﻿namespace TeamODD.ODDB.Runtime.Data.Enum
 {
     public enum ODDBDataType
     {

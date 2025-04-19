@@ -1,6 +1,3 @@
-using Plugins.ODDB.Scripts.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data;
-
 namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
     /// <summary>

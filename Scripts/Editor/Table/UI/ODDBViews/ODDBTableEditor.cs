@@ -2,13 +2,12 @@ using System;
 using UnityEngine.UIElements;
 using TeamODD.ODDB.Scripts.Runtime.Data;
 using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
 using UnityEditor;
 using UnityEngine;
 using TeamODD.ODDB.Editors.UI.Fields;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Editors.UI
