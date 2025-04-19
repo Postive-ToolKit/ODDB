@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
+using TeamODD.ODDB.Runtime.Data.Enum;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI

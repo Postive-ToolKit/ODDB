@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Runtime.Data;
-using Plugins.ODDB.Scripts.Runtime.Data.Enum;
+﻿using System.Collections.Generic;
 using TeamODD.ODDB.Editors.UI.Fields;
-using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
-using TeamODD.ODDB.Scripts.Runtime.Data;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 

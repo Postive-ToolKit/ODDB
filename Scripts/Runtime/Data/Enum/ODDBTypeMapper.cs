@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace Plugins.ODDB.Scripts.Runtime.Data.Enum
+namespace TeamODD.ODDB.Runtime.Data.Enum
 {
     public static class ODDBTypeMapper
     {

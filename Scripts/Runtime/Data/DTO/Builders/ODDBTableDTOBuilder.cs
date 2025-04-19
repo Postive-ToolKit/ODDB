@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using TeamODD.ODDB.Runtime.Data.Interfaces;
+﻿using TeamODD.ODDB.Runtime.Data.Interfaces;
 
 namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
 {

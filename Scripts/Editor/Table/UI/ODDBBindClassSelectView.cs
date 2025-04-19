@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using TeamODD.ODDB.Runtime.Entities;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
