@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Serialization;
+using TeamODD.ODDB.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
-using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
@@ -83,6 +85,35 @@ namespace TeamODD.ODDB.Runtime.Data
         }
 
         #region Serialization
+
+        public override bool TrySerialize(out string data)
+        {
+            var dtoBuilder = new ODDBTableDTOBuilder();
+            try
+            {
+                var viewDto = dtoBuilder
+                    .SetSerialization(this)
+                    .SetName(this)
+                    .SetKey(this)
+                    .SetTableMeta(this)
+                    .SetBindType(this)
+                    .SetParentView(this)
+                    .Build();
+                // convert view to xml
+                var serializer = new XmlSerializer(typeof(ODDBViewDTO));
+                using var stringWriter = new System.IO.StringWriter();
+                serializer.Serialize(stringWriter, viewDto);
+                data = stringWriter.ToString();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                data = null;
+                return false;
+            }
+        }
+
         public string Serialize()
         {
             var data = new StringBuilder();
@@ -126,6 +157,29 @@ namespace TeamODD.ODDB.Runtime.Data
         #endregion
 
         #region Deserialization
+        public override bool TryDeserialize(string data)
+        {
+            try
+            {
+                var serializer = new XmlSerializer(typeof(ODDBTableDTO));
+                using var stringReader = new System.IO.StringReader(data);
+                var tableDto = (ODDBTableDTO)serializer.Deserialize(stringReader);
+                Key = tableDto.Key;
+                Name = tableDto.Name;
+                BindType = TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
+                _parentViewKey = tableDto.ParentView;
+                ScopedTableMetas.Clear();
+                ScopedTableMetas.AddRange(tableDto.TableMetas);
+                Deserialize(tableDto.Data);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return false;
+            }
+        }
+
         public void Deserialize(string data)
         {
             _rows.Clear();
