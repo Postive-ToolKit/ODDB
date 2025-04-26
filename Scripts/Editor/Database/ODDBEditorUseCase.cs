@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime.Utils;
 
 namespace TeamODD.ODDB.Editors.Window
 {
@@ -18,7 +19,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             if (_database == null)
                 return null;
-            var view = _database.GetViewByKey(key);
+            var view = _database.GetView(new ODDBID(key));
             return view;
         }
 
@@ -26,7 +27,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             if (_database == null)
                 return null;
-            return _database.GetViews();
+            return _database.GetAll();
         }
 
         public ODDBViewType GetViewTypeByKey(string key)
@@ -101,7 +102,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         public IEnumerable<IODDBView> GetPureViews()
         {
-            return _database.Views;
+            return _database.Views.GetAll();
         }
 
         public void Dispose()

@@ -57,14 +57,17 @@ namespace TeamODD.ODDB.Runtime
         private static void PortData()
         {
             var tables = _database.Tables;
-            foreach (var table in tables)
+            foreach (var view in tables.GetAll())
             {
-                var targetType = table.BindType;
+                var targetType = view.BindType;
                 if (targetType == null)
                 {
-                    Debug.LogError($"BindType is null for table {table.Name} with key {table.Key}, table will be excluded.");
+                    Debug.LogError($"BindType is null for table {view.Name} with key {view.Key}, table will be excluded.");
                     continue;
                 }
+                
+                if(view is not ODDBTable table)
+                    return;
 
                 if (!_entityCache.ContainsKey(targetType))
                 {
@@ -88,14 +91,8 @@ namespace TeamODD.ODDB.Runtime
         }
         private static bool TryConvertData(string xml, out ODDatabase database)
         {
-            database = null;
-            var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
-            using var stringReader = new StringReader(xml);
-            var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stringReader);
-        
             var importer = new ODDBImporter();
-            database = importer.CreateDatabase(databaseDto);
-            
+            database = importer.CreateDatabase(xml);
             return database != null;
         }
         #endregion

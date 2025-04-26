@@ -10,52 +10,53 @@ namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBImporter
     {
-        public ODDatabase CreateDatabase(ODDatabaseDTO databaseDto)
+        public ODDatabase CreateDatabase(string data)
         {
+            // var database = new ODDatabase();
+            //
+            // var tableDTOs = databaseDto.Tables;
+            // foreach (var tableDto in tableDTOs)
+            //     if (TryConvertTable(tableDto, out var table))
+            //         database.AddTable(table);
+            //
+            // var viewDTOs = databaseDto.Views;
+            // foreach (var viewDto in viewDTOs)
+            //     if (TryConvertView(viewDto, out var view))
+            //         database.AddView(view);
+            //
+            //
+            //
+            // foreach (var tableDto in tableDTOs)
+            // {
+            //     if (string.IsNullOrEmpty(tableDto.ParentView))
+            //         continue;
+            //     var targetView = database.GetViewByKey(tableDto.Key);
+            //     var parentView = database.GetViewByKey(tableDto.ParentView);
+            //     if (targetView == null || parentView == null)
+            //     {
+            //         Debug.LogError("ODDBImporter.TryCreateDatabase cannot find view : " + tableDto.ParentView);
+            //         continue;
+            //     }
+            //
+            //     targetView.ParentView = parentView;
+            // }
+            //
+            // foreach (var viewDto in viewDTOs)
+            // {
+            //     if (string.IsNullOrEmpty(viewDto.ParentView))
+            //         continue;
+            //     var targetView = database.GetViewByKey(viewDto.Key);
+            //     var parentView = database.GetViewByKey(viewDto.ParentView);
+            //     if (targetView == null || parentView == null)
+            //     {
+            //         Debug.LogError("ODDBImporter.TryCreateDatabase cannot find view : " + viewDto.ParentView);
+            //         continue;
+            //     }
+            //
+            //     targetView.ParentView = parentView;
+            // }
             var database = new ODDatabase();
-            
-            var tableDTOs = databaseDto.Tables;
-            foreach (var tableDto in tableDTOs)
-                if (TryConvertTable(tableDto, out var table))
-                    database.AddTable(table);
-            
-            var viewDTOs = databaseDto.Views;
-            foreach (var viewDto in viewDTOs)
-                if (TryConvertView(viewDto, out var view))
-                    database.AddView(view);
-            
-
-
-            foreach (var tableDto in tableDTOs)
-            {
-                if (string.IsNullOrEmpty(tableDto.ParentView))
-                    continue;
-                var targetView = database.GetViewByKey(tableDto.Key);
-                var parentView = database.GetViewByKey(tableDto.ParentView);
-                if (targetView == null || parentView == null)
-                {
-                    Debug.LogError("ODDBImporter.TryCreateDatabase cannot find view : " + tableDto.ParentView);
-                    continue;
-                }
-
-                targetView.ParentView = parentView;
-            }
-
-            foreach (var viewDto in viewDTOs)
-            {
-                if (string.IsNullOrEmpty(viewDto.ParentView))
-                    continue;
-                var targetView = database.GetViewByKey(viewDto.Key);
-                var parentView = database.GetViewByKey(viewDto.ParentView);
-                if (targetView == null || parentView == null)
-                {
-                    Debug.LogError("ODDBImporter.TryCreateDatabase cannot find view : " + viewDto.ParentView);
-                    continue;
-                }
-
-                targetView.ParentView = parentView;
-            }
-
+            database.TryDeserialize(data);
             return database;
         }
 
@@ -65,7 +66,7 @@ namespace TeamODD.ODDB.Runtime.Utils
             {
                 view = new ODDBView(viewDto.TableMetas);
                 view.Name = viewDto.Name;
-                view.Key = viewDto.Key;
+                view.Key = new ODDBID(viewDto.Key);
                 if (TryConvertBindType(viewDto.BindType, out var bindType))
                     view.BindType = bindType;
                 else
@@ -87,7 +88,7 @@ namespace TeamODD.ODDB.Runtime.Utils
             {
                 table = new ODDBTable(convertTargets.TableMetas);
                 table.Name = convertTargets.Name;
-                table.Key = convertTargets.Key;
+                table.Key = new ODDBID(convertTargets.Key);
                 // convert convertTargets.Data to TextStream
                 var data = convertTargets.Data;
                 table.Deserialize(data);

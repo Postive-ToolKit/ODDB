@@ -5,7 +5,7 @@ namespace TeamODD.ODDB.Runtime.Data.DTO
     {
         public string Name;
         public string Key;
-        public List<ODDBTableMeta> TableMetas;
+        public List<ODDBTableMeta> TableMetas = new List<ODDBTableMeta>();
         public string BindType;
         public string ParentView;
         

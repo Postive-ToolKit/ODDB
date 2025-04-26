@@ -17,13 +17,11 @@ namespace TeamODD.ODDB.Editors.Utils
                 Debug.LogError($"Database file not found at path: {path}");
                 return false;
             }
-            var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
-            using var stream = new FileStream(path, FileMode.Open);
-            var databaseDto = (ODDatabaseDTO)serializer.Deserialize(stream);
+            var xml = File.ReadAllText(path);
             Debug.Log($"Database loaded from: {path}");
                     
             var importer = new ODDBImporter();
-            database = importer.CreateDatabase(databaseDto);
+            database = importer.CreateDatabase(xml);
             return database != null;
         }
 
@@ -37,13 +35,7 @@ namespace TeamODD.ODDB.Editors.Utils
                 string directory = Path.GetDirectoryName(path);
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
-
-                var serializer = new XmlSerializer(typeof(ODDatabaseDTO));
-                using (var stream = new FileStream(path, FileMode.Create))
-                {
-                    serializer.Serialize(stream, databaseDto);
-                }
-                
+                File.WriteAllText(path, databaseDto);
                 Debug.Log($"Database saved to: {path}");
                 return true;
             }

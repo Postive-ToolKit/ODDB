@@ -5,6 +5,8 @@ using System.Xml.Serialization;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime.Utils;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
@@ -16,6 +18,11 @@ namespace TeamODD.ODDB.Runtime.Data
         private readonly List<ODDBRow> _rows = new();
 
         public IReadOnlyList<ODDBRow> ReadOnlyRows => _rows.AsReadOnly();
+
+        public ODDBTable()
+        {
+            
+        }
         
         public ODDBTable(IEnumerable<ODDBTableMeta> tableMetas = null) : base(tableMetas)
         {
@@ -88,10 +95,10 @@ namespace TeamODD.ODDB.Runtime.Data
 
         public override bool TrySerialize(out string data)
         {
-            var dtoBuilder = new ODDBTableDTOBuilder();
             try
             {
-                var viewDto = dtoBuilder
+                var dtoBuilder = new ODDBTableDTOBuilder();
+                var tableDto = dtoBuilder
                     .SetSerialization(this)
                     .SetName(this)
                     .SetKey(this)
@@ -99,16 +106,13 @@ namespace TeamODD.ODDB.Runtime.Data
                     .SetBindType(this)
                     .SetParentView(this)
                     .Build();
-                // convert view to xml
-                var serializer = new XmlSerializer(typeof(ODDBViewDTO));
-                using var stringWriter = new System.IO.StringWriter();
-                serializer.Serialize(stringWriter, viewDto);
-                data = stringWriter.ToString();
+                // serialize to json
+                data = JsonUtility.ToJson(tableDto);
                 return true;
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Debug.LogError(e);
                 data = null;
                 return false;
             }
@@ -159,25 +163,17 @@ namespace TeamODD.ODDB.Runtime.Data
         #region Deserialization
         public override bool TryDeserialize(string data)
         {
-            try
-            {
-                var serializer = new XmlSerializer(typeof(ODDBTableDTO));
-                using var stringReader = new System.IO.StringReader(data);
-                var tableDto = (ODDBTableDTO)serializer.Deserialize(stringReader);
-                Key = tableDto.Key;
-                Name = tableDto.Name;
-                BindType = TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
-                _parentViewKey = tableDto.ParentView;
-                ScopedTableMetas.Clear();
-                ScopedTableMetas.AddRange(tableDto.TableMetas);
-                Deserialize(tableDto.Data);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+            var tableDto = JsonUtility.FromJson<ODDBTableDTO>(data);
+            if (tableDto == null)
                 return false;
-            }
+            Key = new ODDBID(tableDto.Key);
+            Name = tableDto.Name;
+            BindType = TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
+            _parentViewKey = new ODDBID(tableDto.ParentView);
+            ScopedTableMetas.Clear();
+            ScopedTableMetas.AddRange(tableDto.TableMetas);
+            Deserialize(tableDto.Data);
+            return true;
         }
 
         public void Deserialize(string data)
@@ -204,7 +200,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var key = values[0];
             values.RemoveAt(0);
             //NormalizeValues(values);
-            _rows.Add(new ODDBRow(key, values.ToArray()));
+            _rows.Add(new ODDBRow(new ODDBID(key), values.ToArray()));
         }
 
         private string NormalizeLineEndings(string data)

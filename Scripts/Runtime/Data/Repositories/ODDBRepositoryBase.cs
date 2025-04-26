@@ -1,27 +1,31 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public abstract class ODDBRepository<T> : IODDBRepository<T> where T : IODDBHasUniqueKey, IODDBSerialize
+    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T> where T : IODDBHasUniqueKey, IODDBSerialize
     {
+        public IODDBKeyProvider KeyProvider { get; set; }
         private readonly Dictionary<string, T> _dictionary = new Dictionary<string, T>();
         private readonly List<T> _list = new List<T>();
         public int Count => _dictionary.Count;
 
-        public T Create(string id = null)
+        public T Create(ODDBID id = null)
         {
-            var uniqueID = id ?? new ODDBID().ID;
+            var uniqueID = id ?? new ODDBID();
             var item = CreateInternal(uniqueID);
             _dictionary.Add(uniqueID, item);
             _list.Add(item);
             return item;
         }
         
-        protected abstract T CreateInternal(string id);
+        protected abstract T CreateInternal(ODDBID id = null);
 
-        public T Read(string id)
+        public T Read(ODDBID id)
         {
             if (_dictionary.TryGetValue(id, out var view))
                 return view;
@@ -34,7 +38,7 @@ namespace TeamODD.ODDB.Runtime.Data
             return _list[index];
         }
         
-        public void Update(string id, T item) 
+        public void Update(ODDBID id, T item) 
         {
             if (_dictionary.ContainsKey(id)) {
                 _dictionary[id] = item;
@@ -52,7 +56,7 @@ namespace TeamODD.ODDB.Runtime.Data
             _list[index] = item;
         }
 
-        public void Delete(string id)
+        public void Delete(ODDBID id)
         {
             if (_dictionary.ContainsKey(id))
             {
@@ -86,8 +90,40 @@ namespace TeamODD.ODDB.Runtime.Data
             return _list.AsReadOnly();
         }
 
-        public abstract bool TrySerialize(out string data);
+        public virtual bool TrySerialize(out string data)
+        {
+            try
+            {
+                var dataList = new List<string>();
+                foreach (var element in GetAll())
+                    if (element.TrySerialize(out var serializedView))
+                        dataList.Add(serializedView);
+                var serializer = new XmlSerializer(typeof(List<string>));
+                using var stringWriter = new System.IO.StringWriter();
+                serializer.Serialize(stringWriter, dataList);
+                data = stringWriter.ToString();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                data = null;
+                return false;
+            }
+        }
 
-        public abstract bool TryDeserialize(string data);
+        public bool TryDeserialize(string data)
+        {
+            var serializer = new XmlSerializer(typeof(List<string>));
+            using var stringReader = new System.IO.StringReader(data);
+            var viewDataList = (List<string>)serializer.Deserialize(stringReader);
+            foreach (var viewData in viewDataList)
+            {
+                var view = CreateInternal();
+                view.TryDeserialize(viewData);
+                Update(view.Key, view);
+            }
+            return true;
+        }
     }
 }

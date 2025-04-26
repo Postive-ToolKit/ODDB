@@ -9,26 +9,17 @@ namespace TeamODD.ODDB.Runtime.Utils
 {
     public class ODDBExporter
     {
-        public ODDatabaseDTO Export(ODDatabase database)
+        public string Export(ODDatabase database)
         {
-            var tables = new List<ODDBTableDTO>();
-            foreach (var table in database.Tables)
+            if (database == null)
             {
-                if (TryConvertTable(table, out var tableDto))
-                {
-                    tables.Add(tableDto);
-                }
-                
+                Debug.LogError("ODDBExporter.Export cannot export null database");
+                return default;
             }
-            var views = new List<ODDBViewDTO>();
-            foreach (var view in database.Views)
-            {
-                if (TryConvertView(view, out var viewDto))
-                {
-                    views.Add(viewDto);
-                }
-            }
-            return new ODDatabaseDTO(tables, views);
+
+            if (!database.TrySerialize(out var data))
+                return null;
+            return data;
         }
         
         private bool TryConvertView(ODDBView view, out ODDBViewDTO viewDto)

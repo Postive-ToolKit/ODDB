@@ -1,88 +1,91 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
+using Plugins.ODDB.Scripts.Runtime.Data.Repositories;
+using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public class ODDatabase
+    public class ODDatabase : IODDatabase
     {
-        private readonly Dictionary<string, ODDBView> _viewDict = new Dictionary<string, ODDBView>();
-        public int Count => _tables.Count + _views.Count;
-        public IEnumerable<ODDBView> Views => _views;
-        public IEnumerable<ODDBTable> Tables => _tables;
-        private List<ODDBTable> _tables = new List<ODDBTable>();
-        private List<ODDBView> _views = new List<ODDBView>();
-        
-        public ODDBTable CreateTable()
+        private readonly Type _tableType = typeof(ODDBTable);
+        private readonly Type _viewType = typeof(ODDBView);
+        private readonly Dictionary<Type, IODDBRepository<IODDBView>> _repositories = new();
+        public IODDBRepository<IODDBView> Tables => _repositories[_tableType];
+        public IODDBRepository<IODDBView> Views => _repositories[_viewType];
+        public int Count => Tables.Count + Views.Count;
+
+        public ODDatabase()
         {
-            var newTable = new ODDBTable();
-            var newid = new ODDBID().ID;
-            //check if newid is unique
-            while (
-                _tables.Exists(x => x.Key == newid)&&
-                _views.Exists(x => x.Key == newid))
+            var tableRepo = new ODDBViewRepository<ODDBTable>();
+            var viewRepo = new ODDBViewRepository<ODDBView>();
+            viewRepo.KeyProvider = this;
+            tableRepo.KeyProvider = this;
+            _repositories.Add(typeof(ODDBTable), tableRepo);
+            _repositories.Add(typeof(ODDBView), viewRepo);
+        }
+        public ODDBID CreateKey()
+        {
+            var newid = new ODDBID();
+            while (IsKeyExists(newid))
+                newid = new ODDBID();
+            return newid;
+        }
+        
+        private bool IsKeyExists(ODDBID key)
+        {
+            foreach (var repo in _repositories.Values)
             {
-                newid = new ODDBID().ID;
+                if (repo.Read(key) != null)
+                    return true;
             }
-            newTable.Key = newid;
-            newTable.Name = "Table " + newid;
-            AddTable(newTable);
-            return newTable;
+            return false;
         }
 
-        public ODDBView CreateView()
+        public bool TrySerialize(out string data)
         {
-            var newView = new ODDBView();
-            var newid = new ODDBID().ID;
-            //check if newid is unique
-            while (
-                _tables.Exists(x => x.Key == newid) &&
-                _views.Exists(x => x.Key == newid))
+            if (Tables.TrySerialize(out var tableRepoData) && Views.TrySerialize(out var viewRepoData))
             {
-                newid = new ODDBID().ID;
+                var databaseDto = new ODDatabaseDTO(tableRepoData, viewRepoData);
+                data = JsonUtility.ToJson(databaseDto);
+                Debug.Log(data);
+                return true;
             }
-            newView.Key = newid;
-            newView.Name = "View " + newid;
-            AddView(newView);
-            return newView;
+            data = null;
+            return false;
         }
-        
 
-        
-        public void AddTable(ODDBTable table)
+        public bool TryDeserialize(string data)
         {
-            _tables.Add(table);
-            _viewDict.Add(table.Key, table);
+            var databaseDto = JsonUtility.FromJson<ODDatabaseDTO>(data);
+            Tables.TryDeserialize(databaseDto.TableRepoData);
+            Views.TryDeserialize(databaseDto.ViewRepoData);
+            return true;
         }
-        
-        public void RemoveTable(ODDBTable table)
+
+        public IODDBView GetView(ODDBID id)
         {
-            _tables.Remove(table);
-            _viewDict.Remove(table.Key);
-        }
-        
-        public void AddView(ODDBView view)
-        {
-            _views.Add(view);
-            _viewDict.Add(view.Key, view);
-        }
-        public void RemoveView(ODDBView view)
-        {
-            _views.Remove(view);
-            _viewDict.Remove(view.Key);
-        }
-        
-        public ODDBView GetViewByKey(string key)
-        {
-            if (_viewDict.TryGetValue(key, out var view)) {
-                return view;
+            foreach (var repo in _repositories.Values)
+            {
+                var view = repo.Read(id);
+                if (view != null)
+                    return view;
             }
             return null;
         }
         
-        public IEnumerable<ODDBView> GetViews()
+        public IReadOnlyList<IODDBView> GetAll()
         {
-            return _viewDict.Values;
+            var allViews = new List<IODDBView>();
+            foreach (var repo in _repositories.Values)
+            {
+                allViews.AddRange(repo.GetAll());
+            }
+
+            return allViews;
         }
     }
 }

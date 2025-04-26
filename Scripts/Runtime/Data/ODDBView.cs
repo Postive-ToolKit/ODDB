@@ -14,12 +14,13 @@ namespace TeamODD.ODDB.Runtime.Data
 {
     public class ODDBView : IODDBView
     {
-        public string Key { get; set; }
+        private const string DEFAULT_NAME = "Default Name";
+        public ODDBID Key { get; set; }
         public string Name { get; set; }
         public Type BindType { get; set; }
         public IODDBView ParentView { get; set; }
 
-        protected string _parentViewKey;
+        protected ODDBID _parentViewKey;
         
         public List<ODDBTableMeta> TableMetas
         {
@@ -39,7 +40,8 @@ namespace TeamODD.ODDB.Runtime.Data
         
         public ODDBView()
         {
-            Key = new ODDBID().ID;
+            Key = new ODDBID();
+            Name = DEFAULT_NAME;
         }
         public ODDBView(IEnumerable<ODDBTableMeta> tableMetas = null)
         {
@@ -91,51 +93,34 @@ namespace TeamODD.ODDB.Runtime.Data
         protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
         public virtual bool TrySerialize(out string data)
         {
+            data = null;
             var dtoBuilder = new ODDBViewDTOBuilder();
-            try
-            {
-                var viewDto = dtoBuilder
-                    .SetName(this)
-                    .SetKey(this)
-                    .SetTableMeta(this)
-                    .SetBindType(this)
-                    .SetParentView(this)
-                    .Build();
-                // convert view to xml
-                var serializer = new XmlSerializer(typeof(ODDBViewDTO));
-                using var stringWriter = new System.IO.StringWriter();
-                serializer.Serialize(stringWriter, viewDto);
-                data = stringWriter.ToString();
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                data = null;
+            var viewDto = dtoBuilder
+                .SetName(this)
+                .SetKey(this)
+                .SetTableMeta(this)
+                .SetBindType(this)
+                .SetParentView(this)
+                .Build();
+            if (viewDto == null)
                 return false;
-            }
+            // serialize to json
+            data = JsonUtility.ToJson(viewDto);
+            return true;
         }
 
         public virtual bool TryDeserialize(string data)
         {
-            try
-            {
-                var serializer = new XmlSerializer(typeof(ODDBViewDTO));
-                using var stringReader = new System.IO.StringReader(data);
-                var viewDto = (ODDBViewDTO)serializer.Deserialize(stringReader);
-                Key = viewDto.Key;
-                Name = viewDto.Name;
-                BindType = TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
-                _parentViewKey = viewDto.ParentView;
-                _tableMetas.Clear();
-                _tableMetas.AddRange(viewDto.TableMetas);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+            var viewDto = JsonUtility.FromJson<ODDBViewDTO>(data);
+            if (viewDto == null)
                 return false;
-            }
+            Key = new ODDBID(viewDto.Key);
+            Name = viewDto.Name;
+            BindType = TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
+            _parentViewKey = new ODDBID(viewDto.ParentView);
+            ScopedTableMetas.Clear();
+            ScopedTableMetas.AddRange(viewDto.TableMetas);
+            return true;
         }
         
         protected bool TryConvertBindType(string bindType, out Type type)
@@ -186,7 +171,7 @@ namespace TeamODD.ODDB.Runtime.Data
 
         public void OnDatabaseInitialize(ODDatabase database)
         {
-            ParentView = database.GetViewByKey(_parentViewKey);
+            ParentView = database.Views.Read(_parentViewKey);
         }
         
         public void OnDatabaseDispose(ODDatabase database)

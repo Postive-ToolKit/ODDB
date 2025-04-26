@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEngine;
@@ -66,14 +68,15 @@ namespace TeamODD.ODDB.Editors.UI
         }
         private void UpdateItemSource()
         {
-            var items = new List<ODDBView>();
             if (_database == null)
                 return;
+            var views = new List<IODDBView>();
+            views.AddRange(_database.Tables.GetAll());
+            views.AddRange(_database.Views.GetAll());
+            foreach (var view in views.ToList())
+                views.Add(view);
             
-            foreach (var view in _database.GetViews())
-                items.Add(view);
-            
-            itemsSource = items;
+            itemsSource = views;
         }
 
         private void Update()
@@ -92,12 +95,12 @@ namespace TeamODD.ODDB.Editors.UI
             
             menu.AddItem(new GUIContent("Add/Table"), false, () =>
             {
-                _database.CreateTable();
+                _database.Tables.Create();
                 IsDirty = true;
             });
             menu.AddItem(new GUIContent("Add/View"), false, () =>
             {
-                _database.CreateView();
+                _database.Views.Create();
                 IsDirty = true;
             });
             menu.AddItem(new GUIContent("Delete"), false, () =>
@@ -106,11 +109,11 @@ namespace TeamODD.ODDB.Editors.UI
                     return;
                 if (_view is ODDBTable table)
                 {
-                    _database.RemoveTable(table);
+                    _database.Tables.Delete(table.Key);
                 }
                 else if (_view is ODDBView view)
                 {
-                    _database.RemoveView(view);
+                    _database.Views.Delete(view.Key);
                 }
                 _view = null;
                 OnViewSelected?.Invoke(null);
@@ -135,7 +138,11 @@ namespace TeamODD.ODDB.Editors.UI
         
         private void UpdateView(string viewId)
         {
-            var view = _database.GetViewByKey(viewId);
+            if (_database == null)
+                return;
+            var view = _database.GetView(new ODDBID(viewId));
+            if (view == null)
+                return;
             var index = itemsSource.IndexOf(view);
             RefreshItem(index);
         }

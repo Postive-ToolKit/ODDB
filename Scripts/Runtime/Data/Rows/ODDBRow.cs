@@ -1,23 +1,22 @@
 ﻿using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
-using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
     public class ODDBRow : IODDBHasUniqueKey
     {
-        public string Key { get; set; } = new ODDBID().ID;
+        public ODDBID Key { get; set; }
         private List<string> _fields = new List<string>();
         public ODDBRow(int dataCount)
         {
-            Key = new ODDBID().ID;
+            Key = new ODDBID();
             for (int i = 0; i < dataCount; i++)
             {
                 _fields.Add(null);
             }
         }
-        public ODDBRow(string key,IEnumerable<string> data)
+        public ODDBRow(ODDBID key,IEnumerable<string> data)
         {
             Key = key;
             _fields.AddRange(data);

@@ -1,3 +1,16 @@
 {
-	"name": "ODDB.Runtime"
+    "name": "ODDB.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "GUID:5a1602366030fd745afebe402388f7f1"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
