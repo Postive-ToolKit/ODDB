@@ -23,7 +23,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         [ODDBPathSelector(true)]
         [SerializeField] private string _dbPath;
         [SerializeField] private string _pathFromResources;
-        [SerializeField] private string _dbName = "ODDB.xml";
+        [SerializeField] private string _dbName = "ODDB.json";
         private void OnValidate()
         {
             if(!string.IsNullOrEmpty(_dbPath))

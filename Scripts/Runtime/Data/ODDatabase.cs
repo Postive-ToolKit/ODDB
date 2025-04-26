@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using Newtonsoft.Json;
 using Plugins.ODDB.Scripts.Runtime.Data.Repositories;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
@@ -50,7 +51,7 @@ namespace TeamODD.ODDB.Runtime.Data
             if (Tables.TrySerialize(out var tableRepoData) && Views.TrySerialize(out var viewRepoData))
             {
                 var databaseDto = new ODDatabaseDTO(tableRepoData, viewRepoData);
-                data = JsonUtility.ToJson(databaseDto);
+                data = JsonConvert.SerializeObject(databaseDto, Formatting.Indented);
                 Debug.Log(data);
                 return true;
             }
@@ -60,7 +61,7 @@ namespace TeamODD.ODDB.Runtime.Data
 
         public bool TryDeserialize(string data)
         {
-            var databaseDto = JsonUtility.FromJson<ODDatabaseDTO>(data);
+            var databaseDto = JsonConvert.DeserializeObject<ODDatabaseDTO>(data);
             Tables.TryDeserialize(databaseDto.TableRepoData);
             Views.TryDeserialize(databaseDto.ViewRepoData);
             return true;

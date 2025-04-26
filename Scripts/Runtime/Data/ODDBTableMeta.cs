@@ -1,7 +1,9 @@
-﻿using TeamODD.ODDB.Runtime.Data.Enum;
+﻿using System;
+using TeamODD.ODDB.Runtime.Data.Enum;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
+    [Serializable]
     public struct ODDBTableMeta
     {
         public ODDBDataType DataType;

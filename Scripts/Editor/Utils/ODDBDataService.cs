@@ -17,11 +17,10 @@ namespace TeamODD.ODDB.Editors.Utils
                 Debug.LogError($"Database file not found at path: {path}");
                 return false;
             }
-            var xml = File.ReadAllText(path);
-            Debug.Log($"Database loaded from: {path}");
+            var json = File.ReadAllText(path);
                     
-            var importer = new ODDBImporter();
-            database = importer.CreateDatabase(xml);
+            var converter = new ODDBConverter();
+            database = converter.CreateDatabase(json);
             return database != null;
         }
 
@@ -29,8 +28,8 @@ namespace TeamODD.ODDB.Editors.Utils
         {
             try
             {
-                var exporter = new ODDBExporter();
-                var databaseDto = exporter.Export(database);
+                var converter = new ODDBConverter();
+                var databaseDto = converter.Export(database);
 
                 string directory = Path.GetDirectoryName(path);
                 if (!Directory.Exists(directory))

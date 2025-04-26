@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Xml.Serialization;
+using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
@@ -105,13 +106,13 @@ namespace TeamODD.ODDB.Runtime.Data
             if (viewDto == null)
                 return false;
             // serialize to json
-            data = JsonUtility.ToJson(viewDto);
+            data = JsonConvert.SerializeObject(viewDto, Formatting.Indented);
             return true;
         }
 
         public virtual bool TryDeserialize(string data)
         {
-            var viewDto = JsonUtility.FromJson<ODDBViewDTO>(data);
+            var viewDto = JsonConvert.DeserializeObject<ODDBViewDTO>(data);
             if (viewDto == null)
                 return false;
             Key = new ODDBID(viewDto.Key);

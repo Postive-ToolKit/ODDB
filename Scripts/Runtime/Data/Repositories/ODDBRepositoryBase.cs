@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
@@ -98,10 +99,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 foreach (var element in GetAll())
                     if (element.TrySerialize(out var serializedView))
                         dataList.Add(serializedView);
-                var serializer = new XmlSerializer(typeof(List<string>));
-                using var stringWriter = new System.IO.StringWriter();
-                serializer.Serialize(stringWriter, dataList);
-                data = stringWriter.ToString();
+                data = JsonConvert.SerializeObject(dataList, Formatting.Indented);
                 return true;
             }
             catch (Exception e)
@@ -114,9 +112,16 @@ namespace TeamODD.ODDB.Runtime.Data
 
         public bool TryDeserialize(string data)
         {
-            var serializer = new XmlSerializer(typeof(List<string>));
-            using var stringReader = new System.IO.StringReader(data);
-            var viewDataList = (List<string>)serializer.Deserialize(stringReader);
+            List<string> viewDataList;
+            try
+            {
+                viewDataList = JsonConvert.DeserializeObject<List<string>>(data);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to deserialize data : " + e.Message);
+                return false;
+            }
             foreach (var viewData in viewDataList)
             {
                 var view = CreateInternal();

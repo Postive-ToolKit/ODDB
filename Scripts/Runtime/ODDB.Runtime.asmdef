@@ -1,9 +1,7 @@
 {
     "name": "ODDB.Runtime",
     "rootNamespace": "",
-    "references": [
-        "GUID:5a1602366030fd745afebe402388f7f1"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

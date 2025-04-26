@@ -6,6 +6,7 @@ using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
+using Unity.Plastic.Newtonsoft.Json;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
@@ -107,7 +108,7 @@ namespace TeamODD.ODDB.Runtime.Data
                     .SetParentView(this)
                     .Build();
                 // serialize to json
-                data = JsonUtility.ToJson(tableDto);
+                data = JsonConvert.SerializeObject(tableDto, Formatting.Indented);
                 return true;
             }
             catch (Exception e)

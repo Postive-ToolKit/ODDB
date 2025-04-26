@@ -91,7 +91,7 @@ namespace TeamODD.ODDB.Runtime
         }
         private static bool TryConvertData(string xml, out ODDatabase database)
         {
-            var importer = new ODDBImporter();
+            var importer = new ODDBConverter();
             database = importer.CreateDatabase(xml);
             return database != null;
         }
