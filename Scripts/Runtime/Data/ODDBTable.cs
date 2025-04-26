@@ -174,6 +174,7 @@ namespace TeamODD.ODDB.Runtime.Data
             ScopedTableMetas.Clear();
             ScopedTableMetas.AddRange(tableDto.TableMetas);
             Deserialize(tableDto.Data);
+            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
             return true;
         }
 

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Xml.Serialization;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
@@ -121,6 +120,7 @@ namespace TeamODD.ODDB.Runtime.Data
             _parentViewKey = new ODDBID(viewDto.ParentView);
             ScopedTableMetas.Clear();
             ScopedTableMetas.AddRange(viewDto.TableMetas);
+            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
             return true;
         }
         
@@ -173,11 +173,7 @@ namespace TeamODD.ODDB.Runtime.Data
         public void OnDatabaseInitialize(ODDatabase database)
         {
             ParentView = database.Views.Read(_parentViewKey);
-        }
-        
-        public void OnDatabaseDispose(ODDatabase database)
-        {
-            
+            ODDBConverter.OnDatabaseCreated -= OnDatabaseInitialize;
         }
     }
 }

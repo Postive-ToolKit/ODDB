@@ -7,8 +7,7 @@
         IODDBHasBindType, 
         IODDBTableMetaHandler, 
         IODDBHasParentView,
-        IODDBSerialize,
-        IODDatabaseEvent
+        IODDBSerialize
     {
         
     }
