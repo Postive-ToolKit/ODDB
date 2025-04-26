@@ -13,13 +13,19 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDatabase _database;
         public ODDBEditorUseCase(ODDatabase database) {
             _database = database;
+            _database.OnDataChanged += OnDataChanged;
+        }
+        
+        private void OnDataChanged(ODDBID id)
+        {
+            OnViewChanged?.Invoke(id.ToString());
         }
             
-        public IODDBView GetViewByKey(string key)
+        public IODDBView GetViewByKey(string id)
         {
             if (_database == null)
                 return null;
-            var view = _database.GetView(new ODDBID(key));
+            var view = _database.GetView(new ODDBID(id));
             return view;
         }
 
@@ -30,9 +36,9 @@ namespace TeamODD.ODDB.Editors.Window
             return _database.GetAll();
         }
 
-        public ODDBViewType GetViewTypeByKey(string key)
+        public ODDBViewType GetViewTypeByKey(string id)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view is ODDBTable)
                 return ODDBViewType.Table;
             if (view is ODDBView)
@@ -40,48 +46,48 @@ namespace TeamODD.ODDB.Editors.Window
             return ODDBViewType.None;
         }
 
-        public string GetViewName(string key)
+        public string GetViewName(string id)
         {
-            return GetViewByKey(key)?.Name ?? string.Empty;
+            return GetViewByKey(id)?.Name ?? string.Empty;
         }
 
-        public void SetViewName(string key, string name)
+        public void SetViewName(string id, string name)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view == null)
                 return;
             view.Name = name;
-            OnViewChanged?.Invoke(key);
+            _database.NotifyDataChanged(view.Key);
         }
 
-        public Type GetViewBindType(string key)
+        public Type GetViewBindType(string id)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view == null)
                 return null;
             return view.BindType;
         }
 
-        public void SetViewBindType(string key, Type type)
+        public void SetViewBindType(string id, Type type)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view == null)
                 return;
             view.BindType = type;
-            OnViewChanged?.Invoke(key);
+            _database.NotifyDataChanged(view.Key);
         }
 
-        public IODDBView GetViewParent(string key)
+        public IODDBView GetViewParent(string id)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view == null)
                 return null;
             return view.ParentView;
         }
 
-        public void SetViewParent(string key, string parentKey)
+        public void SetViewParent(string id, string parentKey)
         {
-            var view = GetViewByKey(key);
+            var view = GetViewByKey(id);
             if (view == null)
                 return;
             var parent = GetViewByKey(parentKey);
@@ -91,13 +97,12 @@ namespace TeamODD.ODDB.Editors.Window
             
             if(view.BindType != null && view.BindType.IsSubclassOf(parent.BindType))
                 view.BindType = parent.BindType;
-            
-            OnViewChanged?.Invoke(key);
+            _database.NotifyDataChanged(view.Key);
         }
 
         public void NotifyViewDataChanged(string viewId)
         {
-            OnViewChanged?.Invoke(viewId);
+            _database.NotifyDataChanged(new ODDBID(viewId));
         }
 
         public IEnumerable<IODDBView> GetPureViews()
@@ -107,6 +112,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void Dispose()
         {
+            _database.OnDataChanged -= OnDataChanged;
             _database = null;
             OnViewChanged = null;
         }

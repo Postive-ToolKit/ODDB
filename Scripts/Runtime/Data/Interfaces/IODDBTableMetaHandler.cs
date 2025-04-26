@@ -3,7 +3,7 @@
     public interface IODDBTableMetaHandler
     {
         void AddField(ODDBTableMeta tableMeta);
-        void RemoveTableMeta(int index);
+        void RemoveField(int index);
         void SwapTableMeta(int indexA, int indexB);
         bool IsScopedMeta(int index);
     }

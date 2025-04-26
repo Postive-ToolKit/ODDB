@@ -2,8 +2,10 @@
 
 namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
-    public interface IODDatabase : IODDBContainer<IODDBView>, IODDBSerialize, IODDBKeyProvider
+    public interface IODDatabase : IODDBContainer<IODDBView>, IODDBSerialize, IODDBIDProvider
     {
         IODDBView GetView(ODDBID id);
+
+        void NotifyDataChanged(ODDBID id);
     }
 }

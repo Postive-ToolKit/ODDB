@@ -2,6 +2,6 @@
 {
     public interface IODDBRepository<T> : IODDBCRUDS<T>, IODDBContainer<T>, IODDBSerialize
     {
-        public IODDBKeyProvider KeyProvider { get; set; }
+        public IODDBIDProvider KeyProvider { get; set; }
     }
 }

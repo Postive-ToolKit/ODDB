@@ -182,7 +182,7 @@ namespace TeamODD.ODDB.Editors.UI
                     {
                         if (_view != null && index < _view.TableMetas.Count)
                         {
-                            _view.RemoveTableMeta(index);
+                            _view.RemoveField(index);
                             IsDirty = true;
                         }
                     };

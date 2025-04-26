@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
@@ -8,7 +9,7 @@ using UnityEngine.UIElements;
 namespace TeamODD.ODDB.Editors.UI
 {
 
-    public sealed class ODDBInheritSelectView : DropdownField
+    public sealed class ODDBInheritSelectView : DropdownField, IODDBHasView
     {
         private const string INHERIT_NOT_FOUND = "None";
         private readonly Dictionary<string,IODDBView> _inheritableViews = new();
@@ -39,16 +40,22 @@ namespace TeamODD.ODDB.Editors.UI
             
             RegisterCallback<ChangeEvent<string>>(OnDropDownValueChanged);
         }
-
-        public void SetCurrentParent(IODDBView parentView)
+        public void SetView(string viewKey)
         {
+            var view = _editorUseCase.GetViewByKey(viewKey);
+            if (view == null) {
+                SetEnabled(false);
+                value = INHERIT_NOT_FOUND;
+                return;
+            }
+            choices.Remove(view.Name + " - " + view.Key);
+            var parentView = view.ParentView;
             if (parentView == null) {
                 value = INHERIT_NOT_FOUND;
                 return;
             }
             value = parentView.Name + " - " + parentView.Key;
         }
-        
         private void OnDropDownValueChanged(ChangeEvent<string> evt)
         {
             if (_inheritableViews.TryGetValue(evt.newValue, out var view)) {
@@ -59,6 +66,7 @@ namespace TeamODD.ODDB.Editors.UI
                 OnParentViewChanged?.Invoke(null);
             }
         }
+
 
 
     }

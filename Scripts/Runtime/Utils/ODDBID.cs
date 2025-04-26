@@ -29,15 +29,37 @@ namespace TeamODD.ODDB.Runtime.Utils
             if (!_currentCreatedId.Contains(id))
                 _currentCreatedId.Add(id);
             _id = id;
-            
         }
+        
         public override string ToString()
         {
             return _id;
         }
+        
         public static implicit operator string(ODDBID oddbid)
         {
             return oddbid.ID;
+        }
+        
+        public static bool operator ==(ODDBID a, ODDBID b)
+        {
+            if (a is null || b is null) return false;
+            return a.ID.Equals(b.ID);
+        }
+
+        public static bool operator !=(ODDBID a, ODDBID b)
+        {
+            return !(a == b);
+        }
+        
+        public override int GetHashCode()
+        {
+            return ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return ID.Equals(obj);
         }
     }
 }

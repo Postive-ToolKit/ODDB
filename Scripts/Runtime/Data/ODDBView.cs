@@ -18,9 +18,31 @@ namespace TeamODD.ODDB.Runtime.Data
         public ODDBID Key { get; set; }
         public string Name { get; set; }
         public Type BindType { get; set; }
-        public IODDBView ParentView { get; set; }
 
+        public IODDBView ParentView
+        {
+            get => _parentView;
+            set
+            {
+                _parentView = value;
+                if(_parentView == null)
+                    return;
+                if(BindType == null)
+                {
+                    BindType = _parentView.BindType;
+                    return;
+                }
+                if(_parentView.BindType == null)
+                    return;
+                if (_parentView.BindType == BindType || BindType.IsSubclassOf(_parentView.BindType))
+                    return;
+                BindType = _parentView.BindType;
+
+            }
+        }
         protected ODDBID _parentViewKey;
+
+        private IODDBView _parentView;
         
         public List<ODDBTableMeta> TableMetas
         {
@@ -56,14 +78,14 @@ namespace TeamODD.ODDB.Runtime.Data
             OnAddTableMeta(tableMeta);
         }
         
-        public void RemoveTableMeta(int index)
+        public void RemoveField(int index)
         {
             if (!IsScopedMeta(index)) {
                 Debug.LogError($"Index {index} is out of range for this view.");
                 return;
             }
-            _tableMetas.RemoveAt(index);
-            OnRemoveTableMeta(index);
+            _tableMetas.RemoveAt(ConvertToScopedIndex(index));
+            OnRemoveField(index);
         }
         
         public void SwapTableMeta(int indexA, int indexB)
@@ -73,8 +95,9 @@ namespace TeamODD.ODDB.Runtime.Data
                 Debug.LogError($"Index {indexA} or {indexB} is out of range for this view.");
                 return;
             }
-                
-            (_tableMetas[indexA], _tableMetas[indexB]) = (_tableMetas[indexB], _tableMetas[indexA]);
+            var scopedIndexA = ConvertToScopedIndex(indexA);
+            var scopedIndexB = ConvertToScopedIndex(indexB);
+            (_tableMetas[scopedIndexA], _tableMetas[scopedIndexB]) = (_tableMetas[scopedIndexB], _tableMetas[scopedIndexA]);
             OnSwapTableMeta(indexA, indexB);
         }
 
@@ -87,9 +110,17 @@ namespace TeamODD.ODDB.Runtime.Data
             var parentTableMetas = ParentView.TableMetas;
             return index >= parentTableMetas.Count && index < parentTableMetas.Count + _tableMetas.Count;
         }
+        
+        private int ConvertToScopedIndex(int index)
+        {
+            if (ParentView == null)
+                return index;
+            var parentTableMetas = ParentView.TableMetas;
+            return index - parentTableMetas.Count;
+        }
 
         protected virtual void OnAddTableMeta(ODDBTableMeta tableMeta) { }
-        protected virtual void OnRemoveTableMeta(int index) { }
+        protected virtual void OnRemoveField(int index) { }
         protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
         public virtual bool TrySerialize(out string data)
         {
@@ -116,7 +147,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 return false;
             Key = new ODDBID(viewDto.Key);
             Name = viewDto.Name;
-            BindType = TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
+            BindType = ODDBTypeUtility.TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
             _parentViewKey = new ODDBID(viewDto.ParentView);
             ScopedTableMetas.Clear();
             ScopedTableMetas.AddRange(viewDto.TableMetas);
@@ -124,56 +155,21 @@ namespace TeamODD.ODDB.Runtime.Data
             return true;
         }
         
-        protected bool TryConvertBindType(string bindType, out Type type)
-        {
-            type = null;
-            if (string.IsNullOrEmpty(bindType))
-                return true;
-
-            // Quick check for common types
-            type = Type.GetType(bindType);
-            if (type != null)
-            {
-                if (!type.IsSubclassOf(typeof(ODDBEntity)))
-                {
-                    Debug.LogError($"[ODDBImporter] '{bindType}' is not a subclass of ODDBEntity.");
-                    type = null;
-                    return false;
-                }
-
-                return true;
-            }
-
-            Debug.Log("[ODDBImporter] Cannot find bind type: " + bindType +
-                      " in current assembly, searching all assemblies...");
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                Type[] types;
-                try
-                {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException e)
-                {
-                    types = e.Types.Where(t => t != null).ToArray();
-                }
-
-                foreach (var t in types)
-                    if (t.FullName == bindType && !t.IsAbstract && t.IsSubclassOf(typeof(ODDBEntity)))
-                    {
-                        type = t;
-                        return true;
-                    }
-            }
-
-            Debug.LogError($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
-            return false;
-        }
 
         public void OnDatabaseInitialize(ODDatabase database)
         {
             ParentView = database.Views.Read(_parentViewKey);
+            database.OnDataChanged += OnDatabaseDataChanged;
+            database.OnDataRemoved += OnDatabaseDataRemoved;
             ODDBConverter.OnDatabaseCreated -= OnDatabaseInitialize;
         }
+
+        protected virtual void OnDatabaseDataChanged(ODDBID id)
+        {
+            if(ParentView != null && id == ParentView.Key)
+                ParentView = ParentView;
+        }
+        
+        protected virtual void OnDatabaseDataRemoved(ODDBID id) { }
     }
 }

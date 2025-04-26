@@ -147,7 +147,7 @@ namespace TeamODD.ODDB.Editors.UI
                 var menu = new GenericMenu();
                 menu.AddItem(new GUIContent("Delete"), false, () =>
                 {
-                    _table.RemoveTableMeta(columnIndex);
+                    _table.RemoveField(columnIndex);
                     IsDirty = true;
                 });
                 menu.AddItem(new GUIContent("Change Name"), false, () =>

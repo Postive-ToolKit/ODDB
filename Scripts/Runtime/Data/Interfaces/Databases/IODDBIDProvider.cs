@@ -2,8 +2,8 @@
 
 namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
-    public interface IODDBKeyProvider
+    public interface IODDBIDProvider
     {
-        ODDBID CreateKey();
+        ODDBID CreateID();
     }
 }

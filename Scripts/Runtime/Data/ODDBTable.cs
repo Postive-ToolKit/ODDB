@@ -37,7 +37,7 @@ namespace TeamODD.ODDB.Runtime.Data
             }
         }
 
-        protected override void OnRemoveTableMeta(int index)
+        protected override void OnRemoveField(int index)
         {
             foreach (var row in _rows) {
                 row.RemoveData(index);
@@ -169,7 +169,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 return false;
             Key = new ODDBID(tableDto.Key);
             Name = tableDto.Name;
-            BindType = TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
+            BindType = ODDBTypeUtility.TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
             _parentViewKey = new ODDBID(tableDto.ParentView);
             ScopedTableMetas.Clear();
             ScopedTableMetas.AddRange(tableDto.TableMetas);

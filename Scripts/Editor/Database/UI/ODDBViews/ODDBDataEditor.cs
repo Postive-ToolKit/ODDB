@@ -185,16 +185,11 @@ namespace TeamODD.ODDB.Editors.UI
                 createRow.style.flexShrink = 1;
                 editor.AddToolBoxView(createRow);
                 
-                Type parentBind = null;
-                if(view.ParentView != null && view.ParentView.BindType != null)
-                    parentBind = view.ParentView.BindType;
-                var bindClassSelectView = new ODDBBindClassSelectView(parentBind);
-                if (view.BindType != null)
-                    bindClassSelectView.value = view.BindType.Name;
+                var bindClassSelectView = new ODDBBindClassSelectView();
+                bindClassSelectView.SetView(view.Key);
                 
                 bindClassSelectView.OnBindClassChanged += bindType =>
                 {
-                    Debug.Log(bindType);
                     view.BindType = bindType;
                     viewEditor.IsDirty = true;
                     _editorUseCase.NotifyViewDataChanged(view.Key);
@@ -202,7 +197,7 @@ namespace TeamODD.ODDB.Editors.UI
                 editor.AddToolBoxView(bindClassSelectView);
                 
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetCurrentParent(view.ParentView);
+                inheritSelectView.SetView(view.Key);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;
@@ -246,13 +241,8 @@ namespace TeamODD.ODDB.Editors.UI
                 // autoWidth.RegisterCallback<ChangeEvent<bool>>(OnAutoWidthToggleChanged);
                 // editor.AddToolBoxView(autoWidth);
                 
-                Type parentBind = null;
-                if(view.ParentView != null && view.ParentView.BindType != null)
-                    parentBind = view.ParentView.BindType;
-                var bindClassSelectView = new ODDBBindClassSelectView(parentBind);
-                if (view.BindType != null)
-                    bindClassSelectView.value = view.BindType.Name;
-                
+                var bindClassSelectView = new ODDBBindClassSelectView();
+                bindClassSelectView.SetView(view.Key);
                 bindClassSelectView.OnBindClassChanged += bindType =>
                 {
                     view.BindType = bindType;
@@ -262,7 +252,7 @@ namespace TeamODD.ODDB.Editors.UI
                 editor.AddToolBoxView(bindClassSelectView);
                 
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetCurrentParent(view.ParentView);
+                inheritSelectView.SetView(view.Key);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;

@@ -8,9 +8,11 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T> where T : IODDBHasUniqueKey, IODDBSerialize
+    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T>, IODDBDataObserver where T : IODDBHasUniqueKey, IODDBSerialize
     {
-        public IODDBKeyProvider KeyProvider { get; set; }
+        public event Action<ODDBID> OnDataChanged;
+        public event Action<ODDBID> OnDataRemoved;
+        public IODDBIDProvider KeyProvider { get; set; }
         private readonly Dictionary<string, T> _dictionary = new Dictionary<string, T>();
         private readonly List<T> _list = new List<T>();
         public int Count => _dictionary.Count;
@@ -21,6 +23,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var item = CreateInternal(uniqueID);
             _dictionary.Add(uniqueID, item);
             _list.Add(item);
+            OnDataChanged?.Invoke(uniqueID);
             return item;
         }
         
@@ -48,6 +51,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 _dictionary.Add(id, item);
                 _list.Add(item);
             }
+            OnDataChanged?.Invoke(id);
         }
 
         public void Update(int index, T item)
@@ -55,6 +59,7 @@ namespace TeamODD.ODDB.Runtime.Data
             if (index < 0 || index >= _list.Count)
                 return;
             _list[index] = item;
+            OnDataChanged?.Invoke(item.Key);
         }
 
         public void Delete(ODDBID id)
@@ -65,6 +70,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 _dictionary.Remove(id);
                 _list.Remove(item);
             }
+            OnDataRemoved?.Invoke(id);
         }
 
         public void Delete(int index)
@@ -74,6 +80,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var item = _list[index];
             _dictionary.Remove(item.Key);
             _list.RemoveAt(index);
+            OnDataRemoved?.Invoke(item.Key);
         }
 
         public void Swap(int first, int second)
@@ -84,6 +91,8 @@ namespace TeamODD.ODDB.Runtime.Data
             var secondItem = _list[second];
             _list[first] = secondItem;
             _list[second] = firstItem;
+            OnDataChanged?.Invoke(firstItem.Key);
+            OnDataChanged?.Invoke(secondItem.Key);
         }
 
         public IReadOnlyList<T> GetAll()

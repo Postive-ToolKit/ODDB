@@ -4,12 +4,13 @@ using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
-using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public class ODDatabase : IODDatabase
+    public class ODDatabase : IODDatabase, IODDBDataObserver
     {
+        public event Action<ODDBID> OnDataChanged;
+        public event Action<ODDBID> OnDataRemoved;
         private readonly Type _tableType = typeof(ODDBTable);
         private readonly Type _viewType = typeof(ODDBView);
         private readonly Dictionary<Type, IODDBRepository<IODDBView>> _repositories = new();
@@ -25,8 +26,21 @@ namespace TeamODD.ODDB.Runtime.Data
             tableRepo.KeyProvider = this;
             _repositories.Add(typeof(ODDBTable), tableRepo);
             _repositories.Add(typeof(ODDBView), viewRepo);
+            
+            viewRepo.OnDataChanged += (id) => {
+                OnDataChanged?.Invoke(id);
+            };
+            viewRepo.OnDataRemoved += (id) => {
+                OnDataRemoved?.Invoke(id);
+            };
+            tableRepo.OnDataChanged += (id) => {
+                OnDataChanged?.Invoke(id);
+            };
+            tableRepo.OnDataRemoved += (id) => {
+                OnDataRemoved?.Invoke(id);
+            };
         }
-        public ODDBID CreateKey()
+        public ODDBID CreateID()
         {
             var newid = new ODDBID();
             while (IsKeyExists(newid))
@@ -34,11 +48,11 @@ namespace TeamODD.ODDB.Runtime.Data
             return newid;
         }
         
-        private bool IsKeyExists(ODDBID key)
+        private bool IsKeyExists(ODDBID id)
         {
             foreach (var repo in _repositories.Values)
             {
-                if (repo.Read(key) != null)
+                if (repo.Read(id) != null)
                     return true;
             }
             return false;
@@ -50,7 +64,6 @@ namespace TeamODD.ODDB.Runtime.Data
             {
                 var databaseDto = new ODDatabaseDTO(tableRepoData, viewRepoData);
                 data = JsonConvert.SerializeObject(databaseDto, Formatting.Indented);
-                Debug.Log(data);
                 return true;
             }
             data = null;
@@ -85,6 +98,11 @@ namespace TeamODD.ODDB.Runtime.Data
             }
 
             return allViews;
+        }
+
+        public void NotifyDataChanged(ODDBID id)
+        {
+            OnDataChanged?.Invoke(id);
         }
     }
 }
