@@ -18,7 +18,7 @@ namespace TeamODD.ODDB.Editors.Window
         private IODDBEditorUseCase _editorUseCase;
         #region Layout
         private ODDBSplitView _splitView;
-        private ODDatabaseListView _tableListView;
+        private ODDatabaseTreeView _tableTreeView;
         private ODDBEditorView _editorView;
         #endregion
 
@@ -49,7 +49,7 @@ namespace TeamODD.ODDB.Editors.Window
             ODDBEditorDI.RegisterSelfAndInterfaces(new ODDBEditorUseCase(_database));
             CreateLayout();
             
-            _tableListView.OnViewSelected += _editorView.SetView;
+            _tableTreeView.OnViewSelected += _editorView.SetView;
             
             // bind save key to window not view
             rootVisualElement.RegisterCallback<KeyDownEvent>(evt =>
@@ -72,9 +72,10 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneIndex = 0,
                 fixedPaneInitialDimension = 200
             };
-            
-            _tableListView = new ODDatabaseListView();
-            _splitView.Add(_tableListView);
+            _tableTreeView = new ODDatabaseTreeView();
+            var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
+            treeViewContainer.Add(_tableTreeView);
+            _splitView.Add(treeViewContainer);
             
             _editorView = new ODDBEditorView();
             _splitView.Add(_editorView);
