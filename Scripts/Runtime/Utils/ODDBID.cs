@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Utils
 {
+    [Serializable]
     public class ODDBID
     {
         private const int ID_LENGTH = 20;
@@ -17,18 +20,33 @@ namespace TeamODD.ODDB.Runtime.Utils
             _currentCreatedId.Add(id);
             return id;
         }
-        private readonly string _id;
-        public string ID => _id;
-        public ODDBID(string id = null)
+        [SerializeField]
+        private string _id = null;
+        [JsonProperty("id")]
+        public string ID
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                _id = GenerateID();
-                return;
+            get => _id;
+            set {
+                if (string.IsNullOrEmpty(value)) {
+                    _id = GenerateID();
+                    _currentCreatedId.Add(_id);
+                    return;
+                }
+                if (!_currentCreatedId.Contains(value)) {
+                    _currentCreatedId.Add(value);
+                }
+                _id = value;
             }
-            if (!_currentCreatedId.Contains(id))
-                _currentCreatedId.Add(id);
-            _id = id;
+        }
+        
+        public ODDBID()
+        {
+            ID = null;
+        }
+        [JsonConstructor]
+        public ODDBID(string id)
+        {
+            ID = id;
         }
         
         public override string ToString()

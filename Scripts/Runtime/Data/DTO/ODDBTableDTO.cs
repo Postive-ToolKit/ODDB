@@ -9,7 +9,7 @@ namespace TeamODD.ODDB.Runtime.Data.DTO
         public ODDBTableDTO(
             string name,
             string key,
-            List<ODDBTableMeta> tableMetas,
+            List<ODDBField> tableMetas,
             string bindType,
             string parentView,
             string data) : base(name, key, tableMetas, bindType, parentView)

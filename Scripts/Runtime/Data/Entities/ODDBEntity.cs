@@ -10,7 +10,7 @@ namespace TeamODD.ODDB.Runtime.Entities
 {
     public abstract class ODDBEntity
     {
-        public void Import(List<ODDBTableMeta> tableMetas, ODDBRow row)
+        public void Import(List<ODDBField> tableMetas, ODDBRow row)
         {
             var converter = new ODDBDataConverter();
             var entityType = this.GetType(); // 현재 인스턴스의 실제 타입
@@ -26,7 +26,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var field = fields[fieldIndex];
                 var targetType = field.FieldType;
                 var rawValue = row.GetData(i);
-                var convertedValue = converter.Convert(rawValue, meta.DataType);
+                var convertedValue = converter.Convert(rawValue, meta.Type);
                 
                 //Debug.Log("[ODDBImporter] Converted value: " + convertedValue + " for field: " + field.Name);
 

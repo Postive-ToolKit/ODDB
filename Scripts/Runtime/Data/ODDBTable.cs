@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Xml.Serialization;
+using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
-using Unity.Plastic.Newtonsoft.Json;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
@@ -25,12 +24,12 @@ namespace TeamODD.ODDB.Runtime.Data
             
         }
         
-        public ODDBTable(IEnumerable<ODDBTableMeta> tableMetas = null) : base(tableMetas)
+        public ODDBTable(IEnumerable<ODDBField> tableMetas = null) : base(tableMetas)
         {
             
         }
 
-        protected override void OnAddTableMeta(ODDBTableMeta tableMeta)
+        protected override void OnAddTableMeta(ODDBField field)
         {
             foreach (var row in _rows) {
                 row.AddData(null);
@@ -55,7 +54,7 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             if (row == null)
             {
-                row = new ODDBRow(TableMetas.Count);
+                row = new ODDBRow(TotalFields.Count);
             }
             _rows.Add(row);
         }
@@ -85,7 +84,7 @@ namespace TeamODD.ODDB.Runtime.Data
             if (rowIndex < 0 || rowIndex >= _rows.Count) {
                 return null;
             }
-            if (columnIndex < 0 || columnIndex >= TableMetas.Count) {
+            if (columnIndex < 0 || columnIndex >= TotalFields.Count) {
                 return null;
             }
             var row = _rows[rowIndex];
@@ -108,7 +107,7 @@ namespace TeamODD.ODDB.Runtime.Data
                     .SetParentView(this)
                     .Build();
                 // serialize to json
-                data = JsonConvert.SerializeObject(tableDto, Formatting.Indented);
+                data = JsonConvert.SerializeObject(tableDto);
                 return true;
             }
             catch (Exception e)
@@ -123,7 +122,7 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             var data = new StringBuilder();
             // Append header
-            data.AppendLine("Key" + DELIMITER + string.Join(DELIMITER.ToString(), TableMetas.ConvertAll(meta => EscapeCSV(meta.Name))));
+            data.AppendLine("Key" + DELIMITER + string.Join(DELIMITER.ToString(), TotalFields.ConvertAll(meta => EscapeCSV(meta.Name))));
             foreach (var row in _rows)
             {
                 SerializeRow(row, data);
@@ -137,12 +136,12 @@ namespace TeamODD.ODDB.Runtime.Data
             builder.Append(EscapeCSV(row.Key));
             builder.Append(DELIMITER);
             // data cut off
-            for (int i = 0; i < TableMetas.Count; i++)
+            for (int i = 0; i < TotalFields.Count; i++)
             {
                 var value = row.GetData(i)?.ToString() ?? string.Empty;
                 builder.Append(EscapeCSV(value));
                 
-                if (i < TableMetas.Count - 1)
+                if (i < TotalFields.Count - 1)
                     builder.Append(DELIMITER);
             }
         }
@@ -164,7 +163,7 @@ namespace TeamODD.ODDB.Runtime.Data
         #region Deserialization
         public override bool TryDeserialize(string data)
         {
-            var tableDto = JsonUtility.FromJson<ODDBTableDTO>(data);
+            var tableDto = JsonConvert.DeserializeObject<ODDBTableDTO>(data);
             if (tableDto == null)
                 return false;
             Key = new ODDBID(tableDto.Key);
@@ -212,13 +211,13 @@ namespace TeamODD.ODDB.Runtime.Data
 
         private void NormalizeValues(List<string> values)
         {
-            while (values.Count < TableMetas.Count)
+            while (values.Count < TotalFields.Count)
             {
                 values.Add(string.Empty);
             }
-            if (values.Count > TableMetas.Count)
+            if (values.Count > TotalFields.Count)
             {
-                values.RemoveRange(TableMetas.Count, values.Count - TableMetas.Count);
+                values.RemoveRange(TotalFields.Count, values.Count - TotalFields.Count);
             }
         }
 

@@ -44,38 +44,38 @@ namespace TeamODD.ODDB.Runtime.Data
 
         private IODDBView _parentView;
         
-        public List<ODDBTableMeta> TableMetas
+        public List<ODDBField> TotalFields
         {
             get
             {
                 if (ParentView == null)
                     return _tableMetas;
-                var parentTableMetas = ParentView.TableMetas;
-                var tableMetas = new List<ODDBTableMeta>();
+                var parentTableMetas = ParentView.TotalFields;
+                var tableMetas = new List<ODDBField>();
                 tableMetas.AddRange(parentTableMetas);
                 tableMetas.AddRange(_tableMetas);
                 return tableMetas;
             }
         }
-        public List<ODDBTableMeta> ScopedTableMetas => _tableMetas;
-        private readonly List<ODDBTableMeta> _tableMetas = new();
+        public List<ODDBField> ScopedTableMetas => _tableMetas;
+        private readonly List<ODDBField> _tableMetas = new();
         
         public ODDBView()
         {
             Key = new ODDBID();
             Name = DEFAULT_NAME;
         }
-        public ODDBView(IEnumerable<ODDBTableMeta> tableMetas = null)
+        public ODDBView(IEnumerable<ODDBField> tableMetas = null)
         {
             if (tableMetas == null)
                 return;
             _tableMetas.AddRange(tableMetas);
         }
         
-        public void AddField(ODDBTableMeta tableMeta)
+        public void AddField(ODDBField field)
         {
-            _tableMetas.Add(tableMeta);
-            OnAddTableMeta(tableMeta);
+            _tableMetas.Add(field);
+            OnAddTableMeta(field);
         }
         
         public void RemoveField(int index)
@@ -107,7 +107,7 @@ namespace TeamODD.ODDB.Runtime.Data
             {
                 return index >= 0 && index < _tableMetas.Count;
             }
-            var parentTableMetas = ParentView.TableMetas;
+            var parentTableMetas = ParentView.TotalFields;
             return index >= parentTableMetas.Count && index < parentTableMetas.Count + _tableMetas.Count;
         }
         
@@ -115,11 +115,11 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             if (ParentView == null)
                 return index;
-            var parentTableMetas = ParentView.TableMetas;
+            var parentTableMetas = ParentView.TotalFields;
             return index - parentTableMetas.Count;
         }
 
-        protected virtual void OnAddTableMeta(ODDBTableMeta tableMeta) { }
+        protected virtual void OnAddTableMeta(ODDBField field) { }
         protected virtual void OnRemoveField(int index) { }
         protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
         public virtual bool TrySerialize(out string data)
@@ -136,7 +136,7 @@ namespace TeamODD.ODDB.Runtime.Data
             if (viewDto == null)
                 return false;
             // serialize to json
-            data = JsonConvert.SerializeObject(viewDto, Formatting.Indented);
+            data = JsonConvert.SerializeObject(viewDto);
             return true;
         }
 

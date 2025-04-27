@@ -83,7 +83,7 @@ namespace TeamODD.ODDB.Runtime
                         Debug.LogError($"Failed to create instance of {targetType}");
                         continue;
                     }
-                    entity.Import(table.TableMetas,row);
+                    entity.Import(table.TotalFields,row);
                     _entityCache[targetType].Add(entity);
                     _entityIdCache[targetType][row.Key] = entity;
                 }

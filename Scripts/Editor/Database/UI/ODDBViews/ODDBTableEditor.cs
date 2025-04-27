@@ -9,6 +9,7 @@ using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Enum;
+using TeamODD.ODDB.Runtime.Utils;
 
 namespace TeamODD.ODDB.Editors.UI
 {
@@ -61,10 +62,10 @@ namespace TeamODD.ODDB.Editors.UI
             columns.Add(CreateKeyColumn());
 
             // add data columns
-            for (int i = 0; i < _table.TableMetas.Count; i++)
+            for (int i = 0; i < _table.TotalFields.Count; i++)
             {
-                var meta = _table.TableMetas[i];
-                var columnName = $"{meta.Name}[{meta.DataType}]";
+                var meta = _table.TotalFields[i];
+                var columnName = $"{meta.Name}[{meta.Type}]";
                 _columnNames.Add(columnName);
 
                 var column = new Column()
@@ -78,7 +79,7 @@ namespace TeamODD.ODDB.Editors.UI
                     resizable = true,
                 };
 
-                var dataType = meta.DataType;
+                var dataType = meta.Type;
                 var columnIndex = i;
                 column.makeHeader = () => CreateHeaderElement(meta);
                 column.bindHeader = (element) => BindHeaderElement(element, column, meta, columnIndex);
@@ -122,9 +123,9 @@ namespace TeamODD.ODDB.Editors.UI
             return keyColumn;
         }
 
-        private VisualElement CreateHeaderElement(ODDBTableMeta tableMeta)
+        private VisualElement CreateHeaderElement(ODDBField field)
         {
-            var columnTitle = $"{tableMeta.Name}[{tableMeta.DataType}]";
+            var columnTitle = $"{field.Name}[{field.Type}]";
             var header = new Label(columnTitle) {
                 style =
                 {
@@ -135,7 +136,7 @@ namespace TeamODD.ODDB.Editors.UI
             };
             return header;
         }
-        private void BindHeaderElement(VisualElement element, Column column, ODDBTableMeta meta,int columnIndex)
+        private void BindHeaderElement(VisualElement element, Column column, ODDBField meta,int columnIndex)
         {
             var header = element as Label;
             header!.RegisterCallback<MouseDownEvent>(evt =>
@@ -145,6 +146,8 @@ namespace TeamODD.ODDB.Editors.UI
                 evt.StopPropagation();
                 //create context menu
                 var menu = new GenericMenu();
+                menu.AddItem(new GUIContent($"field id : {meta.ID}"), false, null);
+                menu.AddSeparator("");
                 menu.AddItem(new GUIContent("Delete"), false, () =>
                 {
                     _table.RemoveField(columnIndex);
@@ -157,7 +160,7 @@ namespace TeamODD.ODDB.Editors.UI
                     changeNameDialog.SetTitle("Change Field Name");
                     changeNameDialog.SetOnConfirm(newName =>
                     {
-                        _table.TableMetas[columnIndex] = new ODDBTableMeta(meta.DataType, newName);
+                        _table.TotalFields[columnIndex].Name = newName;
                         column.title = newName;
                         _columnNames[columnIndex] = newName;
                         IsDirty = true;
@@ -286,7 +289,7 @@ namespace TeamODD.ODDB.Editors.UI
                     dialogBuilder.SetTitle("Please enter field name");
                     dialogBuilder.SetOnConfirm((input) =>
                     {
-                        _table.AddField(new ODDBTableMeta(dataType, input));
+                        _table.AddField(new ODDBField(new ODDBID(), input, dataType));
                         IsDirty = true;
                     });
                     dialogBuilder.Build();

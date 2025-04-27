@@ -54,6 +54,8 @@ namespace TeamODD.ODDB.Editors.UI
             columns.Clear();
             _columnNames.Clear();
             
+            columns.Add(CreateKeyColumn());
+            
             var nameColumn = new Column()
             {
                 title = "Name",
@@ -87,6 +89,35 @@ namespace TeamODD.ODDB.Editors.UI
             
             columns.Add(CreateToolColumn());
         }
+        
+        private Column CreateKeyColumn()
+        {
+            var keyColumn = new Column()
+            {
+                title = "Key",
+                name = "Key",
+                maxWidth = 100,
+                minWidth = 100,
+                stretchable = true,
+                resizable = true
+            };
+            keyColumn.makeCell =
+                () => new TextField()
+                {
+                    style =
+                    {
+                        flexShrink = 1,
+                        unityTextAlign = TextAnchor.MiddleLeft
+                    },
+                    isReadOnly = true,
+                };
+            keyColumn.bindCell = (element, index) =>
+            {
+                if (_view != null && index < _view.TotalFields.Count)
+                    (element as TextField)!.value = _view.TotalFields[index].ID;
+            };
+            return keyColumn;
+        }
 
         private void BindNameCell(VisualElement element, int index)
         {
@@ -94,16 +125,16 @@ namespace TeamODD.ODDB.Editors.UI
             var field = container.userData as ODDBStringField;
             if (field == null)
                 return;
-            if (index >= _view.TableMetas.Count)
+            if (index >= _view.TotalFields.Count)
                 return;
             
-            var value = _view.TableMetas[index];
+            var value = _view.TotalFields[index];
             field.SetValue(value.Name);
             field.RegisterValueChangedCallback((changedName) =>
             {
                 if (_view == null)
                     return;
-                _view.TableMetas[index] = new ODDBTableMeta(value.DataType, changedName.ToString());
+                _view.TotalFields[index].Name = changedName.ToString();
             });
         }
 
@@ -132,15 +163,15 @@ namespace TeamODD.ODDB.Editors.UI
             var field = container.userData as ODDBMetaSelectView;
             if (field == null)
                 return;
-            if (index >= _view.TableMetas.Count)
+            if (index >= _view.TotalFields.Count)
                 return;
-            var value = _view.TableMetas[index];
-            field.SetType(value.DataType);
+            var value = _view.TotalFields[index];
+            field.SetType(value.Type);
             field.OnTypeChanged += type =>
             {
                 if (_view == null)
                     return;
-                _view.TableMetas[index] = new ODDBTableMeta(type, value.Name);
+                _view.TotalFields[index].Type = type;
                 IsDirty = true;
             };
         }
@@ -180,7 +211,7 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     button.clicked += () =>
                     {
-                        if (_view != null && index < _view.TableMetas.Count)
+                        if (_view != null && index < _view.TotalFields.Count)
                         {
                             _view.RemoveField(index);
                             IsDirty = true;
@@ -197,7 +228,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (_view == null) return;
             
             itemsSource = new List<int>();
-            for (int i = 0; i < _view.TableMetas.Count; i++)
+            for (int i = 0; i < _view.TotalFields.Count; i++)
             {
                 (itemsSource as List<int>).Add(i);
             }

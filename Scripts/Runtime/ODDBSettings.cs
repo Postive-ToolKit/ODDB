@@ -1,4 +1,10 @@
-﻿using TeamODD.ODDB.Runtime.Attributes;
+﻿using System.Collections.Generic;
+using Newtonsoft.Json;
+using Sirenix.OdinInspector;
+using TeamODD.ODDB.Runtime.Attributes;
+using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Settings
@@ -30,6 +36,17 @@ namespace TeamODD.ODDB.Runtime.Settings
             {
                 Path = _dbPath;
             }
+        }
+
+        [Button]
+        private string Test(ODDBTableDTO testField)
+        {
+            return JsonConvert.SerializeObject(testField);
+        }
+        [Button]
+        private ODDBTableDTO Test2(string test)
+        {
+            return JsonConvert.DeserializeObject<ODDBTableDTO>(test);
         }
     }
 }

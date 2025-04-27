@@ -177,7 +177,7 @@ namespace TeamODD.ODDB.Editors.UI
                 createRow.text = "Add Metadata";
                 createRow.clicked += () =>
                 {
-                    view.AddField(new ODDBTableMeta());
+                    view.AddField(new ODDBField());
                     viewEditor.IsDirty = true;
                     _editorUseCase.NotifyViewDataChanged(view.Key);
                 };
