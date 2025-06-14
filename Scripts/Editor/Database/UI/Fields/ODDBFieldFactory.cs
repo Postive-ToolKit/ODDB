@@ -9,12 +9,14 @@ namespace TeamODD.ODDB.Editors.UI.Fields
         {
             return dataType switch
             {
+                ODDBDataType.ID => new ODDBIDField(),
                 ODDBDataType.String => new ODDBStringField(),
                 ODDBDataType.Int => new ODDBNumberField(true),
                 ODDBDataType.Float => new ODDBNumberField(false),
                 ODDBDataType.Bool => new ODDBBoolField(),
                 ODDBDataType.Prefab => new ODDBPrefabField(),
                 ODDBDataType.Sprite => new ODDBSpriteField(),
+                ODDBDataType.View => new ODDBViewField(),
                 _ => new ODDBStringField() // 기본값으로 문자열 필드 사용
             };
         }

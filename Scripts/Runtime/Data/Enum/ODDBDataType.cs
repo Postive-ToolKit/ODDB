@@ -12,6 +12,8 @@
         Prefab = 1001,
         Sprite = 1002,
         
-        
+        // View Reference Type
+        View = 2000,
+        ID = 2001,
     }
 }

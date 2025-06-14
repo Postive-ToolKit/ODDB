@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
@@ -29,11 +30,14 @@ namespace TeamODD.ODDB.Editors.Window
             return view;
         }
 
-        public IEnumerable<IODDBView> GetViews()
+        public IEnumerable<IODDBView> GetViews(Predicate<IODDBView> predicate = null)
         {
             if (_database == null)
                 return null;
-            return _database.GetAll();
+            if (predicate == null)
+                return _database.GetAll();
+            var query = _database.GetAll().Where(x => predicate(x));
+            return query;
         }
 
         public ODDBViewType GetViewTypeByKey(string id)

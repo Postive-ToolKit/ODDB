@@ -1,4 +1,5 @@
 ﻿using System;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data.Enum
@@ -27,6 +28,8 @@ namespace TeamODD.ODDB.Runtime.Data.Enum
                 //     return typeof(Color);
                 case ODDBDataType.ScriptableObject:
                     return typeof(ScriptableObject);
+                case ODDBDataType.View:
+                    return typeof(IODDBView);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(type), type, null);
             }

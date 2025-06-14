@@ -9,7 +9,7 @@ namespace TeamODD.ODDB.Editors.Window
     {
         event Action<string> OnViewChanged;
         IODDBView GetViewByKey(string key);
-        IEnumerable<IODDBView> GetViews();
+        IEnumerable<IODDBView> GetViews(Predicate<IODDBView> predicate = null);
         ODDBViewType GetViewTypeByKey(string key);
         string GetViewName(string key);
         void SetViewName(string key, string name);

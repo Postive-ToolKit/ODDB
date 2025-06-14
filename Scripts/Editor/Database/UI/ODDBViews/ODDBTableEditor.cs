@@ -103,22 +103,15 @@ namespace TeamODD.ODDB.Editors.UI
                 stretchable = true,
                 resizable = true
             };
-            keyColumn.makeCell =
-                () => new TextField()
-                {
-                    style =
-                    {
-                        flexShrink = 1,
-                        unityTextAlign = TextAnchor.MiddleLeft
-                    },
-                    isReadOnly = true,
-                };
+            keyColumn.makeCell = () => CreateCell(ODDBDataType.ID);
+            
             keyColumn.bindCell = (element, index) =>
             {
+                var container = element as VisualElement;
+                var field = container.userData as IODDBField;
                 if (index >= _table.ReadOnlyRows.Count)
                     return;
-                var container = element as TextField;
-                container!.value = _table.ReadOnlyRows[index].Key;
+                field!.SetValue(_table.ReadOnlyRows[index].Key);
             };
             return keyColumn;
         }

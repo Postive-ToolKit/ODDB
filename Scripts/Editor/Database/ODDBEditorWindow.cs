@@ -116,6 +116,12 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void OnDestroy()
         {
+            var result = EditorUtility.DisplayDialog("Save Changes", "Do you want to save changes?", "Yes", "No");
+            if (result)
+            {
+                var fullPath = Path.Combine(_settings.Path, _settings.DBName);
+                _dataService.SaveDatabase(_database, fullPath);
+            }
             _editorUseCase?.Dispose();
             ODDBEditorDI.DisposeAll();
         }
