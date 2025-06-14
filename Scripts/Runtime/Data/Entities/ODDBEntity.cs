@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 
@@ -26,6 +27,12 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var field = fields[fieldIndex];
                 var targetType = field.FieldType;
                 var rawValue = row.GetData(i);
+
+                if (meta.Type == ODDBDataType.View)
+                {
+                    RegisterAsLazyLoad(field, rawValue);
+                }
+                
                 var convertedValue = converter.Convert(rawValue, meta.Type);
                 
                 //Debug.Log("[ODDBImporter] Converted value: " + convertedValue + " for field: " + field.Name);
@@ -46,6 +53,16 @@ namespace TeamODD.ODDB.Runtime.Entities
                 fieldIndex++;
             }
 
+        }
+
+        private void RegisterAsLazyLoad(FieldInfo field, string rawValue)
+        {
+            ODDBPort.RegisterOnDataPortedCallback(() =>
+            {
+                var path = rawValue;
+                var targetId = path.Split('/').LastOrDefault();
+                field.SetValue(this, ODDBPort.GetEntity<ODDBEntity>(targetId));
+            });
         }
     }
 }

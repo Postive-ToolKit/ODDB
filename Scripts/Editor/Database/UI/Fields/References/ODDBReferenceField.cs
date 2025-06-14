@@ -45,7 +45,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
                 return;
             }
 
-            var dataPath = ODDBDataConverter<string>.TryConvert(value);
+            var dataPath = value.ToString();
             if (TryGetValue(dataPath, out var convertedValue)) 
             {
                 _currentPath = dataPath;

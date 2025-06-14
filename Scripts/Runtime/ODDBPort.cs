@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Serialization;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.DTO;
@@ -13,10 +14,12 @@ namespace TeamODD.ODDB.Runtime
 {
     public static class ODDBPort
     {
-        private static Dictionary<Type, List<ODDBEntity>> _entityCache = new Dictionary<Type, List<ODDBEntity>>();
-        private static Dictionary<Type, Dictionary<string,ODDBEntity>> _entityIdCache = new Dictionary<Type , Dictionary<string,ODDBEntity>>();
+        private static Dictionary<string, ODDBEntity> _entityCache = new();
+        private static Dictionary<Type, Dictionary<string,ODDBEntity>> _entityTypeCache = new Dictionary<Type , Dictionary<string,ODDBEntity>>();
+        private static List<Action> _onDataPortedCallbacks = new List<Action>();
         private static ODDBSettings _settings;
         private static ODDatabase _database;
+
         #region Initialization
         [RuntimeInitializeOnLoadMethod]
         public static void Initialize()
@@ -69,10 +72,9 @@ namespace TeamODD.ODDB.Runtime
                 if(view is not ODDBTable table)
                     return;
 
-                if (!_entityCache.ContainsKey(targetType))
+                if (!_entityTypeCache.ContainsKey(targetType))
                 {
-                    _entityCache[targetType] = new List<ODDBEntity>();
-                    _entityIdCache[targetType] = new Dictionary<string, ODDBEntity>();
+                    _entityTypeCache[targetType] = new Dictionary<string, ODDBEntity>();
                 }
                     
                 foreach (var row in table.ReadOnlyRows)
@@ -84,8 +86,8 @@ namespace TeamODD.ODDB.Runtime
                         continue;
                     }
                     entity.Import(table.TotalFields,row);
-                    _entityCache[targetType].Add(entity);
-                    _entityIdCache[targetType][row.Key] = entity;
+                    _entityCache[row.Key] = entity;
+                    _entityTypeCache[targetType][row.Key] = entity;
                 }
             }
         }
@@ -95,48 +97,38 @@ namespace TeamODD.ODDB.Runtime
             database = importer.CreateDatabase(xml);
             return database != null;
         }
-        #endregion
-        public static T GetEntity<T>(int index = 0) where T : ODDBEntity
+        
+        public static void RegisterOnDataPortedCallback(Action callback)
         {
-            var type = typeof(T);
-            if (_entityCache.ContainsKey(type))
+            if (callback == null)
             {
-                var entities = _entityCache[type];
-                if (index < entities.Count)
-                {
-                    return (T)entities[index];
-                }
-                Debug.LogError($"Index {index} out of range for type {type}");
-                return null;
+                Debug.LogError("Cannot register a null callback.");
+                return;
             }
-            Debug.LogError($"No entities of type {type} found.");
-            return null;
+            _onDataPortedCallbacks.Add(callback);
         }
-
+        #endregion
         public static T GetEntity<T>(string id) where T : ODDBEntity
         {
             var type = typeof(T);
-            if (_entityIdCache.ContainsKey(type))
+            if (_entityCache.TryGetValue(id, out var entity))
             {
-                var entities = _entityIdCache[type];
-                if (entities.ContainsKey(id))
+                if (entity is T typedEntity)
                 {
-                    return (T)entities[id];
+                    return typedEntity;
                 }
-
-                Debug.LogError($"ID {id} not found for type {type}");
+                Debug.LogError($"Entity with ID {id} is not of type {type}. Found type: {entity.GetType()}");
                 return null;
             }
-
             Debug.LogError($"No entities of type {type} found.");
             return null;
         }
         public static IEnumerable<T> GetEntities<T>() where T : ODDBEntity
         {
             var type = typeof(T);
-            if (_entityCache.ContainsKey(type))
+            if (_entityTypeCache.ContainsKey(type))
             {
-                return _entityCache[type] as IEnumerable<T>;
+                return _entityTypeCache[type] as IEnumerable<T>;
             }
             Debug.LogError($"No entities of type {type} found.");
             return null;

@@ -15,14 +15,13 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
         public VisualElement Root => _container;
         private IODDBEditorUseCase _editorUseCase;
         private Dictionary<int, string> _idMapping = new Dictionary<int, string>();
+        private Dictionary<string, int> _reverseIdMapping = new Dictionary<string, int>();
         public ODDBViewField()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             // Create container
             _container = new VisualElement();
             _container.style.flexGrow = 1;
-            _container.style.alignItems = Align.Center;
-            _container.style.justifyContent = Justify.Center;
 
             // Create and setup toggle
             _viewSelector = new DropdownField();
@@ -41,6 +40,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
                     var path = basePath + row.Key;
                     var name = namePath + (row.GetData(0) == null ? row.Key : row.GetData(0));
                     _idMapping.Add(choices.Count, path);
+                    _reverseIdMapping[path] = choices.Count;
                     choices.Add(name);
                 }
             }
@@ -56,13 +56,12 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
                 _viewSelector.value = string.Empty;
                 return;
             }
-            var destination = path.Split("/");
-            var view = _editorUseCase.GetViewByKey(destination[0]);
-            if (view == null) {
-                _viewSelector.value = string.Empty;
+            if (_reverseIdMapping.TryGetValue(path, out var index))
+            {
+                _viewSelector.value = _viewSelector.choices[index];
                 return;
             }
-            _viewSelector.value = value.ToString();
+            _viewSelector.value = string.Empty;
         }
 
         public object GetValue()
@@ -83,16 +82,7 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
                 var mappedPath = _idMapping[index];
                 if (string.IsNullOrEmpty(mappedPath))
                     return;
-                var destination = mappedPath.Split("/");
-                if (destination.Length == 0)
-                    return;
-                var viewKey = destination[0];
-                if (string.IsNullOrEmpty(viewKey))
-                    return;
-                var view = _editorUseCase.GetViewByKey(viewKey);
-                if (view == null)
-                    return;
-                callback?.Invoke(viewKey);
+                callback?.Invoke(mappedPath);
             });
         }
     }
