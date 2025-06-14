@@ -90,6 +90,11 @@ namespace TeamODD.ODDB.Runtime
                     _entityTypeCache[targetType][row.ID] = entity;
                 }
             }
+
+            foreach (var callback in _onDataPortedCallbacks)
+            {
+                callback?.Invoke();
+            }
         }
         private static bool TryConvertData(string xml, out ODDatabase database)
         {
@@ -110,6 +115,9 @@ namespace TeamODD.ODDB.Runtime
         #endregion
         public static T GetEntity<T>(string id) where T : ODDBEntity
         {
+            if (string.IsNullOrEmpty(id))
+                return null;
+            
             var type = typeof(T);
             if (_entityCache.TryGetValue(id, out var entity))
             {
@@ -120,7 +128,7 @@ namespace TeamODD.ODDB.Runtime
                 Debug.LogError($"Entity with ID {id} is not of type {type}. Found type: {entity.GetType()}");
                 return null;
             }
-            Debug.LogError($"No entities of type {type} found.");
+            Debug.LogError($"No entities of ID {id} found.");
             return null;
         }
         public static IEnumerable<T> GetEntities<T>() where T : ODDBEntity

@@ -31,6 +31,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 if (meta.Type == ODDBDataType.View)
                 {
                     RegisterAsLazyLoad(field, rawValue);
+                    continue;
                 }
                 
                 var convertedValue = converter.Convert(rawValue, meta.Type);
