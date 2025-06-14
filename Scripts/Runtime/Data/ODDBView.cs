@@ -15,7 +15,7 @@ namespace TeamODD.ODDB.Runtime.Data
     public class ODDBView : IODDBView
     {
         private const string DEFAULT_NAME = "Default Name";
-        public ODDBID Key { get; set; }
+        public ODDBID ID { get; set; }
         public string Name { get; set; }
         public Type BindType { get; set; }
 
@@ -62,7 +62,7 @@ namespace TeamODD.ODDB.Runtime.Data
         
         public ODDBView()
         {
-            Key = new ODDBID();
+            ID = new ODDBID();
             Name = DEFAULT_NAME;
         }
         public ODDBView(IEnumerable<ODDBField> tableMetas = null)
@@ -128,7 +128,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var dtoBuilder = new ODDBViewDTOBuilder();
             var viewDto = dtoBuilder
                 .SetName(this)
-                .SetKey(this)
+                .SetID(this)
                 .SetTableMeta(this)
                 .SetBindType(this)
                 .SetParentView(this)
@@ -145,7 +145,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var viewDto = JsonConvert.DeserializeObject<ODDBViewDTO>(data);
             if (viewDto == null)
                 return false;
-            Key = new ODDBID(viewDto.Key);
+            ID = new ODDBID(viewDto.ID);
             Name = viewDto.Name;
             BindType = ODDBTypeUtility.TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
             _parentViewKey = new ODDBID(viewDto.ParentView);
@@ -166,7 +166,7 @@ namespace TeamODD.ODDB.Runtime.Data
 
         protected virtual void OnDatabaseDataChanged(ODDBID id)
         {
-            if(ParentView != null && id == ParentView.Key)
+            if(ParentView != null && id == ParentView.ID)
                 ParentView = ParentView;
         }
         

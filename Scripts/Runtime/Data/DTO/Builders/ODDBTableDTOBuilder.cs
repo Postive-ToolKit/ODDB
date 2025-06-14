@@ -17,7 +17,7 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
             var viewDto = base.Build();
             // convert as ODDBTableDTO
             var name = viewDto.Name;
-            var key = viewDto.Key;
+            var key = viewDto.ID;
             var convertedMeta = viewDto.TableMetas;
             var convertedBindType = viewDto.BindType;
             var parentView = viewDto.ParentView;

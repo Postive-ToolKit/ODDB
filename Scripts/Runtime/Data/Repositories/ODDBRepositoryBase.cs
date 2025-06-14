@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T>, IODDBDataObserver where T : IODDBHasUniqueKey, IODDBSerialize
+    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T>, IODDBDataObserver where T : IODDBHasUniqueID, IODDBSerialize
     {
         public event Action<ODDBID> OnDataChanged;
         public event Action<ODDBID> OnDataRemoved;
@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Runtime.Data
             if (index < 0 || index >= _list.Count)
                 return;
             _list[index] = item;
-            OnDataChanged?.Invoke(item.Key);
+            OnDataChanged?.Invoke(item.ID);
         }
 
         public void Delete(ODDBID id)
@@ -78,9 +78,9 @@ namespace TeamODD.ODDB.Runtime.Data
             if (index < 0 || index >= _list.Count)
                 return;
             var item = _list[index];
-            _dictionary.Remove(item.Key);
+            _dictionary.Remove(item.ID);
             _list.RemoveAt(index);
-            OnDataRemoved?.Invoke(item.Key);
+            OnDataRemoved?.Invoke(item.ID);
         }
 
         public void Swap(int first, int second)
@@ -91,8 +91,8 @@ namespace TeamODD.ODDB.Runtime.Data
             var secondItem = _list[second];
             _list[first] = secondItem;
             _list[second] = firstItem;
-            OnDataChanged?.Invoke(firstItem.Key);
-            OnDataChanged?.Invoke(secondItem.Key);
+            OnDataChanged?.Invoke(firstItem.ID);
+            OnDataChanged?.Invoke(secondItem.ID);
         }
 
         public IReadOnlyList<T> GetAll()
@@ -135,7 +135,7 @@ namespace TeamODD.ODDB.Runtime.Data
             {
                 var view = CreateInternal();
                 view.TryDeserialize(viewData);
-                Update(view.Key, view);
+                Update(view.ID, view);
             }
             return true;
         }

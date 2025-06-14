@@ -32,7 +32,7 @@ namespace TeamODD.ODDB.Editors.UI
             
             foreach (var view in pureViews)
             {
-                var selection = view.Name + " - " + view.Key;
+                var selection = view.Name + " - " + view.ID;
                 _inheritableViews[selection] = view;
                 choices.Add(selection);
             }
@@ -48,13 +48,13 @@ namespace TeamODD.ODDB.Editors.UI
                 value = INHERIT_NOT_FOUND;
                 return;
             }
-            choices.Remove(view.Name + " - " + view.Key);
+            choices.Remove(view.Name + " - " + view.ID);
             var parentView = view.ParentView;
             if (parentView == null) {
                 value = INHERIT_NOT_FOUND;
                 return;
             }
-            value = parentView.Name + " - " + parentView.Key;
+            value = parentView.Name + " - " + parentView.ID;
         }
         private void OnDropDownValueChanged(ChangeEvent<string> evt)
         {

@@ -1,7 +1,7 @@
 ﻿namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
     public interface IODDBView : 
-        IODDBHasUniqueKey, 
+        IODDBHasUniqueID, 
         IODDBHasName, 
         IODDBHasTableMeta, 
         IODDBHasBindType, 

@@ -65,7 +65,7 @@ namespace TeamODD.ODDB.Runtime
                 var targetType = view.BindType;
                 if (targetType == null)
                 {
-                    Debug.LogError($"BindType is null for table {view.Name} with key {view.Key}, table will be excluded.");
+                    Debug.LogError($"BindType is null for table {view.Name} with key {view.ID}, table will be excluded.");
                     continue;
                 }
                 
@@ -86,8 +86,8 @@ namespace TeamODD.ODDB.Runtime
                         continue;
                     }
                     entity.Import(table.TotalFields,row);
-                    _entityCache[row.Key] = entity;
-                    _entityTypeCache[targetType][row.Key] = entity;
+                    _entityCache[row.ID] = entity;
+                    _entityTypeCache[targetType][row.ID] = entity;
                 }
             }
         }

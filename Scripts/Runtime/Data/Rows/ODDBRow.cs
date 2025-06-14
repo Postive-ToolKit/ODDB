@@ -4,21 +4,21 @@ using TeamODD.ODDB.Runtime.Utils;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public class ODDBRow : IODDBHasUniqueKey
+    public class ODDBRow : IODDBHasUniqueID
     {
-        public ODDBID Key { get; set; }
+        public ODDBID ID { get; set; }
         private List<string> _fields = new List<string>();
         public ODDBRow(int dataCount)
         {
-            Key = new ODDBID();
+            ID = new ODDBID();
             for (int i = 0; i < dataCount; i++)
             {
                 _fields.Add(null);
             }
         }
-        public ODDBRow(ODDBID key,IEnumerable<string> data)
+        public ODDBRow(ODDBID id,IEnumerable<string> data)
         {
-            Key = key;
+            ID = id;
             _fields.AddRange(data);
         }
         public string GetData(int index)

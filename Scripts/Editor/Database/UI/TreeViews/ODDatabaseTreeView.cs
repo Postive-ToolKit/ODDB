@@ -85,7 +85,7 @@ namespace TeamODD.ODDB.Editors.UI
                 item.Name = table.Name;
                 item.Type = VIewContainerType.View;
                 item.View = table;
-                _idMapping.Add(table.Key, cnt);
+                _idMapping.Add(table.ID, cnt);
                 var treeItem = new TreeViewItemData<ODDBViewContainer>(cnt++, item);
                 tableList.Add(treeItem);
             }
@@ -103,7 +103,7 @@ namespace TeamODD.ODDB.Editors.UI
                 item.Name = view.Name;
                 item.Type = VIewContainerType.View;
                 item.View = view;
-                _idMapping.Add(view.Key, cnt);
+                _idMapping.Add(view.ID, cnt);
                 var treeItem = new TreeViewItemData<ODDBViewContainer>(cnt++, item);
                 viewList.Add(treeItem);
             }
@@ -145,11 +145,11 @@ namespace TeamODD.ODDB.Editors.UI
                     return;
                 if (_view is ODDBTable table)
                 {
-                    _database.Tables.Delete(table.Key);
+                    _database.Tables.Delete(table.ID);
                 }
                 else if (_view is ODDBView view)
                 {
-                    _database.Views.Delete(view.Key);
+                    _database.Views.Delete(view.ID);
                 }
                 _view = null;
                 OnViewSelected?.Invoke(null);
@@ -167,7 +167,7 @@ namespace TeamODD.ODDB.Editors.UI
                     if (container.Type == VIewContainerType.Repository)
                         return;
                     _view = container.View;
-                    OnViewSelected?.Invoke(_view.Key);
+                    OnViewSelected?.Invoke(_view.ID);
                     return;
                 }
             }
@@ -182,9 +182,9 @@ namespace TeamODD.ODDB.Editors.UI
             var view = _database.GetView(new ODDBID(viewId));
             if (view == null)
                 return;
-            if (!_idMapping.ContainsKey(view.Key))
+            if (!_idMapping.ContainsKey(view.ID))
                 return;
-            var index = _idMapping[view.Key];
+            var index = _idMapping[view.ID];
             RefreshItem(index);
         }
     }

@@ -61,7 +61,7 @@ namespace TeamODD.ODDB.Editors.Window
             if (view == null)
                 return;
             view.Name = name;
-            _database.NotifyDataChanged(view.Key);
+            _database.NotifyDataChanged(view.ID);
         }
 
         public Type GetViewBindType(string id)
@@ -78,7 +78,7 @@ namespace TeamODD.ODDB.Editors.Window
             if (view == null)
                 return;
             view.BindType = type;
-            _database.NotifyDataChanged(view.Key);
+            _database.NotifyDataChanged(view.ID);
         }
 
         public IODDBView GetViewParent(string id)
@@ -101,7 +101,7 @@ namespace TeamODD.ODDB.Editors.Window
             
             if(view.BindType != null && view.BindType.IsSubclassOf(parent.BindType))
                 view.BindType = parent.BindType;
-            _database.NotifyDataChanged(view.Key);
+            _database.NotifyDataChanged(view.ID);
         }
 
         public void NotifyViewDataChanged(string viewId)

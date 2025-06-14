@@ -33,12 +33,12 @@ namespace TeamODD.ODDB.Editors.UI.Fields.References
             var choices = new List<string>();
             foreach (var table in allTables)
             {
-                var basePath = table.Key + "/";
+                var basePath = table.ID + "/";
                 var namePath = table.Name + "/";
                 foreach (var row in table.ReadOnlyRows)
                 {
-                    var path = basePath + row.Key;
-                    var name = namePath + (row.GetData(0) == null ? row.Key : row.GetData(0));
+                    var path = basePath + row.ID;
+                    var name = namePath + (row.GetData(0) == null ? row.ID : row.GetData(0));
                     _idMapping.Add(choices.Count, path);
                     _reverseIdMapping[path] = choices.Count;
                     choices.Add(name);

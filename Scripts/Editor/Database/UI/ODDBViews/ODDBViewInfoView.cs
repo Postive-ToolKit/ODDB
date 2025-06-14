@@ -50,7 +50,7 @@ namespace TeamODD.ODDB.Editors.UI
             SetEnabled(true);
             _tableNameInput.SetEnabled(true);
             _tableNameInput.value = _view.Name;
-            _tableKeyInput.value = _view.Key;
+            _tableKeyInput.value = _view.ID;
         }
         
         private void OnTableNameChangedEvent(ChangeEvent<string> evt)

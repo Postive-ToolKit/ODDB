@@ -6,16 +6,16 @@ namespace TeamODD.ODDB.Runtime.Data.DTO
     public class ODDBViewDTO
     {
         public string Name;
-        public string Key;
+        public string ID;
         public List<ODDBField> TableMetas = new List<ODDBField>();
         public string BindType;
         public string ParentView;
         
         public ODDBViewDTO() { }
-        public ODDBViewDTO(string name, string key, List<ODDBField> tableMetas, string bindType, string parentView)
+        public ODDBViewDTO(string name, string id, List<ODDBField> tableMetas, string bindType, string parentView)
         {
             Name = name;
-            Key = key;
+            ID = id;
             TableMetas = tableMetas;
             BindType = bindType;
             ParentView = parentView;

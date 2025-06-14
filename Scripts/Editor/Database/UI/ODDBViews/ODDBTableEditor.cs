@@ -96,8 +96,8 @@ namespace TeamODD.ODDB.Editors.UI
         {
             var keyColumn = new Column()
             {
-                title = "Key",
-                name = "Key",
+                title = "ID",
+                name = "ID",
                 maxWidth = 100,
                 minWidth = 100,
                 stretchable = true,
@@ -111,7 +111,7 @@ namespace TeamODD.ODDB.Editors.UI
                 var field = container.userData as IODDBField;
                 if (index >= _table.ReadOnlyRows.Count)
                     return;
-                field!.SetValue(_table.ReadOnlyRows[index].Key);
+                field!.SetValue(_table.ReadOnlyRows[index].ID);
             };
             return keyColumn;
         }

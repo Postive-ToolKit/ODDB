@@ -7,7 +7,7 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
     public class ODDBViewDTOBuilder
     {
         private IODDBHasName _nameInterface;
-        private IODDBHasUniqueKey _keyInterface;
+        private IODDBHasUniqueID _idInterface;
         private IODDBHasTableMeta _tableMetaInterface;
         private IODDBHasBindType _bindTypeInterface;
         private IODDBHasParentView _parentViewInterface;
@@ -18,9 +18,9 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
             return this;
         }
             
-        public ODDBViewDTOBuilder SetKey(IODDBHasUniqueKey keyInterface)
+        public ODDBViewDTOBuilder SetID(IODDBHasUniqueID idInterface)
         {
-            _keyInterface = keyInterface;
+            this._idInterface = idInterface;
             return this;
         }
             
@@ -45,11 +45,11 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
         public virtual ODDBViewDTO Build()
         {
             var name = _nameInterface?.Name ?? string.Empty;
-            var key = _keyInterface?.Key ?? string.Empty;
+            var key = _idInterface?.ID ?? string.Empty;
             var tableMetas = _tableMetaInterface?.ScopedTableMetas ?? null;
             var convertedMeta = tableMetas == null ? new List<ODDBField>() : new List<ODDBField>(tableMetas);
             var convertedBindType = _bindTypeInterface?.BindType?.FullName ?? string.Empty;
-            var parentView = _parentViewInterface?.ParentView?.Key ?? string.Empty;
+            var parentView = _parentViewInterface?.ParentView?.ID ?? string.Empty;
    
             return new ODDBViewDTO(
                 name,

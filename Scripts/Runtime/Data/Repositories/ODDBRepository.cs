@@ -4,12 +4,12 @@ using TeamODD.ODDB.Runtime.Utils;
 
 namespace Plugins.ODDB.Scripts.Runtime.Data.Repositories
 {
-    public class ODDBRepository<T> : ODDBRepositoryBase<T> where T : IODDBHasUniqueKey, IODDBSerialize, new()
+    public class ODDBRepository<T> : ODDBRepositoryBase<T> where T : IODDBHasUniqueID, IODDBSerialize, new()
     {
         protected override T CreateInternal(ODDBID id = null)
         {
             var instance = new T();
-            instance.Key = id;
+            instance.ID = id;
             return instance;
         }
     }

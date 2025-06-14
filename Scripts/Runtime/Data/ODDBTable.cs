@@ -101,7 +101,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 var tableDto = dtoBuilder
                     .SetSerialization(this)
                     .SetName(this)
-                    .SetKey(this)
+                    .SetID(this)
                     .SetTableMeta(this)
                     .SetBindType(this)
                     .SetParentView(this)
@@ -133,7 +133,7 @@ namespace TeamODD.ODDB.Runtime.Data
 
         private void SerializeRow(ODDBRow row, StringBuilder builder)
         {
-            builder.Append(EscapeCSV(row.Key));
+            builder.Append(EscapeCSV(row.ID));
             builder.Append(DELIMITER);
             // data cut off
             for (int i = 0; i < TotalFields.Count; i++)
@@ -166,7 +166,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var tableDto = JsonConvert.DeserializeObject<ODDBTableDTO>(data);
             if (tableDto == null)
                 return false;
-            Key = new ODDBID(tableDto.Key);
+            ID = new ODDBID(tableDto.ID);
             Name = tableDto.Name;
             BindType = ODDBTypeUtility.TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
             _parentViewKey = new ODDBID(tableDto.ParentView);

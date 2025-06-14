@@ -11,7 +11,7 @@ namespace TeamODD.ODDB.Runtime.Data
             var view = new T();
             if (id == null)
                 id = new ODDBID();
-            view.Key = id;
+            view.ID = id;
             return view;
         }
     }

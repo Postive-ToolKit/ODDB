@@ -130,7 +130,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (listener is not IODDBHasView view)
                 return;
             _viewListeners.Add(view);
-            view.SetView(_view.Key);
+            view.SetView(_view.ID);
         }
         
         public void SetView(string viewKey)
@@ -167,7 +167,7 @@ namespace TeamODD.ODDB.Editors.UI
             private ODDBDataEditor BuildODDBViewEditor(IODDBView view, ODDBDataEditor editor)
             {
                 var viewInfoView = new ODDBViewInfoView();
-                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.Key, name);
+                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.ID, name);
                 editor.Add(viewInfoView);
                 
                 var viewEditor = new ODDBViewEditor();
@@ -179,30 +179,30 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     view.AddField(new ODDBField());
                     viewEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 createRow.style.flexGrow = 0;
                 createRow.style.flexShrink = 1;
                 editor.AddToolBoxView(createRow);
                 
                 var bindClassSelectView = new ODDBBindClassSelectView();
-                bindClassSelectView.SetView(view.Key);
+                bindClassSelectView.SetView(view.ID);
                 
                 bindClassSelectView.OnBindClassChanged += bindType =>
                 {
                     view.BindType = bindType;
                     viewEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(bindClassSelectView);
                 
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetView(view.Key);
+                inheritSelectView.SetView(view.ID);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;
                     viewEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(inheritSelectView);
                 
@@ -214,7 +214,7 @@ namespace TeamODD.ODDB.Editors.UI
                 var table = view as ODDBTable;
                 
                 var viewInfoView = new ODDBViewInfoView();
-                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.Key, name);
+                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.ID, name);
                 editor.Add(viewInfoView);
                 
                 var tableEditor = new ODDBTableEditor();
@@ -227,7 +227,7 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     table!.AddRow();
                     tableEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 createRow.style.flexGrow = 0;
                 createRow.style.flexShrink = 1;
@@ -242,22 +242,22 @@ namespace TeamODD.ODDB.Editors.UI
                 // editor.AddToolBoxView(autoWidth);
                 
                 var bindClassSelectView = new ODDBBindClassSelectView();
-                bindClassSelectView.SetView(view.Key);
+                bindClassSelectView.SetView(view.ID);
                 bindClassSelectView.OnBindClassChanged += bindType =>
                 {
                     view.BindType = bindType;
                     tableEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(bindClassSelectView);
                 
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetView(view.Key);
+                inheritSelectView.SetView(view.ID);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;
                     tableEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(inheritSelectView);
                 
@@ -289,7 +289,7 @@ namespace TeamODD.ODDB.Editors.UI
                     var data = File.ReadAllText(path, utf8WithBom);
                     table!.Deserialize(data);
                     tableEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.Key);
+                    _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(importButton);
                 
