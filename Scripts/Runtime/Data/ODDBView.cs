@@ -27,6 +27,11 @@ namespace TeamODD.ODDB.Runtime.Data
                 _parentView = value;
                 if(_parentView == null)
                     return;
+                if (_parentView == this)
+                {
+                    Debug.LogError("Cannot set parent view to itself.");
+                    return;
+                }
                 if(BindType == null)
                 {
                     BindType = _parentView.BindType;

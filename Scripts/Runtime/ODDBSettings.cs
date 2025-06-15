@@ -37,16 +37,5 @@ namespace TeamODD.ODDB.Runtime.Settings
                 Path = _dbPath;
             }
         }
-
-        [Button]
-        private string Test(ODDBTableDTO testField)
-        {
-            return JsonConvert.SerializeObject(testField);
-        }
-        [Button]
-        private ODDBTableDTO Test2(string test)
-        {
-            return JsonConvert.DeserializeObject<ODDBTableDTO>(test);
-        }
     }
 }

@@ -197,13 +197,13 @@ namespace TeamODD.ODDB.Editors.UI
                 editor.AddToolBoxView(bindClassSelectView);
                 
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetView(view.ID);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;
                     viewEditor.IsDirty = true;
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
+                inheritSelectView.SetView(view.ID);
                 editor.AddToolBoxView(inheritSelectView);
                 
                 return editor;
@@ -250,15 +250,15 @@ namespace TeamODD.ODDB.Editors.UI
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 editor.AddToolBoxView(bindClassSelectView);
-                
+
                 var inheritSelectView = new ODDBInheritSelectView();
-                inheritSelectView.SetView(view.ID);
                 inheritSelectView.OnParentViewChanged += parentView =>
                 {
                     view.ParentView = parentView;
                     tableEditor.IsDirty = true;
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
+                inheritSelectView.SetView(view.ID);
                 editor.AddToolBoxView(inheritSelectView);
                 
                 var exportButton = new Button();

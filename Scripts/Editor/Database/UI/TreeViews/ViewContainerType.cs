@@ -1,6 +1,6 @@
 ﻿namespace TeamODD.ODDB.Editors.UI
 {
-    public enum VIewContainerType
+    public enum ViewContainerType
     {
         Repository,
         View,

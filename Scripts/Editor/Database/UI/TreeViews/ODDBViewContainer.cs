@@ -5,7 +5,7 @@ namespace TeamODD.ODDB.Editors.UI
     public class ODDBViewContainer
     {
         public string Name;
-        public VIewContainerType Type;
+        public ViewContainerType Type;
         public IODDBView View;
     }
 }

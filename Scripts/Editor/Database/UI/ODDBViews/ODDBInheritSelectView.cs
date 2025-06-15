@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using TeamODD.ODDB.Editors.UI.Interfaces;
+using TeamODD.ODDB.Editors.UI.ViewWindows;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
@@ -9,65 +10,43 @@ using UnityEngine.UIElements;
 namespace TeamODD.ODDB.Editors.UI
 {
 
-    public sealed class ODDBInheritSelectView : DropdownField, IODDBHasView
+    public sealed class ODDBInheritSelectView : Button, IODDBHasView
     {
-        private const string INHERIT_NOT_FOUND = "None";
-        private readonly Dictionary<string,IODDBView> _inheritableViews = new();
         public event Action<IODDBView> OnParentViewChanged;
+        private const string INHERIT_PREFIX = "Inherit : ";
         private IODDBEditorUseCase _editorUseCase;
+        private IODDBView _view;
         public ODDBInheritSelectView()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            CreateDropDown();
-            label = "Inherit View";
-            labelElement.style.minWidth = 0;
-            labelElement.style.alignSelf = Align.FlexStart;
-        }
-        
-        private void CreateDropDown()
-        {
-            var pureViews = _editorUseCase.GetPureViews();
-
-            choices.Add(INHERIT_NOT_FOUND);
-            
-            foreach (var view in pureViews)
+            clicked += () =>
             {
-                var selection = view.Name + " - " + view.ID;
-                _inheritableViews[selection] = view;
-                choices.Add(selection);
-            }
-            value = INHERIT_NOT_FOUND;
-            
-            RegisterCallback<ChangeEvent<string>>(OnDropDownValueChanged);
+                var window = new ODDBViewSelectorWindow.Builder()
+                    .SetTitle("Select Parent View")
+                    .SetOnConfirm(parentView =>
+                    {
+                        text = parentView != null ? INHERIT_PREFIX + parentView.Name : INHERIT_PREFIX + "None";
+                        OnParentViewChanged?.Invoke(parentView);
+                    })
+                    .SetIgnoreViews(new[] { _view });
+                if(_view!.ParentView != null)
+                    window.SetCurrentView(_view.ParentView);
+                window.Build();
+            };
         }
         public void SetView(string viewKey)
         {
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view == null) {
-                SetEnabled(false);
-                value = INHERIT_NOT_FOUND;
                 return;
             }
-            choices.Remove(view.Name + " - " + view.ID);
-            var parentView = view.ParentView;
-            if (parentView == null) {
-                value = INHERIT_NOT_FOUND;
-                return;
-            }
-            value = parentView.Name + " - " + parentView.ID;
-        }
-        private void OnDropDownValueChanged(ChangeEvent<string> evt)
-        {
-            if (_inheritableViews.TryGetValue(evt.newValue, out var view)) {
-                OnParentViewChanged?.Invoke(view);
-            }
-            else {
-                value = INHERIT_NOT_FOUND;
-                OnParentViewChanged?.Invoke(null);
+            _view = view;
+            
+            if (_view.ParentView != null) {
+                text = INHERIT_PREFIX + _view.ParentView.Name;
+            } else {
+                text = INHERIT_PREFIX + "None";
             }
         }
-
-
-
     }
 }

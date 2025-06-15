@@ -83,7 +83,7 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 var item = new ODDBViewContainer();
                 item.Name = table.Name;
-                item.Type = VIewContainerType.View;
+                item.Type = ViewContainerType.View;
                 item.View = table;
                 _idMapping.Add(table.ID, cnt);
                 var treeItem = new TreeViewItemData<ODDBViewContainer>(cnt++, item);
@@ -92,7 +92,7 @@ namespace TeamODD.ODDB.Editors.UI
 
             var tableItemData = new ODDBViewContainer();
             tableItemData.Name = "Tables";
-            tableItemData.Type = VIewContainerType.Repository;
+            tableItemData.Type = ViewContainerType.Repository;
             var tables = new TreeViewItemData<ODDBViewContainer>(0, tableItemData, tableList);
             rootItems.Add(tables);
             
@@ -101,7 +101,7 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 var item = new ODDBViewContainer();
                 item.Name = view.Name;
-                item.Type = VIewContainerType.View;
+                item.Type = ViewContainerType.View;
                 item.View = view;
                 _idMapping.Add(view.ID, cnt);
                 var treeItem = new TreeViewItemData<ODDBViewContainer>(cnt++, item);
@@ -109,7 +109,7 @@ namespace TeamODD.ODDB.Editors.UI
             }
             var viewItemData = new ODDBViewContainer();
             viewItemData.Name = "Views";
-            viewItemData.Type = VIewContainerType.Repository;
+            viewItemData.Type = ViewContainerType.Repository;
             var views = new TreeViewItemData<ODDBViewContainer>(1, viewItemData, viewList);
             rootItems.Add(views);
             SetRootItems(rootItems);
@@ -164,7 +164,7 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 if (item is ODDBViewContainer container)
                 {
-                    if (container.Type == VIewContainerType.Repository)
+                    if (container.Type == ViewContainerType.Repository)
                         return;
                     _view = container.View;
                     OnViewSelected?.Invoke(_view.ID);
