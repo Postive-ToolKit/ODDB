@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace TeamODD.ODDB.Runtime.Data.DTO
 {
+    [Serializable]
     public class ODDBTableDTO : ODDBViewDTO
     {
-        public string Data;
+        public string[][] Data;
         public ODDBTableDTO() : base() { }
         public ODDBTableDTO(
             string name,
@@ -12,7 +14,7 @@ namespace TeamODD.ODDB.Runtime.Data.DTO
             List<ODDBField> tableMetas,
             string bindType,
             string parentView,
-            string data) : base(name, key, tableMetas, bindType, parentView)
+            string[][] data) : base(name, key, tableMetas, bindType, parentView)
         {
             Data = data;
         }

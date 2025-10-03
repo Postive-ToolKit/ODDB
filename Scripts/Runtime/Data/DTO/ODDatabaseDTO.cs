@@ -1,11 +1,13 @@
-﻿namespace TeamODD.ODDB.Runtime.Data.DTO
+﻿using System.Collections.Generic;
+
+namespace TeamODD.ODDB.Runtime.Data.DTO
 {
-    public class ODDatabaseDTO
+    public class ODDatabaseDTO : ODDBDTO
     {
-        public string TableRepoData;
-        public string ViewRepoData;
+        public List<ODDBTableDTO> TableRepoData = new List<ODDBTableDTO>();
+        public List<ODDBViewDTO> ViewRepoData = new List<ODDBViewDTO>();
         public ODDatabaseDTO() { }
-        public ODDatabaseDTO(string tableRepoData, string viewRepoData)
+        public ODDatabaseDTO(List<ODDBTableDTO> tableRepoData, List<ODDBViewDTO> viewRepoData)
         {
             TableRepoData = tableRepoData;
             ViewRepoData = viewRepoData;

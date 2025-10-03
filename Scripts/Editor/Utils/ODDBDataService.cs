@@ -30,17 +30,49 @@ namespace TeamODD.ODDB.Editors.Utils
             {
                 var converter = new ODDBConverter();
                 var databaseDto = converter.Export(database);
-
-                string directory = Path.GetDirectoryName(path);
-                if (!Directory.Exists(directory))
-                    Directory.CreateDirectory(directory);
-                File.WriteAllText(path, databaseDto);
-                Debug.Log($"Database saved to: {path}");
-                return true;
+                return SaveFile(path, databaseDto);
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"Error saving database: {e.Message}");
+                return false;
+            }
+        }
+        
+        public bool SaveFile(string path, string content)
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(path);
+                if (!Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+                File.WriteAllText(path, content);
+                Debug.Log($"File saved to: {path}");
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error saving file: {e.Message}");
+                return false;
+            }
+        }
+        
+        public bool LoadFile(string path, out string content)
+        {
+            content = null;
+            if (!File.Exists(path))
+            {
+                Debug.LogError($"File not found at path: {path}");
+                return false;
+            }
+            try
+            {
+                content = File.ReadAllText(path);
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error reading file: {e.Message}");
                 return false;
             }
         }

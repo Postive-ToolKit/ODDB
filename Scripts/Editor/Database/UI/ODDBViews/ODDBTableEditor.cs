@@ -1,134 +1,76 @@
 using System;
-using UnityEngine.UIElements;
-using System.Collections.Generic;
+using TeamODD.ODDB.Editors.DTO;
 using UnityEditor;
 using UnityEngine;
-using TeamODD.ODDB.Editors.UI.Fields;
+using UnityEngine.UIElements;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Data;
 using TeamODD.ODDB.Runtime.Data.Enum;
 using TeamODD.ODDB.Runtime.Utils;
+using UnityEditor.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
     public class ODDBTableEditor : ODDBMultiColumnEditor, IODDBGeometryUpdate
     {
         private ODDBTable _table;
-        private List<string> _columnNames = new List<string>();
         private const float DELETE_COLUMN_WIDTH = 30f;
         private readonly IODDBEditorUseCase _editorUseCase;
+        private TableDataDTO _tableDataDTO;
         public ODDBTableEditor()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             selectionType = SelectionType.Single;
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
-            horizontalScrollingEnabled = false;
-            style.flexShrink = 1;
-
-            schedule.Execute(Update).Every(100);
+            horizontalScrollingEnabled = true;
+            style.flexGrow = 1;
+            bindingPath = "Rows";
+            CreateColumns();
         }
-
-        private void Update()
-        {
-            if (IsDirty)
-            {
-                IsDirty = false;
-                RefreshColumns();
-                RefreshItems();
-                Rebuild();
-            }
-        }
-
+        
         public override void SetView(string viewKey)
         {
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not ODDBTable table)
                 return;
             _table = table;
-            RefreshColumns();
-            RefreshItems();
+            
+            _tableDataDTO = new TableDataDTO();
+            _tableDataDTO.Rows = _table.Rows;
+            var so = new SerializedObject(_tableDataDTO);
+            this.Bind(so);
+            CreateColumns();
         }
 
-        private void RefreshColumns()
+        private void CreateColumns()
         {
-            if (_table == null) return;
+            if (_table == null) 
+                return;
 
             columns.Clear();
-            _columnNames.Clear();
-            
-            columns.Add(CreateKeyColumn());
-
-            // add data columns
+            columns.Add(new Column() {bindingPath = ODDBRow.ID_FIELD, title = "ID", stretchable = false, minWidth = 80});
             for (int i = 0; i < _table.TotalFields.Count; i++)
             {
+                var columnIndex = i; // Capture the current index for the closure
                 var meta = _table.TotalFields[i];
                 var columnName = $"{meta.Name}[{meta.Type}]";
-                _columnNames.Add(columnName);
-
                 var column = new Column()
                 {
+                    bindingPath = $"{ODDBRow.CELLS_FIELD}.Array.data[{columnIndex}]",
                     title = columnName,
-                    name = columnName,
-                    maxWidth = 300,
-                    width = 60,
-                    minWidth = 60,
                     stretchable = true,
-                    resizable = true,
                 };
-
-                var dataType = meta.Type;
-                var columnIndex = i;
-                column.makeHeader = () => CreateHeaderElement(meta);
                 column.bindHeader = (element) => BindHeaderElement(element, column, meta, columnIndex);
-                column.makeCell = () => CreateCell(dataType);
-                column.bindCell = (element, index) => BindCell(element, index, columnIndex);
-
                 columns.Add(column);
             }
             
             columns.Add(CreateToolColumn());
+            // 컬럼 변경 후 width 갱신
         }
-
-        private Column CreateKeyColumn()
-        {
-            var keyColumn = new Column()
-            {
-                title = "ID",
-                name = "ID",
-                maxWidth = 100,
-                minWidth = 100,
-                stretchable = true,
-                resizable = true
-            };
-            keyColumn.makeCell = () => CreateCell(ODDBDataType.ID);
-            
-            keyColumn.bindCell = (element, index) =>
-            {
-                var container = element as VisualElement;
-                var field = container.userData as IODDBField;
-                if (index >= _table.ReadOnlyRows.Count)
-                    return;
-                field!.SetValue(_table.ReadOnlyRows[index].ID);
-            };
-            return keyColumn;
-        }
-
-        private VisualElement CreateHeaderElement(ODDBField field)
-        {
-            var columnTitle = $"{field.Name}[{field.Type}]";
-            var header = new Label(columnTitle) {
-                style =
-                {
-                    flexGrow = 1,
-                    paddingLeft = 8,
-                    unityTextAlign = TextAnchor.MiddleLeft,
-                }
-            };
-            return header;
-        }
+        
         private void BindHeaderElement(VisualElement element, Column column, ODDBField meta,int columnIndex)
         {
             var header = element as Label;
@@ -154,9 +96,7 @@ namespace TeamODD.ODDB.Editors.UI
                     changeNameDialog.SetOnConfirm(newName =>
                     {
                         _table.TotalFields[columnIndex].Name = newName;
-                        column.title = newName;
-                        _columnNames[columnIndex] = newName;
-                        IsDirty = true;
+                        column.title =  $"{_table.TotalFields[columnIndex].Name}[{_table.TotalFields[columnIndex].Type}]";;
                     });
                     changeNameDialog.Build();
                 });
@@ -164,34 +104,7 @@ namespace TeamODD.ODDB.Editors.UI
                 menu.ShowAsContext();
             });
         }
-        private VisualElement CreateCell(ODDBDataType dataType)
-        {
-            var container = new ODDBFieldBase();
-            var field = ODDBFieldFactory.CreateField(dataType);
-            container.Add(field.Root);
-            container.userData = field;
-            return container;
-        }
-
-        private void BindCell(VisualElement element, int index, int columnIndex)
-        {
-            var container = element as VisualElement;
-            var field = container.userData as IODDBField;
-            
-            if (field != null)
-            {
-                var value = _table.GetValue(index, columnIndex);
-                field.SetValue(value);
-                field.RegisterValueChangedCallback(newValue =>
-                {
-                    if (_table != null && index < _table.ReadOnlyRows.Count)
-                    {
-                        var row = _table.ReadOnlyRows[index];
-                        row.SetData(columnIndex, newValue.ToString());
-                    }
-                });
-            }
-        }
+        
         private Column CreateToolColumn()
         {
             var toolColumn = new Column()
@@ -212,7 +125,7 @@ namespace TeamODD.ODDB.Editors.UI
                     text = "+",
                     style =
                     {
-                        flexGrow = 0,
+                        flexGrow = 1,
                         flexShrink = 0,
                         unityTextAlign = TextAnchor.MiddleCenter
                     }
@@ -250,16 +163,19 @@ namespace TeamODD.ODDB.Editors.UI
             toolColumn.bindCell = (element, index) =>
             {
                 var button = element as Button;
-                if (button != null)
+                button.RegisterCallbackOnce<ClickEvent> (evt => 
                 {
-                    button.clicked += () =>
+                    evt.StopPropagation();
+                    OnButtonClicked();
+                });
+                
+                void OnButtonClicked()
+                {
+                    if (_table != null && index < _table.Rows.Count)
                     {
-                        if (_table != null && index < _table.ReadOnlyRows.Count)
-                        {
-                            _table.RemoveRow(index);
-                            IsDirty = true;
-                        }
-                    };
+                        _table.RemoveRow(index);
+                        IsDirty = true;
+                    }
                 }
             };
 
@@ -292,17 +208,6 @@ namespace TeamODD.ODDB.Editors.UI
             menu.ShowAsContext();
         }
         
-        private new void RefreshItems()
-        {
-            if (_table == null) return;
-            
-            itemsSource = new List<int>();
-            for (int i = 0; i < _table.ReadOnlyRows.Count; i++)
-            {
-                (itemsSource as List<int>).Add(i);
-            }
-            Rebuild();
-        }
         public void UpdateGeometry(GeometryChangedEvent evt)
         {
             var maxWidth = evt.newRect.width;

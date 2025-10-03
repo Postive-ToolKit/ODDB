@@ -26,6 +26,7 @@ namespace TeamODD.ODDB.Editors.UI
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             _database = ODDBEditorDI.Resolve<ODDatabase>();
             _editorUseCase.OnViewChanged += UpdateView;
+            autoExpand = true;
             
             selectionType = SelectionType.Single;
             // 스타일 설정
@@ -59,7 +60,6 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void CreateVisualElement(VisualElement element, int index)
         {
-
             var data = GetItemDataForIndex<ODDBViewContainer>(index);
             var label = (Label)element;
             label.text = data.Name;
@@ -185,6 +185,8 @@ namespace TeamODD.ODDB.Editors.UI
             if (!_idMapping.ContainsKey(view.ID))
                 return;
             var index = _idMapping[view.ID];
+            var data = GetItemDataForIndex<ODDBViewContainer>(index);
+            data.Name = view.Name;
             RefreshItem(index);
         }
     }

@@ -1,5 +1,8 @@
 ﻿using System;
+using Newtonsoft.Json;
+using NUnit.Framework;
 using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime.Data.DTO;
 using UnityEngine;
 
 
@@ -11,21 +14,28 @@ namespace TeamODD.ODDB.Runtime.Utils
         public static event Action<ODDatabase> OnDatabaseExported;
         public ODDatabase CreateDatabase(string data)
         {
+            var databaseDto = new ODDatabaseDTO();
+            try
+            {
+                databaseDto = JsonConvert.DeserializeObject<ODDatabaseDTO>(data);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("ODDBConverter.CreateDatabase failed to deserialize database - use default database. Error: " + e);
+            }
+            
             var database = new ODDatabase();
-            database.TryDeserialize(data);
+            database.FromDTO(databaseDto);
+            
             OnDatabaseCreated?.Invoke(database);
             return database;
         }
         
         public string Export(ODDatabase database)
         {
-            if (database == null)
-            {
-                Debug.LogError("ODDBExporter.Export cannot export null database");
-                return default;
-            }
-            if (!database.TrySerialize(out var data))
-                return null;
+            Assert.IsNotNull(database, "ODDBConverter.Export database is null");
+            var dto = database.ToDTO();
+            var data = JsonConvert.SerializeObject(dto, Formatting.Indented);
             OnDatabaseExported?.Invoke(database);
             return data;
         }

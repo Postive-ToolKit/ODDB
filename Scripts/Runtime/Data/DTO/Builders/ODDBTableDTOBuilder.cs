@@ -1,14 +1,17 @@
-﻿using TeamODD.ODDB.Runtime.Data.Interfaces;
+﻿using System.Collections.Generic;
+using System.Linq;
+using TeamODD.ODDB.Runtime.Data.Interfaces;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
 {
     public class ODDBTableDTOBuilder : ODDBViewDTOBuilder
     {
-        private IODDBAvailableSerialize _serializationInterface;
+        private IReadOnlyList<ODDBRow> _rows;
         
-        public ODDBTableDTOBuilder SetSerialization(IODDBAvailableSerialize serializationInterface)
+        public ODDBTableDTOBuilder SetData(ODDBTable table)
         {
-            _serializationInterface = serializationInterface;
+            _rows = table.Rows;
             return this;
         }
             
@@ -21,7 +24,15 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
             var convertedMeta = viewDto.TableMetas;
             var convertedBindType = viewDto.BindType;
             var parentView = viewDto.ParentView;
-            var data = _serializationInterface?.Serialize() ?? string.Empty;
+            var data = new string[_rows.Count][];
+            for (int i = 0; i < _rows.Count; i++)
+            {
+                var rowData = new List<string>();
+                rowData.Add(_rows[i].ID.ToString());
+                rowData.AddRange(_rows[i].Cells.Select(cell => cell.SerializedData));
+                data[i] = rowData.ToArray();
+            }
+            
             return new ODDBTableDTO(name, key, convertedMeta, convertedBindType, parentView,data);
         }
     }

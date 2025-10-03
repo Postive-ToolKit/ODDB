@@ -261,38 +261,6 @@ namespace TeamODD.ODDB.Editors.UI
                 inheritSelectView.SetView(view.ID);
                 editor.AddToolBoxView(inheritSelectView);
                 
-                var exportButton = new Button();
-                exportButton.text = "Export";
-                exportButton.style.flexGrow = 0;
-                exportButton.style.flexShrink = 1;
-                exportButton.clicked += () =>
-                {
-                    var path = EditorUtility.SaveFilePanel("Export Table", "", table.Name + ".csv", "csv");
-                    if (string.IsNullOrEmpty(path))
-                        return;
-                    var data = table.Serialize();
-                    var utf8WithBom = new UTF8Encoding(true);
-                    File.WriteAllText(path, data, utf8WithBom);
-                };
-                editor.AddToolBoxView(exportButton);
-                
-                var importButton = new Button();
-                importButton.text = "Import";
-                importButton.style.flexGrow = 0;
-                importButton.style.flexShrink = 1;
-                importButton.clicked += () =>
-                {
-                    var path = EditorUtility.OpenFilePanel("Import Table", "", "csv");
-                    if (string.IsNullOrEmpty(path))
-                        return;
-                    var utf8WithBom = new UTF8Encoding(true);
-                    var data = File.ReadAllText(path, utf8WithBom);
-                    table!.Deserialize(data);
-                    tableEditor.IsDirty = true;
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                editor.AddToolBoxView(importButton);
-                
                 return editor;
             }
         }

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
-    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T>, IODDBDataObserver where T : IODDBHasUniqueID, IODDBSerialize
+    public abstract class ODDBRepositoryBase<T> : IODDBRepository<T>, IODDBDataObserver where T : IODDBHasUniqueID
     {
         public event Action<ODDBID> OnDataChanged;
         public event Action<ODDBID> OnDataRemoved;
@@ -98,46 +98,6 @@ namespace TeamODD.ODDB.Runtime.Data
         public IReadOnlyList<T> GetAll()
         {
             return _list.AsReadOnly();
-        }
-
-        public virtual bool TrySerialize(out string data)
-        {
-            try
-            {
-                var dataList = new List<string>();
-                foreach (var element in GetAll())
-                    if (element.TrySerialize(out var serializedView))
-                        dataList.Add(serializedView);
-                data = JsonConvert.SerializeObject(dataList, Formatting.Indented);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                data = null;
-                return false;
-            }
-        }
-
-        public bool TryDeserialize(string data)
-        {
-            List<string> viewDataList;
-            try
-            {
-                viewDataList = JsonConvert.DeserializeObject<List<string>>(data);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("Failed to deserialize data : " + e.Message);
-                return false;
-            }
-            foreach (var viewData in viewDataList)
-            {
-                var view = CreateInternal();
-                view.TryDeserialize(viewData);
-                Update(view.ID, view);
-            }
-            return true;
         }
     }
 }

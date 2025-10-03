@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.DTO.Builders;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
-using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 
@@ -54,16 +50,16 @@ namespace TeamODD.ODDB.Runtime.Data
             get
             {
                 if (ParentView == null)
-                    return _tableMetas;
+                    return _fields;
                 var parentTableMetas = ParentView.TotalFields;
                 var tableMetas = new List<ODDBField>();
                 tableMetas.AddRange(parentTableMetas);
-                tableMetas.AddRange(_tableMetas);
+                tableMetas.AddRange(_fields);
                 return tableMetas;
             }
         }
-        public List<ODDBField> ScopedTableMetas => _tableMetas;
-        private readonly List<ODDBField> _tableMetas = new();
+        public List<ODDBField> ScopedFields => _fields;
+        private readonly List<ODDBField> _fields = new();
         
         public ODDBView()
         {
@@ -74,12 +70,12 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             if (tableMetas == null)
                 return;
-            _tableMetas.AddRange(tableMetas);
+            _fields.AddRange(tableMetas);
         }
         
         public void AddField(ODDBField field)
         {
-            _tableMetas.Add(field);
+            _fields.Add(field);
             OnAddTableMeta(field);
         }
         
@@ -89,7 +85,7 @@ namespace TeamODD.ODDB.Runtime.Data
                 Debug.LogError($"Index {index} is out of range for this view.");
                 return;
             }
-            _tableMetas.RemoveAt(ConvertToScopedIndex(index));
+            _fields.RemoveAt(ConvertToScopedIndex(index));
             OnRemoveField(index);
         }
         
@@ -102,7 +98,7 @@ namespace TeamODD.ODDB.Runtime.Data
             }
             var scopedIndexA = ConvertToScopedIndex(indexA);
             var scopedIndexB = ConvertToScopedIndex(indexB);
-            (_tableMetas[scopedIndexA], _tableMetas[scopedIndexB]) = (_tableMetas[scopedIndexB], _tableMetas[scopedIndexA]);
+            (_fields[scopedIndexA], _fields[scopedIndexB]) = (_fields[scopedIndexB], _fields[scopedIndexA]);
             OnSwapTableMeta(indexA, indexB);
         }
 
@@ -110,10 +106,10 @@ namespace TeamODD.ODDB.Runtime.Data
         {
             if (ParentView == null)
             {
-                return index >= 0 && index < _tableMetas.Count;
+                return index >= 0 && index < _fields.Count;
             }
             var parentTableMetas = ParentView.TotalFields;
-            return index >= parentTableMetas.Count && index < parentTableMetas.Count + _tableMetas.Count;
+            return index >= parentTableMetas.Count && index < parentTableMetas.Count + _fields.Count;
         }
         
         private int ConvertToScopedIndex(int index)
@@ -127,41 +123,8 @@ namespace TeamODD.ODDB.Runtime.Data
         protected virtual void OnAddTableMeta(ODDBField field) { }
         protected virtual void OnRemoveField(int index) { }
         protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
-        public virtual bool TrySerialize(out string data)
-        {
-            data = null;
-            var dtoBuilder = new ODDBViewDTOBuilder();
-            var viewDto = dtoBuilder
-                .SetName(this)
-                .SetID(this)
-                .SetTableMeta(this)
-                .SetBindType(this)
-                .SetParentView(this)
-                .Build();
-            if (viewDto == null)
-                return false;
-            // serialize to json
-            data = JsonConvert.SerializeObject(viewDto);
-            return true;
-        }
 
-        public virtual bool TryDeserialize(string data)
-        {
-            var viewDto = JsonConvert.DeserializeObject<ODDBViewDTO>(data);
-            if (viewDto == null)
-                return false;
-            ID = new ODDBID(viewDto.ID);
-            Name = viewDto.Name;
-            BindType = ODDBTypeUtility.TryConvertBindType(viewDto.BindType, out var bindType) ? bindType : null;
-            _parentViewKey = new ODDBID(viewDto.ParentView);
-            ScopedTableMetas.Clear();
-            ScopedTableMetas.AddRange(viewDto.TableMetas);
-            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
-            return true;
-        }
-        
-
-        public void OnDatabaseInitialize(ODDatabase database)
+        public virtual void OnDatabaseInitialize(ODDatabase database)
         {
             ParentView = database.Views.Read(_parentViewKey);
             database.OnDataChanged += OnDatabaseDataChanged;
@@ -176,5 +139,33 @@ namespace TeamODD.ODDB.Runtime.Data
         }
         
         protected virtual void OnDatabaseDataRemoved(ODDBID id) { }
+        public virtual ODDBViewDTO ToDTO()
+        {
+            var dtoBuilder = new ODDBViewDTOBuilder();
+            var viewDto = dtoBuilder
+                .SetName(this)
+                .SetID(this)
+                .SetTableMeta(this)
+                .SetBindType(this)
+                .SetParentView(this)
+                .Build();
+            
+            return viewDto;
+        }
+
+        public virtual void FromDTO(ODDBViewDTO dto)
+        {
+            if (dto == null)
+                return;
+            
+            ID = new ODDBID(dto.ID);
+            Name = dto.Name;
+            BindType = ODDBTypeUtility.TryConvertBindType(dto.BindType, out var bindType) ? bindType : null;
+
+            _parentViewKey = new ODDBID(dto.ParentView);
+            ScopedFields.Clear();
+            ScopedFields.AddRange(dto.TableMetas);
+            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
+        }
     }
 }

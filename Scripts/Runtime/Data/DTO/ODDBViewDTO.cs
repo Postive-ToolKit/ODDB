@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace TeamODD.ODDB.Runtime.Data.DTO
 {
     [Serializable]
-    public class ODDBViewDTO
+    public class ODDBViewDTO : ODDBDTO
     {
         public string Name;
         public string ID;
@@ -19,6 +19,11 @@ namespace TeamODD.ODDB.Runtime.Data.DTO
             TableMetas = tableMetas;
             BindType = bindType;
             ParentView = parentView;
+        }
+        
+        public override string ToString()
+        {
+            return $"ViewDTO: {Name} ({ID}), BindType: {BindType}, ParentView: {ParentView}, Metas: {TableMetas.Count}";
         }
     }
 }

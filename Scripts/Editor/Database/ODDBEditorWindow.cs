@@ -14,7 +14,6 @@ namespace TeamODD.ODDB.Editors.Window
     {
         private ODDatabase _database;
         private ODDBDataService _dataService;
-        private ODDBSettings _settings;
         private IODDBEditorUseCase _editorUseCase;
         #region Layout
         private ODDBSplitView _splitView;
@@ -23,20 +22,8 @@ namespace TeamODD.ODDB.Editors.Window
         #endregion
 
         [MenuItem("Window/ODDB Editor")]
-        public static void ShowExample()
+        public static void OpenWindow()
         {
-            var settingFiles = Resources.Load<ODDBSettings>("ODDBSettings");
-            if (settingFiles == null)
-            {
-                settingFiles = CreateInstance<ODDBSettings>();
-                settingFiles.name = "ODDBSettings";
-                // find resources folder
-                if (!AssetDatabase.IsValidFolder("Assets/Resources")) {
-                    AssetDatabase.CreateFolder("Assets", "Resources");
-                }
-                AssetDatabase.CreateAsset(settingFiles, "Assets/Resources/ODDBSettings.asset");
-                AssetDatabase.SaveAssets();
-            }
             ODDBEditorWindow wnd = GetWindow<ODDBEditorWindow>();
             wnd.titleContent = new GUIContent("ODDB Editor");
             wnd.minSize = new Vector2(800, 600);
@@ -56,7 +43,7 @@ namespace TeamODD.ODDB.Editors.Window
             {
                 if (evt.keyCode == KeyCode.S && evt.ctrlKey)
                 {
-                    var fullPath = Path.Combine(_settings.Path, _settings.DBName);
+                    var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
                     _dataService.SaveDatabase(_database, fullPath);
                 }
             });
@@ -86,14 +73,14 @@ namespace TeamODD.ODDB.Editors.Window
         private void Initialize()
         {
             _dataService = new ODDBDataService();
-
-            _settings = Resources.Load<ODDBSettings>("ODDBSettings");
-            if(!_settings.IsInitialized) 
+            
+            if(!ODDBSettings.Setting.IsInitialized) 
             {
                 var pathSelector = new ODDBPathUtility();
-                _settings.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
+                ODDBSettings.Setting.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
             }
-            var fullPath = Path.Combine(_settings.Path, _settings.DBName);
+            
+            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
             
             if (!File.Exists(fullPath))
             {
@@ -119,7 +106,7 @@ namespace TeamODD.ODDB.Editors.Window
             var result = EditorUtility.DisplayDialog("Save Changes", "Do you want to save changes?", "Yes", "No");
             if (result)
             {
-                var fullPath = Path.Combine(_settings.Path, _settings.DBName);
+                var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
                 _dataService.SaveDatabase(_database, fullPath);
             }
             _editorUseCase?.Dispose();

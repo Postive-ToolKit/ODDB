@@ -4,7 +4,7 @@ using TeamODD.ODDB.Runtime.Utils;
 
 namespace Plugins.ODDB.Scripts.Runtime.Data.Repositories
 {
-    public class ODDBRepository<T> : ODDBRepositoryBase<T> where T : IODDBHasUniqueID, IODDBSerialize, new()
+    public class ODDBRepository<T> : ODDBRepositoryBase<T> where T : IODDBHasUniqueID, new()
     {
         protected override T CreateInternal(ODDBID id = null)
         {

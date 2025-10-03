@@ -8,6 +8,7 @@ namespace TeamODD.ODDB.Runtime.Utils
     [Serializable]
     public class ODDBID
     {
+        public const string ID_FIELD_NAME = nameof(_id);
         private const int ID_LENGTH = 20;
         private static readonly HashSet<string> _currentCreatedId = new HashSet<string>();
         private static string GenerateID()
@@ -38,7 +39,7 @@ namespace TeamODD.ODDB.Runtime.Utils
                 _id = value;
             }
         }
-        
+
         public ODDBID()
         {
             ID = null;

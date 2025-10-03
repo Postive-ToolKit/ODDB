@@ -46,11 +46,11 @@ namespace TeamODD.ODDB.Runtime.Data.DTO.Builders
         {
             var name = _nameInterface?.Name ?? string.Empty;
             var key = _idInterface?.ID ?? string.Empty;
-            var tableMetas = _tableMetaInterface?.ScopedTableMetas ?? null;
+            var tableMetas = _tableMetaInterface?.ScopedFields ?? null;
             var convertedMeta = tableMetas == null ? new List<ODDBField>() : new List<ODDBField>(tableMetas);
             var convertedBindType = _bindTypeInterface?.BindType?.FullName ?? string.Empty;
             var parentView = _parentViewInterface?.ParentView?.ID ?? string.Empty;
-   
+            
             return new ODDBViewDTO(
                 name,
                 key,

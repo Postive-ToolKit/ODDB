@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Data.DTO;
 using TeamODD.ODDB.Runtime.Data.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Data
 {
@@ -58,26 +60,6 @@ namespace TeamODD.ODDB.Runtime.Data
             return false;
         }
 
-        public bool TrySerialize(out string data)
-        {
-            if (Tables.TrySerialize(out var tableRepoData) && Views.TrySerialize(out var viewRepoData))
-            {
-                var databaseDto = new ODDatabaseDTO(tableRepoData, viewRepoData);
-                data = JsonConvert.SerializeObject(databaseDto, Formatting.Indented);
-                return true;
-            }
-            data = null;
-            return false;
-        }
-
-        public bool TryDeserialize(string data)
-        {
-            var databaseDto = JsonConvert.DeserializeObject<ODDatabaseDTO>(data);
-            Tables.TryDeserialize(databaseDto.TableRepoData);
-            Views.TryDeserialize(databaseDto.ViewRepoData);
-            return true;
-        }
-
         public IODDBView GetView(ODDBID id)
         {
             foreach (var repo in _repositories.Values)
@@ -103,6 +85,38 @@ namespace TeamODD.ODDB.Runtime.Data
         public void NotifyDataChanged(ODDBID id)
         {
             OnDataChanged?.Invoke(id);
+        }
+        
+        public ODDatabaseDTO ToDTO()
+        {
+            var tables = Tables.GetAll();
+            var views = Views.GetAll();
+            
+            var tableDtos = tables.Select(t => t.ToDTO() as ODDBTableDTO).ToList();
+            var viewDtos = views.Select(v => v.ToDTO() as ODDBViewDTO).ToList();
+            
+            return new ODDatabaseDTO(tableDtos, viewDtos);
+        }
+
+        public void FromDTO(ODDatabaseDTO dto)
+        {
+            if (dto.TableRepoData != null)
+            {
+                foreach (var tableDto in dto.TableRepoData)
+                {
+                    var table = Tables.Create(new ODDBID(tableDto.ID));
+                    table.FromDTO(tableDto);
+                }
+            }
+
+            if (dto.ViewRepoData != null)
+            {
+                foreach (var viewDto in dto.ViewRepoData)
+                {
+                    var view = Views.Create(new ODDBID(viewDto.ID));
+                    view.FromDTO(viewDto);
+                }
+            }
         }
     }
 }

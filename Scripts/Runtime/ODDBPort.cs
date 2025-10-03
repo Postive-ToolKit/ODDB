@@ -77,7 +77,7 @@ namespace TeamODD.ODDB.Runtime
                     _entityTypeCache[targetType] = new Dictionary<string, ODDBEntity>();
                 }
                     
-                foreach (var row in table.ReadOnlyRows)
+                foreach (var row in table.Rows)
                 {
                     var entity = Activator.CreateInstance(targetType) as ODDBEntity;
                     if (entity == null)

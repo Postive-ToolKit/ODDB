@@ -5,6 +5,6 @@ namespace TeamODD.ODDB.Runtime.Data.Interfaces
     public interface IODDBHasTableMeta
     {
         List<ODDBField> TotalFields { get; }
-        List<ODDBField> ScopedTableMetas { get; }
+        List<ODDBField> ScopedFields { get; }
     }
 }

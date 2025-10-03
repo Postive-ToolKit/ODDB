@@ -13,7 +13,6 @@ namespace TeamODD.ODDB.Runtime.Entities
     {
         public void Import(List<ODDBField> tableMetas, ODDBRow row)
         {
-            var converter = new ODDBDataConverter();
             var entityType = this.GetType(); // 현재 인스턴스의 실제 타입
             var fields = entityType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .OrderBy(f => f.MetadataToken) // 대체적으로 선언 순서에 가까움
@@ -26,28 +25,28 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var meta = tableMetas[i];
                 var field = fields[fieldIndex];
                 var targetType = field.FieldType;
-                var rawValue = row.GetData(i);
+                var rawValue = row.GetData(i).SerializedData;
 
                 if (meta.Type == ODDBDataType.View)
                 {
                     RegisterAsLazyLoad(field, rawValue);
                     continue;
                 }
-                
-                var convertedValue = converter.Convert(rawValue, meta.Type);
+
+                var value = row.GetData(i).GetData();
                 
                 //Debug.Log("[ODDBImporter] Converted value: " + convertedValue + " for field: " + field.Name);
 
-                if (targetType.IsInstanceOfType(convertedValue))
+                if (targetType.IsInstanceOfType(value))
                 {
-                    field.SetValue(this, convertedValue);
+                    field.SetValue(this, value);
                 }
                 else
                 {
                     // change above to exception to string builder
                     var stringBuilder = new StringBuilder();
                     stringBuilder.Append($"[Import Error] Field '{field.Name}' expects type '{targetType}', ");
-                    stringBuilder.Append($"but got '{convertedValue?.GetType()}' from meta '{meta.Name}'");
+                    stringBuilder.Append($"but got '{value?.GetType()}' from meta '{meta.Name}'");
                     stringBuilder.AppendLine();
                     Debug.LogError(stringBuilder.ToString());
                 }

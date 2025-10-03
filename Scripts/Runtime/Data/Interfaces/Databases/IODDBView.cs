@@ -1,4 +1,6 @@
-﻿namespace TeamODD.ODDB.Runtime.Data.Interfaces
+﻿using TeamODD.ODDB.Runtime.Data.DTO;
+
+namespace TeamODD.ODDB.Runtime.Data.Interfaces
 {
     public interface IODDBView : 
         IODDBHasUniqueID, 
@@ -7,7 +9,7 @@
         IODDBHasBindType, 
         IODDBTableMetaHandler, 
         IODDBHasParentView,
-        IODDBSerialize
+        IODDBDTOConvertable<ODDBViewDTO>
     {
         
     }
