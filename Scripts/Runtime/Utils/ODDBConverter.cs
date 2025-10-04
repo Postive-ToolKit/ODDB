@@ -1,8 +1,8 @@
 ﻿using System;
 using Newtonsoft.Json;
 using NUnit.Framework;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.DTO;
 using UnityEngine;
 
 
@@ -14,10 +14,10 @@ namespace TeamODD.ODDB.Runtime.Utils
         public static event Action<ODDatabase> OnDatabaseExported;
         public ODDatabase CreateDatabase(string data)
         {
-            var databaseDto = new ODDatabaseDTO();
+            var databaseDto = new DatabaseDTO();
             try
             {
-                databaseDto = JsonConvert.DeserializeObject<ODDatabaseDTO>(data);
+                databaseDto = JsonConvert.DeserializeObject<DatabaseDTO>(data);
             }
             catch (Exception e)
             {

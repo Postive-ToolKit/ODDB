@@ -1,7 +1,7 @@
 using System.IO;
 using System.Xml.Serialization;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.DTO;
+using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.Utils;
 using UnityEngine;
 

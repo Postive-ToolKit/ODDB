@@ -1,10 +1,4 @@
-﻿using System.Collections.Generic;
-using Newtonsoft.Json;
-using Sirenix.OdinInspector;
-using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.DTO;
-using TeamODD.ODDB.Runtime.Utils;
+﻿using TeamODD.ODDB.Runtime.Attributes;
 using UnityEditor;
 using UnityEngine;
 
@@ -52,7 +46,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string GoogleOAuthClientID => _googleOAuthClientID;
         public string GoogleOAuthClientSecret => _googleOAuthClientSecret;
         [HideInInspector] private bool _isInitialized = false;
-        [ODDBPathSelector(true)]
+        [PathSelector(true)]
         [SerializeField] private string _dbPath;
         [SerializeField] private string _pathFromResources;
         [SerializeField] private string _dbName = "ODDB.json";

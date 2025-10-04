@@ -1,7 +1,7 @@
 using System.IO;
 using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Editors.Utils;
-using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEngine;
@@ -16,8 +16,8 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDBDataService _dataService;
         private IODDBEditorUseCase _editorUseCase;
         #region Layout
-        private ODDBSplitView _splitView;
-        private ODDatabaseTreeView _tableTreeView;
+        private TwoPaneSplitView _splitView;
+        private DatabaseTreeView _tableTreeView;
         private ODDBEditorView _editorView;
         #endregion
 
@@ -51,7 +51,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void CreateLayout()
         {
-            _splitView = new ODDBSplitView
+            _splitView = new TwoPaneSplitView
             {
                 style = {
                     flexGrow = 1
@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneIndex = 0,
                 fixedPaneInitialDimension = 200
             };
-            _tableTreeView = new ODDatabaseTreeView();
+            _tableTreeView = new DatabaseTreeView();
             var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
             treeViewContainer.Add(_tableTreeView);
             _splitView.Add(treeViewContainer);

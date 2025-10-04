@@ -1,23 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using TeamODD.ODDB.Runtime.Data.Enum;
-using TeamODD.ODDB.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Interfaces;
 
 namespace TeamODD.ODDB.Editors.Window
 {
     public interface IODDBEditorUseCase : IDisposable
     {
         event Action<string> OnViewChanged;
-        IODDBView GetViewByKey(string key);
-        IEnumerable<IODDBView> GetViews(Predicate<IODDBView> predicate = null);
+        IView GetViewByKey(string key);
+        IEnumerable<IView> GetViews(Predicate<IView> predicate = null);
         ODDBViewType GetViewTypeByKey(string key);
         string GetViewName(string key);
         void SetViewName(string key, string name);
         Type GetViewBindType(string key);
         void SetViewBindType(string key, Type type);
-        IODDBView GetViewParent(string key);
+        IView GetViewParent(string key);
         void SetViewParent(string key, string parentKey);
         void NotifyViewDataChanged(string viewId);
-        IEnumerable<IODDBView> GetPureViews();
+        IEnumerable<IView> GetPureViews();
     }
 }

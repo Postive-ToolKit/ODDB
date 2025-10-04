@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Xml.Serialization;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.DTO;
+using System.Collections.Generic;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils;
@@ -69,7 +66,7 @@ namespace TeamODD.ODDB.Runtime
                     continue;
                 }
                 
-                if(view is not ODDBTable table)
+                if(view is not Table table)
                     return;
 
                 if (!_entityTypeCache.ContainsKey(targetType))

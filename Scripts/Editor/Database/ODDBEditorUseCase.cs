@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TeamODD.ODDB.Runtime.Data;
-using TeamODD.ODDB.Runtime.Data.Enum;
-using TeamODD.ODDB.Runtime.Data.Interfaces;
+using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Utils;
 
 namespace TeamODD.ODDB.Editors.Window
@@ -22,7 +22,7 @@ namespace TeamODD.ODDB.Editors.Window
             OnViewChanged?.Invoke(id.ToString());
         }
             
-        public IODDBView GetViewByKey(string id)
+        public IView GetViewByKey(string id)
         {
             if (_database == null)
                 return null;
@@ -30,7 +30,7 @@ namespace TeamODD.ODDB.Editors.Window
             return view;
         }
 
-        public IEnumerable<IODDBView> GetViews(Predicate<IODDBView> predicate = null)
+        public IEnumerable<IView> GetViews(Predicate<IView> predicate = null)
         {
             if (_database == null)
                 return null;
@@ -43,9 +43,9 @@ namespace TeamODD.ODDB.Editors.Window
         public ODDBViewType GetViewTypeByKey(string id)
         {
             var view = GetViewByKey(id);
-            if (view is ODDBTable)
+            if (view is Table)
                 return ODDBViewType.Table;
-            if (view is ODDBView)
+            if (view is View)
                 return ODDBViewType.View;
             return ODDBViewType.None;
         }
@@ -81,7 +81,7 @@ namespace TeamODD.ODDB.Editors.Window
             _database.NotifyDataChanged(view.ID);
         }
 
-        public IODDBView GetViewParent(string id)
+        public IView GetViewParent(string id)
         {
             var view = GetViewByKey(id);
             if (view == null)
@@ -109,7 +109,7 @@ namespace TeamODD.ODDB.Editors.Window
             _database.NotifyDataChanged(new ODDBID(viewId));
         }
 
-        public IEnumerable<IODDBView> GetPureViews()
+        public IEnumerable<IView> GetPureViews()
         {
             return _database.Views.GetAll();
         }

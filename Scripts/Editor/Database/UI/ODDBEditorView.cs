@@ -1,13 +1,13 @@
 using TeamODD.ODDB.Editors.UI.Interfaces;
-using TeamODD.ODDB.Runtime.Data;
+using TeamODD.ODDB.Runtime;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public class ODDBEditorView : VisualElement, IODDBHasView
+    public class ODDBEditorView : VisualElement, IHasView
     {
-        private ODDBView _view;
-        private ODDBDataEditor _editor;
+        private View _view;
+        private ViewEditorSet _editorSet;
 
         public ODDBEditorView()
         {
@@ -19,11 +19,11 @@ namespace TeamODD.ODDB.Editors.UI
 
         public void SetView(string viewKey)
         {
-            _editor?.RemoveFromHierarchy();
+            _editorSet?.RemoveFromHierarchy();
             
-            var factory = new ODDBDataEditor.Factory();
-            _editor = factory.Create(viewKey);
-            Add(_editor);
+            var factory = new ViewEditorSet.Factory();
+            _editorSet = factory.Create(viewKey);
+            Add(_editorSet);
         }
     }
 }
