@@ -21,7 +21,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly Dictionary<string, int> _indexMapping = new Dictionary<string, int>();
         private readonly Dictionary<string, Action> _itemActions = new Dictionary<string, Action>();
-        private readonly List<Type> _viewTypes;
+        private readonly List<Type> _viewTypes = new();
         private IView _view;
 
         private int _itemIds = 0;
@@ -31,7 +31,7 @@ namespace TeamODD.ODDB.Editors.UI
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             _database = ODDBEditorDI.Resolve<ODDatabase>();
             _editorUseCase.OnViewChanged += UpdateView;
-            _viewTypes = new List<Type>(viewTypes);
+            SetTypes(viewTypes);
             autoExpand = true;
             
             selectionType = SelectionType.Single;
@@ -65,12 +65,25 @@ namespace TeamODD.ODDB.Editors.UI
             //Rebuild();
             schedule.Execute(Update).Every(100);
         }
+        
+        public void SetTypes(params Type[] viewTypes)
+        {
+            _viewTypes.Clear();
+            _viewTypes.AddRange(viewTypes);
+            IsDirty = true;
+        }
 
         private void CreateVisualElement(VisualElement element, int index)
         {
             var data = GetItemDataForIndex<IView>(index);
             var label = (Label)element;
             label.text = data.Name;
+            
+            // 
+            
+            element.style.backgroundColor = data is Table ?
+                new Color(1f, .5f, .5f, 0.3f) :
+                new Color(.5f, .5f, 1f, 0.3f);
             _itemActions[data.ID] = () => label.text = data.Name;
         }
         private void UpdateItemSource()

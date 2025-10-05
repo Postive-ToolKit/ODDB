@@ -4,6 +4,7 @@ using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -34,6 +35,7 @@ namespace TeamODD.ODDB.Editors.Window
             Initialize();
             ODDBEditorDI.Register(_database);
             ODDBEditorDI.RegisterSelfAndInterfaces(new ODDBEditorUseCase(_database));
+            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             CreateLayout();
             
             _tableTreeView.OnViewSelected += _editorView.SetView;
@@ -57,10 +59,35 @@ namespace TeamODD.ODDB.Editors.Window
                     flexGrow = 1
                 },
                 fixedPaneIndex = 0,
-                fixedPaneInitialDimension = 200
+                fixedPaneInitialDimension = 250
             };
-            _tableTreeView = new ODDBTreeView(typeof(View), typeof(Table));
             var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
+            _tableTreeView = new ODDBTreeView(typeof(View), typeof(Table));
+            
+            var leftToolbar = new Toolbar();
+            var toolBarMenu = new ToolbarMenu();
+            toolBarMenu.text = "Table";
+            toolBarMenu.menu.AppendAction("Table", action =>
+            {
+                _tableTreeView.SetTypes(typeof(View), typeof(Table));
+                toolBarMenu.text = "Table";
+            });
+            toolBarMenu.menu.AppendAction("View", action =>
+            {
+                _tableTreeView.SetTypes(typeof(View));
+                toolBarMenu.text = "View";
+            });
+            leftToolbar.Add(toolBarMenu);
+
+            var toolBarButton = new ToolbarButton();
+            toolBarButton.text = "Selected : None";
+            
+            _tableTreeView.OnViewSelected += view =>
+                toolBarButton.text = "Selected : " + _editorUseCase.GetViewName(view);
+            
+            leftToolbar.Add(toolBarButton);
+            
+            treeViewContainer.Add(leftToolbar);
             treeViewContainer.Add(_tableTreeView);
             _splitView.Add(treeViewContainer);
             
