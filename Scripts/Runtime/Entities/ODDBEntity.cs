@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Entities
@@ -39,19 +40,26 @@ namespace TeamODD.ODDB.Runtime.Entities
                 }
                 else if (value == null)
                 {
-                    var stringBuilder = new StringBuilder();
-                    stringBuilder.Append($"[Import Warning][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
-                    stringBuilder.Append($"but got 'null' from meta '{meta.Name}'");
-                    stringBuilder.AppendLine();
-                    Debug.LogWarning(stringBuilder.ToString());
+                    if (ODDBSettings.Setting.UseDebugLog)
+                    {
+                        var stringBuilder = new StringBuilder();
+                        stringBuilder.Append($"[Import Warning][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
+                        stringBuilder.Append($"but got 'null' from meta '{meta.Name}'");
+                        stringBuilder.AppendLine();
+                        Debug.LogWarning(stringBuilder.ToString());
+                    }
                 }
                 else
                 {
-                    var stringBuilder = new StringBuilder();
-                    stringBuilder.Append($"[Import Error][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
-                    stringBuilder.Append($"but got '{value?.GetType()}' from meta '{meta.Name}'");
-                    stringBuilder.AppendLine();
-                    Debug.LogError(stringBuilder.ToString());
+                    if (ODDBSettings.Setting.UseDebugLog)
+                    {
+                        var stringBuilder = new StringBuilder();
+                        stringBuilder.Append($"[Import Error][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
+                        stringBuilder.Append($"but got '{value?.GetType()}' from meta '{meta.Name}'");
+                        stringBuilder.AppendLine();
+                        Debug.LogError(stringBuilder.ToString());
+                    }
+
                 }
                 fieldIndex++;
             }

@@ -1,6 +1,9 @@
 ﻿using TeamODD.ODDB.Runtime.Attributes;
-using UnityEditor;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace TeamODD.ODDB.Runtime.Settings
 {
@@ -16,11 +19,13 @@ namespace TeamODD.ODDB.Runtime.Settings
                     settingFiles = CreateInstance<ODDBSettings>();
                     settingFiles.name = "ODDBSettings";
                     // find resources folder
+                    #if UNITY_EDITOR
                     if (!AssetDatabase.IsValidFolder("Assets/Resources")) {
                         AssetDatabase.CreateFolder("Assets", "Resources");
                     }
                     AssetDatabase.CreateAsset(settingFiles, "Assets/Resources/ODDBSettings.asset");
                     AssetDatabase.SaveAssets();
+                    #endif
                 }
 
                 return settingFiles;
@@ -28,6 +33,9 @@ namespace TeamODD.ODDB.Runtime.Settings
         }
         public static readonly string BASE_PATH = Application.dataPath + "/Resources";
         public bool IsInitialized => _isInitialized;
+        
+        public bool UseDebugLog => _useDebugLog;
+        
         public string Path {
             get => Application.dataPath + DBPath;
             set{
@@ -46,6 +54,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string GoogleOAuthClientID => _googleOAuthClientID;
         public string GoogleOAuthClientSecret => _googleOAuthClientSecret;
         [HideInInspector] private bool _isInitialized = false;
+        [SerializeField] private bool _useDebugLog = false;
         [PathSelector(true)]
         [SerializeField] private string _dbPath;
         [SerializeField] private string _pathFromResources;
