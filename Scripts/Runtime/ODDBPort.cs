@@ -18,7 +18,7 @@ namespace TeamODD.ODDB.Runtime
         private static ODDatabase _database;
 
         #region Initialization
-        [RuntimeInitializeOnLoadMethod]
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Initialize()
         {
             // Initialize the ODDB system

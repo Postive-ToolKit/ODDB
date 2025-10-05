@@ -32,18 +32,23 @@ namespace TeamODD.ODDB.Runtime.Entities
                 }
 
                 var value = row.GetData(i).GetData();
-                
-                //Debug.Log("[ODDBImporter] Converted value: " + convertedValue + " for field: " + field.Name);
 
                 if (targetType.IsInstanceOfType(value))
                 {
                     field.SetValue(this, value);
                 }
+                else if (value == null)
+                {
+                    var stringBuilder = new StringBuilder();
+                    stringBuilder.Append($"[Import Warning][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
+                    stringBuilder.Append($"but got 'null' from meta '{meta.Name}'");
+                    stringBuilder.AppendLine();
+                    Debug.LogWarning(stringBuilder.ToString());
+                }
                 else
                 {
-                    // change above to exception to string builder
                     var stringBuilder = new StringBuilder();
-                    stringBuilder.Append($"[Import Error] Field '{field.Name}' expects type '{targetType}', ");
+                    stringBuilder.Append($"[Import Error][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
                     stringBuilder.Append($"but got '{value?.GetType()}' from meta '{meta.Name}'");
                     stringBuilder.AppendLine();
                     Debug.LogError(stringBuilder.ToString());
@@ -57,8 +62,7 @@ namespace TeamODD.ODDB.Runtime.Entities
         {
             ODDBPort.RegisterOnDataPortedCallback(() =>
             {
-                var path = rawValue;
-                var targetId = path.Split('/').LastOrDefault();
+                var targetId = rawValue;
                 field.SetValue(this, ODDBPort.GetEntity<ODDBEntity>(targetId));
             });
         }
