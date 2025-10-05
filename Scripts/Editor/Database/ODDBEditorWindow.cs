@@ -17,7 +17,7 @@ namespace TeamODD.ODDB.Editors.Window
         private IODDBEditorUseCase _editorUseCase;
         #region Layout
         private TwoPaneSplitView _splitView;
-        private DatabaseTreeView _tableTreeView;
+        private ODDBTreeView _tableTreeView;
         private ODDBEditorView _editorView;
         #endregion
 
@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneIndex = 0,
                 fixedPaneInitialDimension = 200
             };
-            _tableTreeView = new DatabaseTreeView();
+            _tableTreeView = new ODDBTreeView(typeof(View), typeof(Table));
             var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
             treeViewContainer.Add(_tableTreeView);
             _splitView.Add(treeViewContainer);

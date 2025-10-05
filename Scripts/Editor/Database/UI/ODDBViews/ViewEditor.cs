@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using TeamODD.ODDB.Editors.DTO;
+﻿using TeamODD.ODDB.Editors.DTO;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -20,10 +19,10 @@ namespace TeamODD.ODDB.Editors.UI
         public ViewEditor()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             selectionType = SelectionType.Single;
+            showAlternatingRowBackgrounds = AlternatingRowBackground.All;
+            horizontalScrollingEnabled = true;
             showBorder = true;
-            horizontalScrollingEnabled = false;
             style.flexGrow = 1;
             bindingPath = "Fields";
             columns.Add(new Column() {bindingPath = "ID", title = "ID", stretchable = false, minWidth = 80});

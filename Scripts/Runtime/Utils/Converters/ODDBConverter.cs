@@ -29,14 +29,9 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             database.FromDTO(databaseDto);
             
             OnDatabaseCreated.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-            
-            Debug.Log($"ODDBConverter.CreateDatabase Invoking {OnDatabaseCreated.Count} OnDatabaseCreated events");
 
             foreach (var createEvent in OnDatabaseCreated)
-            {
-                Debug.Log($"ODDBConverter.CreateDatabase Invoking OnDatabaseCreated event: with priority {createEvent.Priority}");
                 createEvent.OnEvent?.Invoke(database);
-            }
             
             OnDatabaseCreated.Clear();
             return database;

@@ -147,7 +147,7 @@ namespace TeamODD.ODDB.Editors.UI
                 switch (type)
                 {
                     case ODDBViewType.View:
-                        return BuildODDBViewEditor(view, editor);
+                        return BuildViewEditor(view, editor);
                     case ODDBViewType.Table:
                         return BuildODDBTableEditor(view, editor);
                     default:
@@ -155,7 +155,7 @@ namespace TeamODD.ODDB.Editors.UI
                 }
             }
 
-            private ViewEditorSet BuildODDBViewEditor(IView view, ViewEditorSet editorSet)
+            private ViewEditorSet BuildViewEditor(IView view, ViewEditorSet editorSet)
             {
                 var viewInfoView = new ViewInfoView();
                 viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.ID, name);
