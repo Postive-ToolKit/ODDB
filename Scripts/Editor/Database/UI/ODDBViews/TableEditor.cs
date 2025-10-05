@@ -102,19 +102,17 @@ namespace TeamODD.ODDB.Editors.UI
             toolColumn.bindCell = (element, index) =>
             {
                 var button = element as Button;
-                button.RegisterCallbackOnce<ClickEvent> (evt => 
-                {
-                    evt.StopPropagation();
-                    OnButtonClicked();
-                });
+                if (button == null)
+                    return;
                 
-                void OnButtonClicked()
+                button.clicked -= button.userData as Action; // 기존 핸들러 제거
+                Action handler = () =>
                 {
                     if (_table != null && index < _table.Rows.Count)
-                    {
                         _table.RemoveRow(index);
-                    }
-                }
+                };
+                button.userData = handler; // 핸들러를 userData에 저장
+                button.clicked += handler; // 새 핸들러 등록
             };
 
             return toolColumn;

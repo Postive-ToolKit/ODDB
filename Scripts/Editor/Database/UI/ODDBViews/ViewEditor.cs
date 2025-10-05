@@ -1,4 +1,5 @@
-﻿using TeamODD.ODDB.Editors.DTO;
+﻿using System;
+using TeamODD.ODDB.Editors.DTO;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -36,7 +37,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (_view == null) {
                 return;
             }
-            
+            this.Unbind();
             _viewDataDto = ScriptableObject.CreateInstance<ViewDataDTO>();
             _viewDataDto.Fields = _view.ScopedFields;
             _viewDataDto.OnFieldsChanged += _view.NotifyFieldsChanged;
@@ -72,20 +73,21 @@ namespace TeamODD.ODDB.Editors.UI
                 };
                 return button;
             };
-
+            
             toolColumn.bindCell = (element, index) =>
             {
                 var button = element as Button;
-                if (button != null)
+                if (button == null)
+                    return;
+                
+                button.clicked -= button.userData as Action; // 기존 핸들러 제거
+                Action handler = () =>
                 {
-                    button.clicked += () =>
-                    {
-                        if (_view != null && index < _view.TotalFields.Count)
-                        {
-                            _view.RemoveField(index);
-                        }
-                    };
-                }
+                    if (_view != null && index < _view.TotalFields.Count)
+                        _view.RemoveField(index);
+                };
+                button.userData = handler; // 핸들러를 userData에 저장
+                button.clicked += handler; // 새 핸들러 등록
             };
 
             return toolColumn;

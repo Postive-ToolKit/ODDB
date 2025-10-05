@@ -22,7 +22,7 @@ namespace TeamODD.ODDB.Editors.UI.ViewWindows
             style.marginTop = 0;
             style.marginBottom = 0;
 
-            this.makeItem = () => new Label()
+            makeItem = () => new Label()
             {
                 style =
                 {
@@ -36,7 +36,7 @@ namespace TeamODD.ODDB.Editors.UI.ViewWindows
                     marginBottom = 0
                 }
             };
-            this.bindItem = (element, index) =>
+            bindItem = (element, index) =>
             {
                 var button = element as Label;
                 if (button == null || itemsSource == null || index < 0 || index >= itemsSource.Count)
@@ -52,11 +52,11 @@ namespace TeamODD.ODDB.Editors.UI.ViewWindows
                 button.text = item.Name + " - " + item.ID;
             };
             
-            this.selectionType = SelectionType.Single;
+            selectionType = SelectionType.Single;
             
-            this.showBorder = true;
-            this.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
-            this.fixedItemHeight = 20;
+            showBorder = true;
+            showAlternatingRowBackgrounds = AlternatingRowBackground.All;
+            fixedItemHeight = 20;
             
             selectionChanged += OnSelectionChanged;
         }
@@ -80,8 +80,8 @@ namespace TeamODD.ODDB.Editors.UI.ViewWindows
             newList.Add(null);
             newList.AddRange(source);
             
-            this.itemsSource = newList.ToArray();
-            this.Rebuild();
+            itemsSource = newList.ToArray();
+            Rebuild();
         }
 
 
