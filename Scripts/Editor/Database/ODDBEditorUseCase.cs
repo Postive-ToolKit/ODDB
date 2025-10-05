@@ -4,7 +4,7 @@ using System.Linq;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Editors.Window
 {

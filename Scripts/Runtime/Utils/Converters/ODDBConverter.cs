@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using TeamODD.ODDB.Runtime;
@@ -6,11 +7,11 @@ using TeamODD.ODDB.Runtime.DTO;
 using UnityEngine;
 
 
-namespace TeamODD.ODDB.Runtime.Utils
+namespace TeamODD.ODDB.Runtime.Utils.Converters
 {
     public class ODDBConverter
     {
-        public static event Action<ODDatabase> OnDatabaseCreated;
+        public static readonly List<DataBaseCreateEvent> OnDatabaseCreated = new List<DataBaseCreateEvent>();
         public static event Action<ODDatabase> OnDatabaseExported;
         public ODDatabase CreateDatabase(string data)
         {
@@ -27,7 +28,17 @@ namespace TeamODD.ODDB.Runtime.Utils
             var database = new ODDatabase();
             database.FromDTO(databaseDto);
             
-            OnDatabaseCreated?.Invoke(database);
+            OnDatabaseCreated.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            
+            Debug.Log($"ODDBConverter.CreateDatabase Invoking {OnDatabaseCreated.Count} OnDatabaseCreated events");
+
+            foreach (var createEvent in OnDatabaseCreated)
+            {
+                Debug.Log($"ODDBConverter.CreateDatabase Invoking OnDatabaseCreated event: with priority {createEvent.Priority}");
+                createEvent.OnEvent?.Invoke(database);
+            }
+            
+            OnDatabaseCreated.Clear();
             return database;
         }
         

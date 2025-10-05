@@ -48,7 +48,9 @@ namespace TeamODD.ODDB.Editors.UI.ViewWindows
             _ignoredViews = new List<IView>(views);
             var targetView = _editorUseCase
                 .GetPureViews()
-                .Where(view => !_ignoredViews.Contains(view))
+                .Where(view => 
+                    !_ignoredViews.Contains(view) && 
+                    !_ignoredViews.TrueForAll(igview => view.IsChildOf(igview.ID)))
                 .ToList();
             _viewSelectView.SetDataSource(targetView);
         }

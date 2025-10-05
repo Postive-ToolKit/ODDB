@@ -5,6 +5,7 @@ using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Interfaces;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -18,8 +19,8 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IView _view;
         private readonly List<IHasView> _viewListeners = new();
         private readonly VisualElement _upperView;
-        private readonly GroupBox _toolBox;
-        private readonly ScrollView _contentView;
+        private readonly Toolbar _toolbar;
+        private readonly VisualElement _contentView;
         private readonly IODDBEditorUseCase _editorUseCase;
         private ViewEditorSet(IView view, ODDBViewType type)
         {
@@ -44,9 +45,9 @@ namespace TeamODD.ODDB.Editors.UI
             _upperView = BuildUpperView();
             base.Add(_upperView);
             
-            _toolBox = BuildToolBox() as GroupBox;
-            base.Add(_toolBox);
-            _contentView = BuildContentView() as ScrollView;
+            _toolbar = BuildToolBox();
+            base.Add(_toolbar);
+            _contentView = BuildContentView();
             base.Add(_contentView);
         }
         
@@ -66,26 +67,22 @@ namespace TeamODD.ODDB.Editors.UI
             return upperView;
         }
 
-        private VisualElement BuildToolBox()
+        private Toolbar BuildToolBox()
         {
-            var toolBox = new GroupBox();
-            toolBox = new GroupBox();
+            var toolBox = new Toolbar();
+            toolBox = new Toolbar();
             toolBox.style.flexShrink = 1;
-            toolBox.style.flexDirection = FlexDirection.Row;
-            toolBox.style.paddingBottom = 0;
-            toolBox.style.paddingTop = 0;
-            toolBox.style.paddingLeft = 0;
-            toolBox.style.paddingRight = 0;
-            toolBox.style.marginBottom = 0;
-            toolBox.style.marginTop = 0;
-            toolBox.style.marginLeft = 0;
-            toolBox.style.marginRight = 0;
             return toolBox;
         }
         private VisualElement BuildContentView()
         {
-            var contentView = new ScrollView();
-            contentView.mode = ScrollViewMode.VerticalAndHorizontal;
+            var contentView = new VisualElement
+            {
+                style =
+                {
+                    flexGrow = 1
+                }
+            };
             return contentView;
         }
         private new void Add(VisualElement visualElement)
@@ -96,13 +93,22 @@ namespace TeamODD.ODDB.Editors.UI
             _upperView.Add(visualElement);
         }
         
-        private void AddToolBoxView(VisualElement visualElement)
+        private void AddToolBarView(ToolbarButton button)
         {
-            if (visualElement == null)
+            if (button == null)
                 return;
-            RegisterListener(visualElement);
-            _toolBox.Add(visualElement);
+            RegisterListener(button);
+            _toolbar.Add(button);
         }
+
+        private void AddToolBarMenu(ToolbarMenu toolbarMenu)
+        {
+            if (toolbarMenu == null)
+                return;
+            RegisterListener(toolbarMenu);
+            _toolbar.Add(toolbarMenu);
+        }
+        
         private void AddContent(VisualElement visualElement)
         {
             if (visualElement == null)
@@ -158,16 +164,14 @@ namespace TeamODD.ODDB.Editors.UI
                 var viewEditor = new ViewEditor();
                 editorSet.AddContent(viewEditor);
                 
-                var createRow = new Button();
+                var createRow = new ToolbarButton();
                 createRow.text = "Add Metadata";
                 createRow.clicked += () =>
                 {
                     view.AddField(new Field());
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
-                createRow.style.flexGrow = 0;
-                createRow.style.flexShrink = 1;
-                editorSet.AddToolBoxView(createRow);
+                editorSet.AddToolBarView(createRow);
                 
                 var bindClassSelectView = new BindClassSelectView();
                 bindClassSelectView.SetView(view.ID);
@@ -177,7 +181,7 @@ namespace TeamODD.ODDB.Editors.UI
                     view.BindType = bindType;
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
-                editorSet.AddToolBoxView(bindClassSelectView);
+                editorSet.AddToolBarMenu(bindClassSelectView);
                 
                 var inheritSelectView = new ParentViewSelectView();
                 inheritSelectView.OnParentViewChanged += parentView =>
@@ -186,7 +190,7 @@ namespace TeamODD.ODDB.Editors.UI
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 inheritSelectView.SetView(view.ID);
-                editorSet.AddToolBoxView(inheritSelectView);
+                editorSet.AddToolBarView(inheritSelectView);
                 
                 return editorSet;
             }
@@ -203,24 +207,15 @@ namespace TeamODD.ODDB.Editors.UI
                 editorSet.AddContent(tableEditor);
 
                 
-                var createRow = new Button();
+                var createRow = new ToolbarButton();
                 createRow.text = "Create Row";
                 createRow.clicked += () =>
                 {
                     table!.AddRow();
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
-                createRow.style.flexGrow = 0;
-                createRow.style.flexShrink = 1;
-                editorSet.AddToolBoxView(createRow);
                 
-                // var autoWidth = new Toggle();
-                // autoWidth.value = true;
-                // autoWidth.text = "Auto Width";
-                // autoWidth.style.flexGrow = 0;
-                // autoWidth.style.flexShrink = 1;
-                // autoWidth.RegisterCallback<ChangeEvent<bool>>(OnAutoWidthToggleChanged);
-                // editor.AddToolBoxView(autoWidth);
+                editorSet.AddToolBarView(createRow);
                 
                 var bindClassSelectView = new BindClassSelectView();
                 bindClassSelectView.SetView(view.ID);
@@ -229,7 +224,7 @@ namespace TeamODD.ODDB.Editors.UI
                     view.BindType = bindType;
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
-                editorSet.AddToolBoxView(bindClassSelectView);
+                editorSet.AddToolBarMenu(bindClassSelectView);
 
                 var inheritSelectView = new ParentViewSelectView();
                 inheritSelectView.OnParentViewChanged += parentView =>
@@ -238,7 +233,7 @@ namespace TeamODD.ODDB.Editors.UI
                     _editorUseCase.NotifyViewDataChanged(view.ID);
                 };
                 inheritSelectView.SetView(view.ID);
-                editorSet.AddToolBoxView(inheritSelectView);
+                editorSet.AddToolBarView(inheritSelectView);
                 
                 return editorSet;
             }

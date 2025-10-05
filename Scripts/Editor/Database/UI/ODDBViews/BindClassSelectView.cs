@@ -6,14 +6,17 @@ using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Entities;
+using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public sealed class BindClassSelectView : DropdownField, IHasView
+    public sealed class BindClassSelectView : ToolbarMenu, IHasView
     {
         public event Action<Type> OnBindClassChanged;
         private const string BIND_CLASS_NOT_FOUND = "None";
+        private const string TEXT_PREFIX = "Bind : ";
         private Type _baseType;
         private readonly Dictionary<string,Type> _bindableClasses = new();
         private IODDBEditorUseCase _editorUseCase;
@@ -21,12 +24,8 @@ namespace TeamODD.ODDB.Editors.UI
         public BindClassSelectView()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            label = "Bind Class";
-            labelElement.style.minWidth = 0;
-            labelElement.style.alignSelf = Align.FlexStart;
             _editorUseCase.OnViewChanged += OnViewChanged;
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
-            RegisterCallback<ChangeEvent<string>>(OnDropDownValueChanged);
         }
 
         private void OnViewChanged(string viewId)
@@ -39,7 +38,7 @@ namespace TeamODD.ODDB.Editors.UI
             Type parentBind = null;
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view == null) {
-                value = BIND_CLASS_NOT_FOUND;
+                text = TEXT_PREFIX + BIND_CLASS_NOT_FOUND;
                 return;
             }
             if(view.ParentView != null && view.ParentView.BindType != null)
@@ -50,15 +49,15 @@ namespace TeamODD.ODDB.Editors.UI
                 _baseType = typeof(ODDBEntity);
             CreateDropDown();
             if (view.BindType != null)
-                value = view.BindType.Name;
+                text = TEXT_PREFIX + view.BindType.Name;
             else
-                value = BIND_CLASS_NOT_FOUND;
+                text = TEXT_PREFIX + BIND_CLASS_NOT_FOUND;
         }
 
         private void CreateDropDown()
         {
             _bindableClasses.Clear();
-            choices.Clear();
+            menu.ClearItems();
             var baseType = _baseType;
             var allTypes = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(asm => {
@@ -75,33 +74,28 @@ namespace TeamODD.ODDB.Editors.UI
 
             // add "None" option if baseType is ODDBEntity
             if (_baseType == typeof(ODDBEntity))
-                choices.Add(BIND_CLASS_NOT_FOUND);
+                menu.AppendAction(BIND_CLASS_NOT_FOUND, _ => OnSelectedChange(BIND_CLASS_NOT_FOUND));
             
             
             if (!baseType.IsAbstract)
             {
                 _bindableClasses.Add(baseType.Name, baseType);
-                choices.Add(baseType.Name);
+                menu.AppendAction(baseType.Name, _ => OnSelectedChange(baseType.Name));
             }
                 
             
             foreach (var type in allTypes)
             {
                 _bindableClasses[type.Name] = type;
-                choices.Add(type.Name);
+                menu.AppendAction(type.Name, _ => OnSelectedChange(type.Name));
             }
         }
-        private void OnDropDownValueChanged(ChangeEvent<string> evt)
+        
+        private void OnSelectedChange(string newValue)
         {
-            if (_bindableClasses.TryGetValue(evt.newValue, out var type)) {
-                value = type.Name;
-                OnBindClassChanged?.Invoke(type);
-            }
-            else {
-                value = BIND_CLASS_NOT_FOUND;
-                OnBindClassChanged?.Invoke(null);
-            }
+            OnBindClassChanged?.Invoke(_bindableClasses.GetValueOrDefault(newValue));
         }
+        
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
             if (_editorUseCase != null) {

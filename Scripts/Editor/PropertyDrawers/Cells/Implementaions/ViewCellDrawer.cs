@@ -17,6 +17,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.View)]
     public class ViewCellDrawer : StringSerializer, IODDBCellDrawer
     {
+        private const string NONE_OPTION = "None";
         public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             var fieldTypeProp = property.FindPropertyRelative(Cell.DATA_TYPE_FIELD);
@@ -55,7 +56,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             }
             
             var entityNames = new List<string>();
-
+            entityNames.Add(NONE_OPTION);
+            
             foreach (var table in tables)
                 entityNames.AddRange(table.Rows.Select(row => row.ID.ToString()));
 
@@ -72,6 +74,9 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             if (EditorGUI.EndChangeCheck())
             {
+                if (newValue == NONE_OPTION)
+                    newValue = string.Empty;
+                
                 var newSerializedData = Serialize(newValue);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();

@@ -5,12 +5,13 @@ using TeamODD.ODDB.Editors.UI.ViewWindows;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
 
-    public sealed class ParentViewSelectView : Button, IHasView
+    public sealed class ParentViewSelectView : ToolbarButton, IHasView
     {
         public event Action<IView> OnParentViewChanged;
         private const string INHERIT_PREFIX = "Inherit : ";

@@ -4,7 +4,7 @@ using System.Reflection;
 using TeamODD.ODDB.Runtime.Entities;
 using UnityEngine;
 
-namespace TeamODD.ODDB.Runtime.Utils
+namespace TeamODD.ODDB.Runtime.Utils.Converters
 {
     internal static class ODDBTypeUtility
     {

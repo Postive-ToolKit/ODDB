@@ -6,7 +6,7 @@ using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEngine;

@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.DTO.Builders;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
 {
@@ -14,6 +15,7 @@ namespace TeamODD.ODDB.Runtime
         public Table()
         {
             OnFieldsChanged += ValidateRows;
+            OnFieldAdded += OnAddField;
         }
         
         private void ValidateRows()
@@ -24,7 +26,7 @@ namespace TeamODD.ODDB.Runtime
             }
         }
 
-        protected override void OnAddTableMeta(Field field)
+        protected override void OnAddField(Field field)
         {
             foreach (var row in _rows) {
                 row.AddCell(field.Type);
@@ -105,7 +107,11 @@ namespace TeamODD.ODDB.Runtime
             
             _rows.Clear();
             _cachedData = tableDto.Data;
-            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
+            ODDBConverter.OnDatabaseCreated.Add(new DataBaseCreateEvent
+            {
+                Priority = DataCreateProcess.TableRowData,
+                OnEvent = OnDatabaseInitialize,
+            });
         }
 
         public override void OnDatabaseInitialize(ODDatabase database)
@@ -113,6 +119,7 @@ namespace TeamODD.ODDB.Runtime
             base.OnDatabaseInitialize(database);
             if (_cachedData == null)
                 return;
+            
             foreach (var rowData in _cachedData)
             {
                 var id = new ODDBID(rowData[0]);

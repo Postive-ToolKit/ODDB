@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime

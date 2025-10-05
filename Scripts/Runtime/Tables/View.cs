@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.DTO.Builders;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -12,6 +12,9 @@ namespace TeamODD.ODDB.Runtime
     public class View : IView
     {
         public event Action OnFieldsChanged;
+        
+        public event Action<Field> OnFieldAdded;
+        
         private const string DEFAULT_NAME = "Default Name";
         public ODDBID ID { get; set; }
         public string Name { get; set; }
@@ -23,12 +26,17 @@ namespace TeamODD.ODDB.Runtime
             set
             {
                 Assert.IsFalse(_parentView == this, "Cannot set parent view to itself.");
-                if(_parentView != null) 
+                if (_parentView != null)
+                {
                     _parentView.OnFieldsChanged -= NotifyFieldsChanged;
+                    _parentView.OnFieldAdded -= NotifyFieldAdded;
+                }
                 _parentView = value;
+                NotifyFieldsChanged();
                 if(_parentView == null)
                     return;
                 _parentView.OnFieldsChanged += NotifyFieldsChanged;
+                _parentView.OnFieldAdded += NotifyFieldAdded;
                 
                 if(BindType == null)
                 {
@@ -79,7 +87,8 @@ namespace TeamODD.ODDB.Runtime
         public void AddField(Field field)
         {
             _fields.Add(field);
-            OnAddTableMeta(field);
+            OnAddField(field);
+            OnFieldAdded?.Invoke(field);
         }
         
         public void RemoveField(int index)
@@ -124,7 +133,7 @@ namespace TeamODD.ODDB.Runtime
         }
 
         #region Virtual Event Methods
-        protected virtual void OnAddTableMeta(Field field) { }
+        protected virtual void OnAddField(Field field) { }
         protected virtual void OnRemoveField(int index) { }
         protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
 
@@ -133,7 +142,6 @@ namespace TeamODD.ODDB.Runtime
             ParentView = database.Views.Read(_parentViewKey);
             database.OnDataChanged += OnDatabaseDataChanged;
             database.OnDataRemoved += OnDatabaseDataRemoved;
-            ODDBConverter.OnDatabaseCreated -= OnDatabaseInitialize;
         }
 
         protected virtual void OnDatabaseDataChanged(ODDBID id)
@@ -180,12 +188,21 @@ namespace TeamODD.ODDB.Runtime
             _parentViewKey = new ODDBID(dto.ParentView);
             ScopedFields.Clear();
             ScopedFields.AddRange(dto.TableMetas);
-            ODDBConverter.OnDatabaseCreated += OnDatabaseInitialize;
+            ODDBConverter.OnDatabaseCreated.Add(new DataBaseCreateEvent
+            {
+                Priority = DataCreateProcess.ViewFieldInfo,
+                OnEvent = OnDatabaseInitialize
+            });
         }
         
         public void NotifyFieldsChanged()
         {
             OnFieldsChanged?.Invoke();
+        }
+
+        public void NotifyFieldAdded(Field field)
+        {
+            OnFieldAdded?.Invoke(field);
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace TeamODD.ODDB.Runtime.Utils
+namespace TeamODD.ODDB.Runtime.Utils.Converters
 {
     [Serializable]
     public class ODDBID

@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Utils;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
@@ -67,19 +66,21 @@ namespace TeamODD.ODDB.Runtime
             }
         }
 
-        public void AddCell(ODDBDataType type)
+        public void AddCell(FieldType type)
         {
             _cells.Add(new Cell(type));
         }
 
         public void ValidateTypes(List<Field> totalFields)
         {
+            while (_cells.Count > totalFields.Count)
+                _cells.RemoveAt(0);
+
+            while (totalFields.Count > _cells.Count)
+                _cells.Insert(0, new Cell());
+            
             for (int i = 0; i < totalFields.Count; i++)
-            {
-                if (i >= _cells.Count)
-                    break;
                 _cells[i].FieldType = totalFields[i].Type;
-            }
         }
     }
 }
