@@ -7,7 +7,9 @@ using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
@@ -18,7 +20,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     public class ViewCellDrawer : StringSerializer, IODDBCellDrawer
     {
         private const string NONE_OPTION = "None";
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             var fieldTypeProp = property.FindPropertyRelative(Cell.DATA_TYPE_FIELD);
             var viewID = fieldTypeProp.FindPropertyRelative(FieldType.PARAM_FIELD).stringValue;
@@ -26,17 +28,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
             var value = Deserialize(serializedData) as string;
-            // GUI 그리기
-            EditorGUI.BeginProperty(position, label, property);
-            EditorGUI.BeginChangeCheck();
-            
+
             if (string.IsNullOrEmpty(viewID))
             {
-                EditorGUI.LabelField(position, "No View Assigned");
-                EditorGUI.EndProperty();
-                return;
+                return new Label("No View Assigned");
             }
-
 
             var tables = ODDBEditorDI.Resolve<IODDBEditorUseCase>()
                 .GetViews(view =>
@@ -50,9 +46,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             if (tables.Count <= 0)
             {
-                EditorGUI.LabelField(position, "Invalid View");
-                EditorGUI.EndProperty();
-                return;
+                return new Label("Invalid View");
             }
             
             var entityNames = new List<string>();
@@ -63,26 +57,25 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             if (entityNames.Count <= 0)
             {
-                EditorGUI.LabelField(position, "No Entities in View");
-                EditorGUI.EndProperty();
-                return;
+                return new Label("No Entities in View");
             }
             
             var currentIndex = Mathf.Max(0, entityNames.IndexOf(value));
-            var newIndex = EditorGUI.Popup(position, label.text, currentIndex, entityNames.ToArray());
-            var newValue = entityNames[newIndex];
+            
+            var dropdownField = new DropdownField(entityNames, currentIndex);
 
-            if (EditorGUI.EndChangeCheck())
+            dropdownField.RegisterValueChangedCallback(evt =>
             {
+                var newValue = evt.newValue;
                 if (newValue == NONE_OPTION)
                     newValue = string.Empty;
                 
                 var newSerializedData = Serialize(newValue);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
-            }
-            
-            EditorGUI.EndProperty();
+            });
+
+            return dropdownField;
         }
     }
 }

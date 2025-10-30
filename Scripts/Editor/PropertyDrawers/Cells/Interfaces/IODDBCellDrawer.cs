@@ -1,5 +1,5 @@
 ﻿using UnityEditor;
-using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
@@ -9,11 +9,10 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     public interface IODDBCellDrawer
     {
         /// <summary>
-        /// Draws the property in the Unity Inspector.
+        /// Creates a custom VisualElement for the property.
         /// </summary>
-        /// <param name="position"> The position to draw the property.</param>
-        /// <param name="property"> The serialized property to be drawn.</param>
-        /// <param name="label"> The label for the property.</param>
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label);
+        /// <param name="property"> The serialized property to create the GUI for.</param>
+        /// <returns> A VisualElement representing the property.</returns>
+        public VisualElement CreatePropertyGUI(SerializedProperty property);
     }
 }

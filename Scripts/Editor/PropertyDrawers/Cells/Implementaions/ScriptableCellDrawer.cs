@@ -4,7 +4,9 @@ using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
@@ -14,25 +16,27 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.ScriptableObject)]
     public class ScriptableCellDrawer : ResourceScriptableSerializer, IODDBCellDrawer
     {
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
             var value = Deserialize(serializedData) as ScriptableObject;
-            // GUI 그리기
-            EditorGUI.BeginProperty(position, label, property);
-            EditorGUI.BeginChangeCheck();
 
-            var newValue = (ScriptableObject)EditorGUI.ObjectField(position, label, value, typeof(ScriptableObject), false);
-
-            if (EditorGUI.EndChangeCheck())
+            var objectField = new ObjectField(property.displayName)
             {
-                var newSerializedData = Serialize(newValue);
+                objectType = typeof(ScriptableObject),
+                allowSceneObjects = false,
+                value = value
+            };
+
+            objectField.RegisterValueChangedCallback(evt =>
+            {
+                var newSerializedData = Serialize(evt.newValue as ScriptableObject);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
-            }
+            });
 
-            EditorGUI.EndProperty();
+            return objectField;
         }
     }
 }

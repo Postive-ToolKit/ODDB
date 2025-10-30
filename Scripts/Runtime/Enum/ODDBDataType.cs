@@ -21,7 +21,11 @@ namespace TeamODD.ODDB.Runtime.Enum
         Prefab = 1001,
         [DataSerializer(typeof(ResourceSpriteSerializer))]
         Sprite = 1002,
-        
+        Resources = 1003,
+        #if ADDRESSABLE_EXIST
+        Addressable = 1004,
+        #endif
+
         // View Reference Type
         // 이건 고민좀 필요하겠네
         [DataSerializer(typeof(StringSerializer))]

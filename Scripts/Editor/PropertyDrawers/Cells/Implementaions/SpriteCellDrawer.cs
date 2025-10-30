@@ -4,7 +4,9 @@ using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
@@ -14,25 +16,27 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.Sprite)]
     public class SpriteCellDrawer : ResourceSpriteSerializer, IODDBCellDrawer
     {
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
             var value = Deserialize(serializedData) as Sprite;
-            // GUI 그리기
-            EditorGUI.BeginProperty(position, label, property);
-            EditorGUI.BeginChangeCheck();
 
-            var newValue = (Sprite)EditorGUI.ObjectField(position, label, value, typeof(Sprite), false);
-
-            if (EditorGUI.EndChangeCheck())
+            var objectField = new ObjectField()
             {
-                var newSerializedData = Serialize(newValue);
+                objectType = typeof(Sprite),
+                allowSceneObjects = false,
+                value = value
+            };
+
+            objectField.RegisterValueChangedCallback(evt =>
+            {
+                var newSerializedData = Serialize(evt.newValue as Sprite);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
-            }
+            });
 
-            EditorGUI.EndProperty();
+            return objectField;
         }
     }
 }

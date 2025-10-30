@@ -3,7 +3,9 @@ using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
@@ -13,25 +15,26 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.Bool)]
     public class BoolCellDrawer : BoolSerializer, IODDBCellDrawer
     {
-        public void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
             var value = (bool)(Deserialize(serializedData) ?? false);
-            // GUI 그리기
-            EditorGUI.BeginProperty(position, label, property);
-            EditorGUI.BeginChangeCheck();
 
-            var newValue = EditorGUI.Toggle(position, label, value);
-
-            if (EditorGUI.EndChangeCheck())
+            var toggle = new Toggle()
             {
-                var newSerializedData = Serialize(newValue);
+                value = value,
+                style = { alignSelf = Align.Center}
+            };
+
+            toggle.RegisterValueChangedCallback(evt =>
+            {
+                var newSerializedData = Serialize(evt.newValue);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
-            }
+            });
 
-            EditorGUI.EndProperty();
+            return toggle;
         }
     }
 }
