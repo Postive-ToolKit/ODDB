@@ -1,4 +1,4 @@
-namespace TeamODD.ODDB.Runtime.Enum
+namespace TeamODD.ODDB.Runtime.Enums
 {
     public enum ODDBViewType
     {

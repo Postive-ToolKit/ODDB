@@ -1,10 +1,8 @@
 ﻿using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
-using UnityEditor.UIElements;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
@@ -15,11 +13,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.Bool)]
     public class BoolCellDrawer : BoolSerializer, IODDBCellDrawer
     {
-        public VisualElement CreatePropertyGUI(SerializedProperty property)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = (bool)(Deserialize(serializedData) ?? false);
+            var value = (bool)(Deserialize(serializedData, string.Empty) ?? false);
 
             var toggle = new Toggle()
             {
@@ -29,7 +27,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             toggle.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = Serialize(evt.newValue);
+                var newSerializedData = Serialize(evt.newValue, string.Empty);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

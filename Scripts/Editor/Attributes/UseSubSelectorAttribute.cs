@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Params.Interfaces;
 
 namespace TeamODD.ODDB.Runtime.Attributes
@@ -12,11 +12,11 @@ namespace TeamODD.ODDB.Runtime.Attributes
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class UseSubSelectorAttribute : Attribute
     {
-        public ODDBDataType TargetType { get; set; } = ODDBDataType.String;
+        public ODDBDataType[] TargetTypes { get; set; }
         
-        public UseSubSelectorAttribute(ODDBDataType targetType)
+        public UseSubSelectorAttribute(params ODDBDataType[] targetTypes)
         {
-            TargetType = targetType;
+            TargetTypes = targetTypes;
         }
     }
     
@@ -44,10 +44,14 @@ namespace TeamODD.ODDB.Runtime.Attributes
                     .FirstOrDefault() as UseSubSelectorAttribute;
                 if (attr == null)
                     continue;
-                if(_cache.ContainsKey(attr.TargetType))
+                if (Activator.CreateInstance(drawerType) is not IFieldParamSelector instance)
                     continue;
-                if (Activator.CreateInstance(drawerType) is IFieldParamSelector instance)
-                    _cache[attr.TargetType] = instance;
+                foreach (var targetType in attr.TargetTypes)
+                {
+                    if(_cache.ContainsKey(targetType))
+                        continue;
+                    _cache[targetType] = instance;
+                }
             }
         }
     }

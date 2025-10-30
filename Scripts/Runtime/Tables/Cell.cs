@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
@@ -61,7 +61,7 @@ namespace TeamODD.ODDB.Runtime
         /// <param name="data"> The data to be serialized and stored in the cell.</param>
         public void SetData(object data)
         {
-            _serializedData = FieldType.Type.GetDataSerializer().Serialize(data);
+            _serializedData = FieldType.Type.GetDataSerializer().Serialize(data, FieldType.Param);
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace TeamODD.ODDB.Runtime
         /// <returns> The deserialized object stored in the cell.</returns>
         public object GetData()
         {
-            return FieldType.Type.GetDataSerializer().Deserialize(_serializedData);
+            return FieldType.Type.GetDataSerializer().Deserialize(_serializedData, FieldType.Param);
         }
     }
 }

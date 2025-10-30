@@ -1,7 +1,7 @@
 ﻿using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -13,11 +13,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.String)]
     public class StringCellDrawer : StringSerializer, IODDBCellDrawer
     {
-        public VisualElement CreatePropertyGUI(SerializedProperty property)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = Deserialize(serializedData) as string;
+            var value = Deserialize(serializedData, string.Empty)  as string;
 
             var textField = new TextField()
             {
@@ -26,7 +26,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             textField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = Serialize(evt.newValue);
+                var newSerializedData = Serialize(evt.newValue, string.Empty) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

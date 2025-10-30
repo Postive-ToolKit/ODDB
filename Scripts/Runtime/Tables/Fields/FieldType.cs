@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Text;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 
 namespace TeamODD.ODDB.Runtime
 {

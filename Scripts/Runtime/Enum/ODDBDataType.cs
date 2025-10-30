@@ -1,7 +1,7 @@
 ﻿using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Serializers;
 
-namespace TeamODD.ODDB.Runtime.Enum
+namespace TeamODD.ODDB.Runtime.Enums
 {
     public enum ODDBDataType
     {
@@ -14,13 +14,7 @@ namespace TeamODD.ODDB.Runtime.Enum
         [DataSerializer(typeof(BoolSerializer))]
         Bool = 3,
         
-        // Reference Type Start with 1000
-        [DataSerializer(typeof(ResourceScriptableSerializer))]
-        ScriptableObject = 1000,
-        [DataSerializer(typeof(ResourcePrefabSerializer))]
-        Prefab = 1001,
-        [DataSerializer(typeof(ResourceSpriteSerializer))]
-        Sprite = 1002,
+        [DataSerializer(typeof(ResourceSerializer))]
         Resources = 1003,
         #if ADDRESSABLE_EXIST
         Addressable = 1004,

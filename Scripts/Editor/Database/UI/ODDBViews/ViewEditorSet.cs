@@ -3,7 +3,7 @@ using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using UnityEditor;
 using UnityEditor.UIElements;

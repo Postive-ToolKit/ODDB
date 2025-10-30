@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enum;
+using TeamODD.ODDB.Runtime.Enums;
 using UnityEditor;
 using UnityEngine;
 
@@ -52,7 +52,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     var selectionKey = $"{e.ToString()}/{selectionValue}";
                     
                     paramMapping[selectionKey] = realValue;
-                    paramReverseMapping[realValue] = selectionKey;
+                    paramReverseMapping[realValue] = selectionValue;
                     
                     selectionEnumTarget[selectionKey] = e;
                     selections.Add(selectionKey);
@@ -64,8 +64,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 param = paramReverseMapping[param];
 
             var path = currentEnum.ToString();
-            if (!string.IsNullOrEmpty(param))
-                path = param;
+            if (string.IsNullOrEmpty(param) == false)
+                path += $"/{param}";
             
             var selectedIndex = selections.IndexOf(path);
             
@@ -75,14 +75,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 var currentSelection = selections[newIndex];
                 typeProperty.enumValueFlag = (int)selectionEnumTarget[currentSelection];
                 
-                // 해당 Enum을 가지고 있는 타입의 Param string 필드들을 찾아서 문자열 헐덩
                 if (paramProperty != null && paramMapping.ContainsKey(currentSelection))
                     paramProperty.stringValue = paramMapping[currentSelection];
                 else
                     paramProperty.stringValue = string.Empty;
             }
-            
-            EditorGUI.EndProperty();
             
                 
         }
