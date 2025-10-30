@@ -17,12 +17,10 @@ namespace TeamODD.ODDB.Editors.UI
             style.alignItems = Align.Stretch; // FlexStart에서 Stretch로 변경
         }
 
-        public void SetView(string viewKey)
+        public void SetView(string viewId)
         {
             _editorSet?.RemoveFromHierarchy();
-            
-            var factory = new ViewEditorSet.Factory();
-            _editorSet = factory.Create(viewKey);
+            _editorSet = new ViewEditorSet(viewId);
             Add(_editorSet);
         }
     }

@@ -5,7 +5,9 @@ using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enum;
 using TeamODD.ODDB.Runtime.Interfaces;
+using UnityEditor;
 using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -15,18 +17,19 @@ namespace TeamODD.ODDB.Editors.UI
     /// </summary>
     public class ViewEditorSet : VisualElement, IHasView
     {
-        public readonly ODDBViewType Type;
-        private readonly IView _view;
+
         private readonly List<IHasView> _viewListeners = new();
-        private readonly VisualElement _upperView;
         private readonly Toolbar _toolbar;
+        private readonly Toolbar _editorToolBar;
         private readonly VisualElement _contentView;
         private readonly IODDBEditorUseCase _editorUseCase;
-        private ViewEditorSet(IView view, ODDBViewType type)
+        private IView _view;
+        private ODDBViewType _type;
+        
+        public ViewEditorSet(string viewId)
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            Type = type;
-            _view = view;
+            SetView(viewId);
             style.flexDirection = FlexDirection.Column;
             style.flexGrow = 1;
             style.flexShrink = 0;
@@ -41,39 +44,76 @@ namespace TeamODD.ODDB.Editors.UI
             style.marginRight = 0;
 
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-
-            _upperView = BuildUpperView();
-            base.Add(_upperView);
             
+            // 이름 및 기본 정보 툴바
             _toolbar = BuildToolBox();
-            base.Add(_toolbar);
+            Add(_toolbar);
+            CreateInfoEditor();
+            
+            _editorToolBar = BuildToolBox();
+            Add(_editorToolBar);
             _contentView = BuildContentView();
-            base.Add(_contentView);
-        }
-        
-        private VisualElement BuildUpperView()
-        {
-            var upperView = new VisualElement();
-            upperView.style.flexShrink = 1;
-            upperView.style.flexDirection = FlexDirection.Column;
-            upperView.style.paddingBottom = 0;
-            upperView.style.paddingTop = 0;
-            upperView.style.paddingLeft = 0;
-            upperView.style.paddingRight = 0;
-            upperView.style.marginBottom = 0;
-            upperView.style.marginTop = 0;
-            upperView.style.marginLeft = 0;
-            upperView.style.marginRight = 0;
-            return upperView;
+            Add(_contentView);
+            SetMode(_type);
         }
 
         private Toolbar BuildToolBox()
         {
             var toolBox = new Toolbar();
-            toolBox = new Toolbar();
             toolBox.style.flexShrink = 1;
             return toolBox;
         }
+        
+        private void CreateInfoEditor()
+        {
+            var nameButton = new ToolbarButton();
+            nameButton.text = "Name";
+            // 클릭 비활성화
+            _toolbar.Add(nameButton);
+            var nameTextField = new TextField();
+            nameTextField.value = _view.Name;
+            nameTextField.style.minWidth = 200;
+            nameTextField.RegisterValueChangedCallback(evt =>
+            {
+                _editorUseCase.SetViewName(_view.ID, evt.newValue);
+            });
+            _toolbar.Add(nameTextField);
+            
+            var button = new ToolbarButton();
+            button.text = "ID";
+            button.RegisterCallback<ClickEvent>(evt =>
+            {
+                EditorGUIUtility.systemCopyBuffer = _view.ID;
+                Debug.Log($"Copied ID : {_view.ID} to Clipboard");
+            });
+            // 클릭 비활성화
+            _toolbar.Add(button);
+            var textField = new TextField();
+            textField.SetEnabled(false);
+            textField.value = _view.ID;
+            textField.isReadOnly = true;
+            textField.style.flexGrow = 0;
+            textField.style.flexShrink = 1;
+            _toolbar.Add(textField);
+            
+            var editorMenu = new ToolbarMenu();
+            editorMenu.text = _type.ToString();
+            editorMenu.menu.AppendAction("View", _ =>
+            {
+                SetMode(ODDBViewType.View);
+                editorMenu.text = "View";
+            });
+            if (_type == ODDBViewType.Table)
+            {
+                editorMenu.menu.AppendAction("Table", _ =>
+                {
+                    SetMode(ODDBViewType.Table);
+                    editorMenu.text = "Table";
+                });
+            }
+            _toolbar.Add(editorMenu);
+        }
+        
         private VisualElement BuildContentView()
         {
             var contentView = new VisualElement
@@ -85,20 +125,13 @@ namespace TeamODD.ODDB.Editors.UI
             };
             return contentView;
         }
-        private new void Add(VisualElement visualElement)
-        {
-            if (visualElement == null)
-                return;
-            RegisterListener(visualElement);
-            _upperView.Add(visualElement);
-        }
         
         private void AddToolBarView(ToolbarButton button)
         {
             if (button == null)
                 return;
             RegisterListener(button);
-            _toolbar.Add(button);
+            _editorToolBar.Add(button);
         }
 
         private void AddToolBarMenu(ToolbarMenu toolbarMenu)
@@ -106,7 +139,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (toolbarMenu == null)
                 return;
             RegisterListener(toolbarMenu);
-            _toolbar.Add(toolbarMenu);
+            _editorToolBar.Add(toolbarMenu);
         }
         
         private void AddContent(VisualElement visualElement)
@@ -126,117 +159,98 @@ namespace TeamODD.ODDB.Editors.UI
         
         public void SetView(string viewKey)
         {
-            var view = _editorUseCase.GetViewByKey(viewKey);
-            if (view == null)
+            // 이미 설정된 뷰와 동일하면 무시
+            if (_view != null && _view.ID == viewKey)
                 return;
-            _viewListeners.ForEach(v => v.SetView(viewKey));
+            _view = _editorUseCase.GetViewByKey(viewKey);
+            _type = _editorUseCase.GetViewTypeByKey(_view.ID);
+            foreach (var listener in _viewListeners)
+                listener.SetView(viewKey);
         }
-        
-        public class Factory
+
+        private void SetMode(ODDBViewType type)
         {
-            private readonly IODDBEditorUseCase _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            public ViewEditorSet Create(string viewId)
+            _contentView.Clear();
+            _editorToolBar.Clear();
+            switch (type)
             {
-                var view = _editorUseCase.GetViewByKey(viewId);
-                if (view == null)
-                    return null;
-                
-                var type = _editorUseCase.GetViewTypeByKey(viewId);
-                
-                var editor = new ViewEditorSet(view, type);
-                switch (type)
-                {
-                    case ODDBViewType.View:
-                        return BuildViewEditor(view, editor);
-                    case ODDBViewType.Table:
-                        return BuildODDBTableEditor(view, editor);
-                    default:
-                        return null;
-                }
+                case ODDBViewType.View:
+                    BuildViewEditor();
+                    break;
+                case ODDBViewType.Table:
+                    BuildTableEditor();
+                    break;
             }
+        }
 
-            private ViewEditorSet BuildViewEditor(IView view, ViewEditorSet editorSet)
+        private void BuildViewEditor()
+        {
+            var viewEditor = new ViewEditor();
+            AddContent(viewEditor);
+                
+            var createRow = new ToolbarButton();
+            createRow.text = "Add Metadata";
+            createRow.clicked += () =>
             {
-                var viewInfoView = new ViewInfoView();
-                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.ID, name);
-                editorSet.Add(viewInfoView);
+                _view.AddField(new Field());
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            AddToolBarView(createRow);
                 
-                var viewEditor = new ViewEditor();
-                editorSet.AddContent(viewEditor);
+            var bindClassSelectView = new BindClassSelectView();
+            bindClassSelectView.SetView(_view.ID);
                 
-                var createRow = new ToolbarButton();
-                createRow.text = "Add Metadata";
-                createRow.clicked += () =>
-                {
-                    view.AddField(new Field());
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                editorSet.AddToolBarView(createRow);
-                
-                var bindClassSelectView = new BindClassSelectView();
-                bindClassSelectView.SetView(view.ID);
-                
-                bindClassSelectView.OnBindClassChanged += bindType =>
-                {
-                    view.BindType = bindType;
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                editorSet.AddToolBarMenu(bindClassSelectView);
-                
-                var inheritSelectView = new ParentViewSelectView();
-                inheritSelectView.OnParentViewChanged += parentView =>
-                {
-                    view.ParentView = parentView;
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                inheritSelectView.SetView(view.ID);
-                editorSet.AddToolBarView(inheritSelectView);
-                
-                return editorSet;
-            }
-            
-            private ViewEditorSet BuildODDBTableEditor(IView view, ViewEditorSet editorSet)
+            bindClassSelectView.OnBindClassChanged += bindType =>
             {
-                var table = view as Table;
+                _view.BindType = bindType;
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            AddToolBarMenu(bindClassSelectView);
                 
-                var viewInfoView = new ViewInfoView();
-                viewInfoView.OnViewNameChanged += name => _editorUseCase.SetViewName(view.ID, name);
-                editorSet.Add(viewInfoView);
+            var inheritSelectView = new ParentViewSelectView();
+            inheritSelectView.OnParentViewChanged += parentView =>
+            {
+                _view.ParentView = parentView;
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            inheritSelectView.SetView(_view.ID);
+            AddToolBarView(inheritSelectView);
+        }
+
+        private void BuildTableEditor()
+        {
+            var table = _view as Table;
                 
-                var tableEditor = new TableEditor();
-                editorSet.AddContent(tableEditor);
+            var tableEditor = new TableEditor();
+            AddContent(tableEditor);
 
                 
-                var createRow = new ToolbarButton();
-                createRow.text = "Create Row";
-                createRow.clicked += () =>
-                {
-                    table!.AddRow();
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
+            var createRow = new ToolbarButton();
+            createRow.text = "Create Row";
+            createRow.clicked += () =>
+            {
+                table!.AddRow();
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            AddToolBarView(createRow);
                 
-                editorSet.AddToolBarView(createRow);
-                
-                var bindClassSelectView = new BindClassSelectView();
-                bindClassSelectView.SetView(view.ID);
-                bindClassSelectView.OnBindClassChanged += bindType =>
-                {
-                    view.BindType = bindType;
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                editorSet.AddToolBarMenu(bindClassSelectView);
+            var bindClassSelectView = new BindClassSelectView();
+            bindClassSelectView.SetView(_view.ID);
+            bindClassSelectView.OnBindClassChanged += bindType =>
+            {
+                _view.BindType = bindType;
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            AddToolBarMenu(bindClassSelectView);
 
-                var inheritSelectView = new ParentViewSelectView();
-                inheritSelectView.OnParentViewChanged += parentView =>
-                {
-                    view.ParentView = parentView;
-                    _editorUseCase.NotifyViewDataChanged(view.ID);
-                };
-                inheritSelectView.SetView(view.ID);
-                editorSet.AddToolBarView(inheritSelectView);
-                
-                return editorSet;
-            }
+            var inheritSelectView = new ParentViewSelectView();
+            inheritSelectView.OnParentViewChanged += parentView =>
+            {
+                _view.ParentView = parentView;
+                _editorUseCase.NotifyViewDataChanged(_view.ID);
+            };
+            inheritSelectView.SetView(_view.ID);
+            AddToolBarView(inheritSelectView);
         }
     }
 }
