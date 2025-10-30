@@ -36,6 +36,9 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var paramReverseMapping = new Dictionary<string, string>();
             foreach (var e in CachedEnums)
             {
+                if (e.GetDataTypeOption().IsHideInSelector)
+                    continue;
+                
                 var enumSelections = e.GetTypeSubSelector();
                 if (enumSelections == null)
                 {

@@ -203,7 +203,6 @@ namespace TeamODD.ODDB.Editors.UI
                 }
             }
             _view = null;
-            OnViewSelected?.Invoke(null);
         }
         
         private void UpdateView(string viewId)

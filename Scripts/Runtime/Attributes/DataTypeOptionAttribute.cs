@@ -11,6 +11,9 @@ namespace TeamODD.ODDB.Runtime.Attributes
     [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
     public class DataTypeOptionAttribute : Attribute
     {
+        /// <summary>
+        /// Indicates whether the data type should be hidden in the type selector UI.
+        /// </summary>
         public bool IsHideInSelector { get; }
         
         public DataTypeOptionAttribute(bool isHideInSelector = false)
@@ -22,6 +25,11 @@ namespace TeamODD.ODDB.Runtime.Attributes
     public static class ODDBDataTypeOptionAttributeExtensions
     {
         private static readonly Dictionary<ODDBDataType, DataTypeOptionAttribute> _cache = new();
+        /// <summary>
+        /// Retrieves the DataTypeOptionAttribute associated with the given ODDBDataType enum value.
+        /// </summary>
+        /// <param name="enumValue"> The ODDBDataType enum value.</param>
+        /// <returns> The associated DataTypeOptionAttribute.</returns>
         public static DataTypeOptionAttribute GetDataTypeOption(this ODDBDataType enumValue)
         {
             if (_cache.TryGetValue(enumValue, out var cachedAttr))
