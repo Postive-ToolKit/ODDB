@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using TeamODD.ODDB.Editors.DTO;
 using UnityEditor;
 using UnityEngine;
@@ -6,8 +9,6 @@ using UnityEngine.UIElements;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enums;
-using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEditor.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -58,12 +59,14 @@ namespace TeamODD.ODDB.Editors.UI
                 var columnName = $"{meta.Name}[{meta.Type}]";
                 var column = new Column()
                 {
-                    bindingPath = $"{Row.CELLS_FIELD}.Array.data[{columnIndex}]",
                     title = columnName,
+                    bindingPath = $"{Row.CELLS_FIELD}.Array.data[{columnIndex}]",
                     stretchable = true,
                     resizable = true,
                     minWidth = 80,
                 };
+                column.makeHeader = () => CreateColumnHeader(columnIndex);
+                
                 columns.Add(column);
             }
             
@@ -116,6 +119,71 @@ namespace TeamODD.ODDB.Editors.UI
             };
 
             return toolColumn;
+        }
+        
+        private VisualElement CreateColumnHeader(int columnIndex)
+        {
+            if (_table == null || columnIndex < 0 || columnIndex >= _table.TotalFields.Count)
+                return new Label("Invalid Column");
+            var meta = _table.TotalFields[columnIndex];
+            
+            var container = new VisualElement()
+            {
+                style =
+                {
+                    flexGrow = 1, flexDirection = FlexDirection.Column, alignItems = Align.Center, justifyContent = Justify.Center,
+                }
+            };
+            var label = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
+            label.text = meta.Name;
+            container.Add(label);
+
+            var type = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
+            type.text = meta.Type.ToString();
+            container.Add(type);
+            
+            var bindField = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
+            bindField.text = GetBindTypeFieldName(columnIndex);
+            Debug.Log(GetBindTypeFieldName(columnIndex));
+            container.Add(bindField);
+            return container;
+        }
+
+        private string GetBindTypeFieldName(int columnIndex)
+        {
+            if (_table.BindType == null)
+                return string.Empty;
+
+            var bindType = _table.BindType;
+            var allFields = new List<FieldInfo>();
+
+            // Traverse the inheritance chain to collect all instance fields
+            var currentType = bindType;
+            while (currentType != null && currentType != typeof(object))
+            {
+                var fields = currentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                allFields.AddRange(fields);
+                currentType = currentType.BaseType;
+            }
+
+            // Filter only Unity-serializable fields (public or with [SerializeField])
+            var serializableFields = allFields
+                .Where(f => f.IsPublic || f.GetCustomAttribute<SerializeField>() != null)
+                .OrderBy(f => f.MetadataToken)
+                .ToArray();
+
+            if (columnIndex < 0 || columnIndex >= serializableFields.Length)
+                return string.Empty;
+
+            var field = serializableFields[columnIndex];
+            
+            // Check for InspectorNameAttribute first
+            var inspectorAttr = field.GetCustomAttribute<InspectorNameAttribute>();
+            if (inspectorAttr != null && !string.IsNullOrEmpty(inspectorAttr.displayName))
+                return inspectorAttr.displayName;
+
+            // Use Unity's NicifyVariableName
+            return ObjectNames.NicifyVariableName(field.Name);
         }
     }
 }
