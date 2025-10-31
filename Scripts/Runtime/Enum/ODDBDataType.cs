@@ -13,10 +13,10 @@ namespace TeamODD.ODDB.Runtime.Enums
         Float = 2,
         [DataSerializer(typeof(BoolSerializer))]
         Bool = 3,
-        
         [DataSerializer(typeof(ResourceSerializer))]
         Resources = 1003,
         #if ADDRESSABLE_EXIST
+        [DataSerializer(typeof(AddressableSerializer))]
         Addressable = 1004,
         #endif
 

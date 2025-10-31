@@ -14,13 +14,17 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// Property drawer for float data type.
     /// </summary>
     [CellDrawer(ODDBDataType.Float)]
-    public class FloatCellDrawer : FloatSerializer, IODDBCellDrawer
+    public class FloatCellDrawer : IODDBCellDrawer
     {
+        private static IDataSerializer _serializer;
         public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
+            if (_serializer == null)
+                _serializer = dataType.GetDataSerializer();
+            
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = Deserialize(serializedData, string.Empty) is float floatValue ? floatValue : 0f;
+            var value = _serializer.Deserialize(serializedData, string.Empty) is float floatValue ? floatValue : 0f;
 
             var floatField = new FloatField()
             {
@@ -29,7 +33,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             floatField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = Serialize(evt.newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, string.Empty) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

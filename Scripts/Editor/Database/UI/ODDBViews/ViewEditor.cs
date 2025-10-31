@@ -83,8 +83,9 @@ namespace TeamODD.ODDB.Editors.UI
                 button.clicked -= button.userData as Action; // 기존 핸들러 제거
                 Action handler = () =>
                 {
+                    var normalizedIndex = _view.TotalFields.Count - _view.ScopedFields.Count + index;
                     if (_view != null && index < _view.TotalFields.Count)
-                        _view.RemoveField(index);
+                        _view.RemoveField(normalizedIndex);
                 };
                 button.userData = handler; // 핸들러를 userData에 저장
                 button.clicked += handler; // 새 핸들러 등록

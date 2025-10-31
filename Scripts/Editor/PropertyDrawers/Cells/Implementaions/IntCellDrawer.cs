@@ -14,11 +14,15 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.Int)]
     public class IntCellDrawer : IntSerializer, IODDBCellDrawer
     {
+        private static IDataSerializer _serializer;
         public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
+            if (_serializer == null)
+                _serializer = dataType.GetDataSerializer();
+            
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = (int)Deserialize(serializedData, string.Empty) ;
+            var value = (int)_serializer.Deserialize(serializedData, string.Empty) ;
 
             var intField = new IntegerField()
             {
@@ -27,7 +31,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             intField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = Serialize(evt.newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, string.Empty) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

@@ -4,6 +4,7 @@ using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
 using UnityEditor;
@@ -20,14 +21,18 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     public class ViewCellDrawer : StringSerializer, IODDBCellDrawer
     {
         private const string NONE_OPTION = "None";
+        private static IDataSerializer _serializer;
         public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
+            if (_serializer == null)
+                _serializer = dataType.GetDataSerializer();
+            
             var fieldTypeProp = property.FindPropertyRelative(Cell.DATA_TYPE_FIELD);
             var viewID = fieldTypeProp.FindPropertyRelative(FieldType.PARAM_FIELD).stringValue;
             
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = Deserialize(serializedData, string.Empty)  as string;
+            var value = _serializer.Deserialize(serializedData, string.Empty)  as string;
 
             if (string.IsNullOrEmpty(viewID))
             {
@@ -70,7 +75,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 if (newValue == NONE_OPTION)
                     newValue = string.Empty;
                 
-                var newSerializedData = Serialize(newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(newValue, string.Empty) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

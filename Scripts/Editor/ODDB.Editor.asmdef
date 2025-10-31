@@ -2,7 +2,8 @@
     "name": "ODDB.Editor",
     "rootNamespace": "",
     "references": [
-        "GUID:ef1eb117d78eee94f8a049f4e8ddec5b"
+        "GUID:ef1eb117d78eee94f8a049f4e8ddec5b",
+        "GUID:69448af7b92c7f342b298e06a37122aa"
     ],
     "includePlatforms": [
         "Editor"
@@ -13,6 +14,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.addressables",
+            "expression": "2.5.0",
+            "define": "ADDRESSABLE_EXIST"
+        }
+    ],
     "noEngineReferences": false
 }
