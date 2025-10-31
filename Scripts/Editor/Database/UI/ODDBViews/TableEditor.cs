@@ -144,7 +144,6 @@ namespace TeamODD.ODDB.Editors.UI
             
             var bindField = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
             bindField.text = GetBindTypeFieldName(columnIndex);
-            Debug.Log(GetBindTypeFieldName(columnIndex));
             container.Add(bindField);
             return container;
         }
