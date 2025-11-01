@@ -71,7 +71,10 @@ namespace TeamODD.ODDB.Runtime.Entities
             ODDBPort.RegisterOnDataPortedCallback(() =>
             {
                 var targetId = rawValue;
-                field.SetValue(this, ODDBPort.GetEntity<ODDBEntity>(targetId));
+                var targetEntity = ODDBPort.GetEntity<ODDBEntity>(targetId);
+                if (targetEntity == null)
+                    return;
+                field.SetValue(this, targetEntity);
             });
         }
     }

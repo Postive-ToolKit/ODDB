@@ -38,7 +38,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                         paramProperty.stringValue = newParam;
                     property.serializedObject.ApplyModifiedProperties();
                     button.text = newEnum.ToString();
-                    if (string.IsNullOrEmpty(name) == false)
+                    if (string.IsNullOrEmpty(name) == false && newEnum.ToString().Equals(name) == false)
                         button.text += $" - {name}";
                 };
             };

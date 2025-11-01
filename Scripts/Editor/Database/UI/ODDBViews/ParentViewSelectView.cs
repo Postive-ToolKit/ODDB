@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using TeamODD.ODDB.Editors.UI.Interfaces;
-using TeamODD.ODDB.Editors.UI.ViewWindows;
+using TeamODD.ODDB.Editors.UI.ParentViewDropdowns;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
-using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
@@ -22,17 +21,15 @@ namespace TeamODD.ODDB.Editors.UI
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             clicked += () =>
             {
-                var window = new ViewSelectorWindow.Builder()
-                    .SetTitle("Select Parent View")
-                    .SetOnConfirm(parentView =>
-                    {
-                        text = parentView != null ? INHERIT_PREFIX + parentView.Name : INHERIT_PREFIX + "None";
-                        OnParentViewChanged?.Invoke(parentView);
-                    })
-                    .SetIgnoreViews(new[] { _view });
-                if(_view!.ParentView != null)
-                    window.SetCurrentView(_view.ParentView);
-                window.Build();
+                var parentViewDropDown = new ParentViewDropDown(new AdvancedDropdownState(), _view?.ID ?? string.Empty);
+                parentViewDropDown.Show(worldBound);
+                parentViewDropDown.OnParentViewSelected += (viewId) =>
+                {
+                    var resultView = _editorUseCase.GetViewByKey(viewId);
+                    if (resultView == null)
+                        return;
+                    OnParentViewChanged?.Invoke(resultView);
+                };
             };
         }
         public void SetView(string viewKey)
