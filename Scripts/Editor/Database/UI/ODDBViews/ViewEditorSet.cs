@@ -17,7 +17,6 @@ namespace TeamODD.ODDB.Editors.UI
     /// </summary>
     public class ViewEditorSet : VisualElement, IHasView
     {
-
         private readonly List<IHasView> _viewListeners = new();
         private readonly Toolbar _toolbar;
         private readonly Toolbar _editorToolBar;
@@ -29,7 +28,7 @@ namespace TeamODD.ODDB.Editors.UI
         public ViewEditorSet(string viewId)
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            SetView(viewId);
+            //_editorUseCase.OnViewChanged += SetView;
             style.flexDirection = FlexDirection.Column;
             style.flexGrow = 1;
             style.flexShrink = 0;
@@ -48,13 +47,18 @@ namespace TeamODD.ODDB.Editors.UI
             // 이름 및 기본 정보 툴바
             _toolbar = BuildToolBox();
             Add(_toolbar);
-            CreateInfoEditor();
-            
             _editorToolBar = BuildToolBox();
             Add(_editorToolBar);
             _contentView = BuildContentView();
             Add(_contentView);
-            SetMode(_type);
+            
+            SetView(viewId);
+        }
+        
+        ~ViewEditorSet()
+        {
+            if (_editorUseCase != null)
+                _editorUseCase.OnViewChanged -= SetView;
         }
 
         private Toolbar BuildToolBox()
@@ -66,6 +70,7 @@ namespace TeamODD.ODDB.Editors.UI
         
         private void CreateInfoEditor()
         {
+            _toolbar.Clear();
             var nameButton = new ToolbarButton();
             nameButton.text = "Name";
             // 클릭 비활성화
@@ -164,6 +169,8 @@ namespace TeamODD.ODDB.Editors.UI
                 return;
             _view = _editorUseCase.GetViewByKey(viewKey);
             _type = _editorUseCase.GetViewTypeByKey(_view.ID);
+            SetMode(_type);
+            CreateInfoEditor();
             foreach (var listener in _viewListeners)
                 listener.SetView(viewKey);
         }

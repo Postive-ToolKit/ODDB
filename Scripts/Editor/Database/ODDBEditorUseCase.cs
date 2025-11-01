@@ -5,6 +5,7 @@ using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Utils.Converters;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.Window
 {
@@ -112,6 +113,45 @@ namespace TeamODD.ODDB.Editors.Window
         public IEnumerable<IView> GetPureViews()
         {
             return _database.Views.GetAll();
+        }
+
+        public IEnumerable<Row> GetViewRows(string viewId)
+        {
+            var view = GetViewByKey(viewId);
+            if (view == null)
+                return Enumerable.Empty<Row>();
+
+            if (view is Table table)
+                return table.Rows;
+            
+            var children = _database.GetAll()
+                .Where(v => v.ParentView != null && v.ParentView.ID == view.ID);
+            var rows = new List<Row>();
+            foreach (var child in children)
+                rows.AddRange(GetViewRows(child.ID.ToString()));
+            return rows;
+        }
+
+        public Row GetRow(string rowId)
+        {
+            foreach (var view in _database.Tables.GetAll())
+            {
+                var table = view as Table;
+                var row = table.GetRow(rowId);
+                if (row != null)
+                    return row;
+            }
+            return null;
+        }
+
+        public bool TryGetRow(string viewId, string rowId, out Row row)
+        {
+            row = null;
+            var getViewRows = GetViewRows(viewId).ToList();
+            if (getViewRows.Count == 0)
+                return false;
+            row = getViewRows.FirstOrDefault(r => r.ID.ToString() == rowId);
+            return row != null;
         }
 
         public void Dispose()

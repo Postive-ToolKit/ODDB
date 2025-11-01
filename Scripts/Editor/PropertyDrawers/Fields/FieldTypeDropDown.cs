@@ -19,7 +19,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             }
         }
         private static List<ODDBDataType> _cachedEnums;
-        public event Action<ODDBDataType, string> OnSelectionChanged;
+        public event Action<ODDBDataType, string, string> OnSelectionChanged;
         
         public FieldTypeDropDown(AdvancedDropdownState state) : base(state)
         {
@@ -52,7 +52,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         {
             if (item is not FieldTypeDropDownItem fieldItem)
                 return;
-            OnSelectionChanged?.Invoke(fieldItem.Type, fieldItem.Param);
+            OnSelectionChanged?.Invoke(fieldItem.Type, fieldItem.Param, fieldItem.name);
         }
     }
 }

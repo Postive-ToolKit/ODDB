@@ -31,15 +31,15 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             {
                 var dropdown = new FieldTypeDropDown(new AdvancedDropdownState());
                 dropdown.Show(button.worldBound);
-                dropdown.OnSelectionChanged += (newEnum, newParam) =>
+                dropdown.OnSelectionChanged += (newEnum, newParam, name) =>
                 {
                     typeProperty.enumValueFlag = (int)newEnum;
                     if (paramProperty != null)
                         paramProperty.stringValue = newParam;
                     property.serializedObject.ApplyModifiedProperties();
                     button.text = newEnum.ToString();
-                    if (string.IsNullOrEmpty(newParam) == false)
-                        button.text += $" - {newParam}";
+                    if (string.IsNullOrEmpty(name) == false)
+                        button.text += $" - {name}";
                 };
             };
             return button;

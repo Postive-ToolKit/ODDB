@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Plugins.ODDB.Scripts.Editor.Utils.Elements;
 using TeamODD.ODDB.Editors.DTO;
 using UnityEditor;
 using UnityEngine;
@@ -33,17 +34,29 @@ namespace TeamODD.ODDB.Editors.UI
         
         public override void SetView(string viewKey)
         {
+            if (_table != null)
+                _table.OnRowChanged -= RefreshRows;
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not Table table)
                 return;
-            
             this.Unbind();
             _table = table;
+            
             _tableDataDTO = ScriptableObject.CreateInstance<TableDataDTO>();
             _tableDataDTO.Rows = _table.Rows;
             var so = new SerializedObject(_tableDataDTO);
             this.Bind(so);
             CreateColumns();
+            
+            RefreshRows();
+            _table.OnRowChanged += RefreshRows;
+        }
+
+        private void RefreshRows()
+        {
+            if (_table == null)
+                return;
+            _tableDataDTO.Rows = _table.Rows;
         }
 
         private void CreateColumns()
@@ -87,35 +100,19 @@ namespace TeamODD.ODDB.Editors.UI
             };
             
             // row will work like delete row button
-            toolColumn.makeCell = () =>
-            {
-                var button = new Button()
-                {
-                    text = "-",
-                    style =
-                    {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        unityTextAlign = TextAnchor.MiddleCenter
-                    }
-                };
-                return button;
-            };
+            toolColumn.makeCell = () => new ODDBButton() { text = "-", };
 
             toolColumn.bindCell = (element, index) =>
             {
-                var button = element as Button;
-                if (button == null)
-                    return;
-                
-                button.clicked -= button.userData as Action; // 기존 핸들러 제거
-                Action handler = () =>
+                var row = _table.Rows.ElementAt(index);
+                var button = element as ODDBButton;
+                button!.ClearCallbacks();
+                button.AddOnClickCallback(evt =>
                 {
-                    if (_table != null && index < _table.Rows.Count)
-                        _table.RemoveRow(index);
-                };
-                button.userData = handler; // 핸들러를 userData에 저장
-                button.clicked += handler; // 새 핸들러 등록
+                    if (_table == null)
+                        return;
+                    _table.RemoveRow(row.ID);
+                });
             };
 
             return toolColumn;

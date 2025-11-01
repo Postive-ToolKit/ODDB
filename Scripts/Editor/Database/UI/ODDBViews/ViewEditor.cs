@@ -1,4 +1,5 @@
 ﻿using System;
+using Plugins.ODDB.Scripts.Editor.Utils.Elements;
 using TeamODD.ODDB.Editors.DTO;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
@@ -59,36 +60,18 @@ namespace TeamODD.ODDB.Editors.UI
             };
             
             // row will work like delete row button
-            toolColumn.makeCell = () =>
-            {
-                var button = new Button()
-                {
-                    text = "-",
-                    style =
-                    {
-                        flexGrow = 0,
-                        flexShrink = 0,
-                        unityTextAlign = TextAnchor.MiddleCenter
-                    }
-                };
-                return button;
-            };
+            toolColumn.makeCell = () => new ODDBButton() { text = "-", };
             
             toolColumn.bindCell = (element, index) =>
             {
-                var button = element as Button;
-                if (button == null)
-                    return;
-                
-                button.clicked -= button.userData as Action; // 기존 핸들러 제거
-                Action handler = () =>
+                var button = element as ODDBButton;
+                button!.ClearCallbacks();
+                button.AddOnClickCallback(evt =>
                 {
                     var normalizedIndex = _view.TotalFields.Count - _view.ScopedFields.Count + index;
                     if (_view != null && index < _view.TotalFields.Count)
                         _view.RemoveField(normalizedIndex);
-                };
-                button.userData = handler; // 핸들러를 userData에 저장
-                button.clicked += handler; // 새 핸들러 등록
+                });
             };
 
             return toolColumn;

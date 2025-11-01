@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
+using UnityEngine;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
-using UnityEngine;
 using Object = UnityEngine.Object;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -38,25 +39,14 @@ namespace TeamODD.ODDB.Runtime.Serializers
 
         public object Deserialize(string serializedData, string param)
         {
+            if (string.IsNullOrEmpty(serializedData))
+                return false;
             var oddbRefDataType = ODDBReferenceDataType.ScriptableObject;
             if (Enum.TryParse<ODDBReferenceDataType>(param, out var parsedType))
                 oddbRefDataType = parsedType;
-            var targetType = oddbRefDataType.GetReferenceDataBindType();
-            if (TryConvertReferenceObject(serializedData,targetType, out var result))
-                return result;
-            return null;
-        }
-        
-        private bool TryConvertReferenceObject(string value, Type refType, out Object result)
-        {
-            result = null;
-            if (string.IsNullOrEmpty(value))
-                return false;
-            // Load the asset from the path in resources
-            result = Resources.Load(value, refType);
-            if(result == null) 
-                return false;
-            return true;
+            var assetType = oddbRefDataType.GetReferenceDataBindType();
+            
+            return Resources.Load(serializedData, assetType);
         }
     }
 }

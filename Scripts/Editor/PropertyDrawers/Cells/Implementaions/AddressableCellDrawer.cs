@@ -24,7 +24,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 referenceDataType = parsedType;
             var targetType = referenceDataType.GetReferenceDataBindType();
             var serializedData = targetField.stringValue;
-            var value = _serializer.Deserialize(serializedData, string.Empty) as Object;
+            var value = _serializer.Deserialize(serializedData, param) as Object;
 
             var objectField = new ObjectField()
             {
@@ -35,7 +35,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             objectField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = _serializer.Serialize(evt.newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, param) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

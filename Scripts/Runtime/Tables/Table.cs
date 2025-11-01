@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.DTO.Builders;
 using TeamODD.ODDB.Runtime.Utils.Converters;
@@ -8,9 +10,10 @@ namespace TeamODD.ODDB.Runtime
 {
     public sealed class Table : View
     {
-        private readonly List<Row> _rows = new();
+        public event Action OnRowChanged;
+        private readonly Dictionary<string, Row> _rows = new();
 
-        public List<Row> Rows => _rows;
+        public List<Row> Rows => _rows.Values.ToList();
 
         public Table()
         {
@@ -20,58 +23,62 @@ namespace TeamODD.ODDB.Runtime
         
         private void ValidateRows()
         {
-            foreach (var row in _rows)
-            {
+            foreach (var row in _rows.Values.ToList())
                 row.ValidateTypes(TotalFields);
-            }
+            OnRowChanged?.Invoke();
         }
 
         protected override void OnAddField(Field field)
         {
-            foreach (var row in _rows) {
+            foreach (var row in Rows) 
                 row.AddCell(field.Type);
-            }
         }
 
         protected override void OnRemoveField(int index)
         {
-            foreach (var row in _rows) {
+            foreach (var row in Rows) 
                 row.RemoveData(index);
-            }
         }
 
         protected override void OnSwapTableMeta(int indexA, int indexB)
         {
-            foreach (var row in _rows) {
+            foreach (var row in Rows) 
+            {
                 row.SwapData(indexA, indexB);
             }
         }
         
         public void AddRow()
         {
-            _rows.Add(new Row(TotalFields));
+            var newRow = new Row(TotalFields);
+            _rows.Add(newRow.ID, newRow);
+            OnRowChanged?.Invoke();
         }
-        
+
         public void RemoveRow(int index)
         {
-            _rows.RemoveAt(index);
+            var row = Rows.ElementAtOrDefault(index);
+            RemoveRow(row?.ID.ToString());
         }
         
-        public void ClearRows()
+        public void RemoveRow(string rowId)
+        {
+            if (string.IsNullOrEmpty(rowId) || !_rows.ContainsKey(rowId))
+                return;
+            _rows.Remove(rowId);
+            OnRowChanged?.Invoke();
+        }
+        
+        public Row GetRow(string rowId)
+        {
+            _rows.TryGetValue(rowId, out var row);
+            return row;
+        }
+        
+        public void Clear()
         {
             _rows.Clear();
-        }
-        
-        public object GetValue(int rowIndex, int columnIndex)
-        {
-            if (rowIndex < 0 || rowIndex >= _rows.Count) {
-                return null;
-            }
-            if (columnIndex < 0 || columnIndex >= TotalFields.Count) {
-                return null;
-            }
-            var row = _rows[rowIndex];
-            return row.GetData(columnIndex);
+            OnRowChanged?.Invoke();
         }
 
         #region Serialization
@@ -126,7 +133,8 @@ namespace TeamODD.ODDB.Runtime
                 var data = new string[rowData.Length - 1];
                 for (int i = 1; i < rowData.Length; i++)
                     data[i - 1] = rowData[i];
-                _rows.Add(new Row(id, TotalFields, data));
+                var row = new Row(id, TotalFields, data);
+                _rows.Add(row.ID, row);
             }
             _cachedData = null;
         }

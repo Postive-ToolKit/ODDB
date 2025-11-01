@@ -24,7 +24,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = _serializer.Deserialize(serializedData, string.Empty) is float floatValue ? floatValue : 0f;
+            var value = _serializer.Deserialize(serializedData, param) is float floatValue ? floatValue : 0f;
 
             var floatField = new FloatField()
             {
@@ -33,7 +33,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             floatField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = _serializer.Serialize(evt.newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, param) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

@@ -34,17 +34,18 @@ namespace TeamODD.ODDB.Runtime.Serializers
             if (string.IsNullOrEmpty(serializedData))
                 return null;
             
-            var oddbRefDataType = ODDBReferenceDataType.ScriptableObject;
+            var oddbRefDataType = ODDBReferenceDataType.Object;
             if (Enum.TryParse<ODDBReferenceDataType>(param, out var parsedType))
                 oddbRefDataType = parsedType;
-            var targetType = oddbRefDataType.GetReferenceDataBindType();
             
-            if (targetType == null)
-                targetType = typeof(Object);
+            var assetType = oddbRefDataType.GetReferenceDataBindType();
+            
+            if (assetType == null)
+                assetType = typeof(Object);
             
             try
             {
-                var loadMethod = GetOrCreateLoadMethod(targetType);
+                var loadMethod = GetOrCreateLoadMethod(assetType);
                 var handle = loadMethod.Invoke(null, new object[] { serializedData });
                 
                 var waitMethod = handle.GetType().GetMethod(WAIT_FOR_COMPLETION_METHOD);

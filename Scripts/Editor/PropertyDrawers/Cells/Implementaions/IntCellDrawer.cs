@@ -22,7 +22,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
-            var value = (int)_serializer.Deserialize(serializedData, string.Empty) ;
+            var value = (int)_serializer.Deserialize(serializedData, param) ;
 
             var intField = new IntegerField()
             {
@@ -31,7 +31,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             intField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = _serializer.Serialize(evt.newValue, string.Empty) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, param) ;
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

@@ -82,5 +82,12 @@ namespace TeamODD.ODDB.Runtime
             for (int i = 0; i < totalFields.Count; i++)
                 _cells[i].FieldType = totalFields[i].Type;
         }
+
+        public string GetName()
+        {
+            if (_cells.Count > 0)
+                return _cells[0].GetData()?.ToString() ?? ID;
+            return ID.ToString();
+        }
     }
 }
