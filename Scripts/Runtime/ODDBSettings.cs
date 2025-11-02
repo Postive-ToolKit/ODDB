@@ -45,6 +45,7 @@ namespace TeamODD.ODDB.Runtime.Settings
                 _isInitialized = true;
             }
         }
+        public string FullDBPath => Path + "/" + DBName;
         public string DBPath => _dbPath;
         public string PathFromResources => _pathFromResources;
         public string DBName => _dbName;

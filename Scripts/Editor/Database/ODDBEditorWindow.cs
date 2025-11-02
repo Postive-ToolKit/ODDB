@@ -13,8 +13,6 @@ namespace TeamODD.ODDB.Editors.Window
 {
     public class ODDBEditorWindow : EditorWindow
     {
-        private ODDatabase _database;
-        private ODDBDataService _dataService;
         private IODDBEditorUseCase _editorUseCase;
         #region Layout
         private TwoPaneSplitView _splitView;
@@ -32,10 +30,9 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void CreateGUI()
         {
-            Initialize();
-            ODDBEditorDI.Register(_database);
-            ODDBEditorDI.RegisterSelfAndInterfaces(new ODDBEditorUseCase(_database));
-            _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
+            _editorUseCase = new ODDBEditorUseCase();
+            ODDBEditorDI.RegisterSelfAndInterfaces(_editorUseCase);
+            ODDBEditorDI.RegisterSelfAndInterfaces(_editorUseCase.DataBase);
             CreateLayout();
             
             _tableTreeView.OnViewSelected += _editorView.SetView;
@@ -46,7 +43,7 @@ namespace TeamODD.ODDB.Editors.Window
                 if (evt.keyCode == KeyCode.S && evt.ctrlKey)
                 {
                     var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
-                    _dataService.SaveDatabase(_database, fullPath);
+                    _editorUseCase.SaveDatabase(fullPath);
                 }
             });
         }
@@ -97,44 +94,13 @@ namespace TeamODD.ODDB.Editors.Window
             rootVisualElement.Add(_splitView);
         }
 
-        private void Initialize()
-        {
-            _dataService = new ODDBDataService();
-            
-            if(!ODDBSettings.Setting.IsInitialized) 
-            {
-                var pathSelector = new ODDBPathUtility();
-                ODDBSettings.Setting.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
-            }
-            
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
-            
-            if (!File.Exists(fullPath))
-            {
-                Debug.Log($"Creating new database file: {fullPath}");
-                _database = new ODDatabase();
-                if (_dataService.SaveDatabase(_database, fullPath))
-                {
-                    AssetDatabase.Refresh();
-                }
-            }
-            else
-            {
-                if (!_dataService.LoadDatabase(fullPath, out _database))
-                {
-                    Debug.LogError("Failed to load database");
-                    return;
-                }
-            }
-        }
-
         private void OnDestroy()
         {
             var result = EditorUtility.DisplayDialog("Save Changes", "Do you want to save changes?", "Yes", "No");
             if (result)
             {
                 var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
-                _dataService.SaveDatabase(_database, fullPath);
+                _editorUseCase.SaveDatabase(fullPath);
             }
             _editorUseCase?.Dispose();
             ODDBEditorDI.DisposeAll();

@@ -16,12 +16,9 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer(ODDBDataType.Float)]
     public class FloatCellDrawer : IODDBCellDrawer
     {
-        private static IDataSerializer _serializer;
+        private static readonly IDataSerializer _serializer = ODDBDataType.Float.GetDataSerializer();
         public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
         {
-            if (_serializer == null)
-                _serializer = dataType.GetDataSerializer();
-            
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;
             var value = _serializer.Deserialize(serializedData, param) is float floatValue ? floatValue : 0f;

@@ -9,6 +9,7 @@ namespace TeamODD.ODDB.Editors.Window
     public interface IODDBEditorUseCase : IDisposable
     {
         public event Action<string> OnViewChanged;
+        public IODDatabase DataBase { get; }
         public IView GetViewByKey(string key);
         public IEnumerable<IView> GetViews(Predicate<IView> predicate = null);
         public ODDBViewType GetViewTypeByKey(string key);
@@ -45,5 +46,11 @@ namespace TeamODD.ODDB.Editors.Window
         /// <param name="row"> The output Row object if found; otherwise, null.</param>
         /// <returns> True if the row is found; otherwise, false.</returns>
         public bool TryGetRow(string viewId, string rowId, out Row row);
+        
+        /// <summary>
+        /// Save the given database to the specified file path.
+        /// </summary>
+        /// <param name="fullPath"> The full file path where the database should be saved.</param>
+        public void SaveDatabase(string fullPath);
     }
 }

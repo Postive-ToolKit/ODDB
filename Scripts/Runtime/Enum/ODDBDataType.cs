@@ -5,14 +5,25 @@ namespace TeamODD.ODDB.Runtime.Enums
 {
     public enum ODDBDataType
     {
-        [DataSerializer(typeof(StringSerializer))]
-        String = 0,
+        // Numeric Type
         [DataSerializer(typeof(IntSerializer))]
         Int = 1,
         [DataSerializer(typeof(FloatSerializer))]
         Float = 2,
+        
+        // Date Type
+        [DataSerializer(typeof(EnumSerializer))]
+        Enum = 100,
+        
+        // Logical Type
         [DataSerializer(typeof(BoolSerializer))]
-        Bool = 3,
+        Bool = 200,
+        
+        // Text Type
+        [DataSerializer(typeof(StringSerializer))]
+        String = 300,
+        
+        // Reference Type
         [DataSerializer(typeof(ResourceSerializer))]
         Resources = 1003,
         #if ADDRESSABLE_EXIST
@@ -21,10 +32,11 @@ namespace TeamODD.ODDB.Runtime.Enums
         #endif
 
         // View Reference Type
-        // 이건 고민좀 필요하겠네
         [DataSerializer(typeof(StringSerializer))]
         View = 2000,
+        
+        // Deprecated Types
         [DataTypeOption(true)]
-        ID = 2001,
+        ID = 3000,
     }
 }

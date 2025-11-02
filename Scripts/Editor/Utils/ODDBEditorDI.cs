@@ -16,13 +16,13 @@ namespace TeamODD.ODDB.Editors.Utils
 
         public static void Register<T>(T service) where T : class
         {
-            var type = typeof(T);
+            var type = service.GetType();
             _services[type] = service;
         }
 
         public static void RegisterSelfAndInterfaces<T>(T service) where T : class
         {
-            var type = typeof(T);
+            var type = service.GetType();
             _services[type] = service;
             foreach (var interfaceType in type.GetInterfaces()) {
                 _services[interfaceType] = service;

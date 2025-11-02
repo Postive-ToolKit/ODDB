@@ -4,6 +4,7 @@ using System;
 
 namespace TeamODD.ODDB.Editors.UI
 {
+    [Obsolete]
     public class ODDBStringInputWindow : EditorWindow
     {
         private string _inputValue = "";

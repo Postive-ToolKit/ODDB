@@ -13,7 +13,7 @@ namespace Plugins.ODDB.Scripts.Editor.Utils
             sb.Append(dataType.ToString());
             switch (dataType)
             {
-                case ODDBDataType.Addressable: case ODDBDataType.Resources:
+                case ODDBDataType.Addressable: case ODDBDataType.Resources: case ODDBDataType.Enum:
                     sb.Append(" - ").Append(param);
                     return sb.ToString();
                 case ODDBDataType.View:

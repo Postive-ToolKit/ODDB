@@ -1,20 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
+using UnityEditor;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.Window
 {
     public class ODDBEditorUseCase : IODDBEditorUseCase
     {
+        public IODDatabase DataBase => _database;
+        public ODDBDataService Service => _dataService;
         public event Action<string> OnViewChanged;
         private ODDatabase _database;
-        public ODDBEditorUseCase(ODDatabase database) {
-            _database = database;
+        private readonly ODDBDataService _dataService;
+        public ODDBEditorUseCase() 
+        {
+            
+            _dataService = new ODDBDataService();
+            if(ODDBSettings.Setting.IsInitialized == false) 
+            {
+                var pathSelector = new ODDBPathUtility();
+                ODDBSettings.Setting.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
+            }
+            
+            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            
+            if (File.Exists(fullPath) == false)
+            {
+                Debug.Log($"Creating new database file: {fullPath}");
+                _database = new ODDatabase();
+                if (_dataService.SaveDatabase(_database, fullPath))
+                    AssetDatabase.Refresh();
+            }
+            else
+            {
+                if (!_dataService.LoadDatabase(fullPath, out _database))
+                {
+                    Debug.LogError("Failed to load database");
+                    return;
+                }
+            }
+            
             _database.OnDataChanged += OnDataChanged;
         }
         
@@ -22,7 +55,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             OnViewChanged?.Invoke(id.ToString());
         }
-            
+
         public IView GetViewByKey(string id)
         {
             if (_database == null)
@@ -152,6 +185,11 @@ namespace TeamODD.ODDB.Editors.Window
                 return false;
             row = getViewRows.FirstOrDefault(r => r.ID.ToString() == rowId);
             return row != null;
+        }
+
+        public void SaveDatabase(string fullPath)
+        {
+            _dataService.SaveDatabase(_database, fullPath);
         }
 
         public void Dispose()
