@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         [PathSelector(true)]
         [SerializeField] private string _dbPath;
         [SerializeField] private string _pathFromResources;
-        [SerializeField] private string _dbName = "ODDB.json";
+        [SerializeField] private string _dbName = "ODDB.bytes";
         [Space(10)]
         [Header("Increment Settings")]
         [Tooltip("When adding new items to the database, how many items to add at once.")]

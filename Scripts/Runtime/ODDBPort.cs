@@ -37,8 +37,8 @@ namespace TeamODD.ODDB.Runtime
                 Debug.LogError($"Database asset not found at path: {filePath}");
                 return;
             }
-            var xml = databaseAsset.text;
-            if (!TryConvertData(xml, out _database))
+            var binary = databaseAsset.bytes;
+            if (!TryConvertData(binary, out _database))
             {
                 Debug.LogError("Failed to convert database data.");
                 return;
@@ -94,10 +94,10 @@ namespace TeamODD.ODDB.Runtime
                 callback?.Invoke();
             }
         }
-        private static bool TryConvertData(string xml, out ODDatabase database)
+        private static bool TryConvertData(byte[] binary, out ODDatabase database)
         {
             var importer = new ODDBConverter();
-            database = importer.CreateDatabase(xml);
+            database = importer.Import(binary);
             return database != null;
         }
         

@@ -1,7 +1,5 @@
 using System.IO;
-using System.Xml.Serialization;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 
@@ -17,10 +15,9 @@ namespace TeamODD.ODDB.Editors.Utils
                 Debug.LogError($"Database file not found at path: {path}");
                 return false;
             }
-            var json = File.ReadAllText(path);
-                    
+            var binary = File.ReadAllBytes(path);
             var converter = new ODDBConverter();
-            database = converter.CreateDatabase(json);
+            database = converter.Import(binary);
             return database != null;
         }
 
@@ -29,8 +26,8 @@ namespace TeamODD.ODDB.Editors.Utils
             try
             {
                 var converter = new ODDBConverter();
-                var databaseDto = converter.Export(database);
-                return SaveFile(path, databaseDto);
+                var binary = converter.Export(database);
+                return SaveFile(path, binary);
             }
             catch (System.Exception e)
             {
@@ -39,40 +36,20 @@ namespace TeamODD.ODDB.Editors.Utils
             }
         }
         
-        public bool SaveFile(string path, string content)
+        public bool SaveFile(string path, byte[] content)
         {
             try
             {
                 var directory = Path.GetDirectoryName(path);
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
-                File.WriteAllText(path, content);
+                File.WriteAllBytes(path, content);
                 Debug.Log($"File saved to: {path}");
                 return true;
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"Error saving file: {e.Message}");
-                return false;
-            }
-        }
-        
-        public bool LoadFile(string path, out string content)
-        {
-            content = null;
-            if (!File.Exists(path))
-            {
-                Debug.LogError($"File not found at path: {path}");
-                return false;
-            }
-            try
-            {
-                content = File.ReadAllText(path);
-                return true;
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"Error reading file: {e.Message}");
                 return false;
             }
         }

@@ -9,7 +9,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
     public class ODDBID
     {
         public const string ID_FIELD_NAME = nameof(_id);
-        private const int ID_LENGTH = 20;
+        private const int ID_LENGTH = 8;
         private static readonly HashSet<string> _currentCreatedId = new HashSet<string>();
         private static string GenerateID()
         {
@@ -44,9 +44,12 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         {
             ID = null;
         }
+        
         [JsonConstructor]
         public ODDBID(string id)
         {
+            if (id.Length > ID_LENGTH) 
+                id = id.Substring(0, ID_LENGTH);
             ID = id;
         }
         

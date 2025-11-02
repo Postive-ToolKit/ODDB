@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 using Newtonsoft.Json;
 using NUnit.Framework;
-using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.DTO;
 using UnityEngine;
 
@@ -13,16 +15,18 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
     {
         public static readonly List<DataBaseCreateEvent> OnDatabaseCreated = new List<DataBaseCreateEvent>();
         public static event Action<ODDatabase> OnDatabaseExported;
-        public ODDatabase CreateDatabase(string data)
+        public ODDatabase Import(byte[] binary)
         {
+            var decompressed = Decompress(binary);
+            var json = Encoding.UTF8.GetString(decompressed);
             var databaseDto = new DatabaseDTO();
             try
             {
-                databaseDto = JsonConvert.DeserializeObject<DatabaseDTO>(data);
+                databaseDto = JsonConvert.DeserializeObject<DatabaseDTO>(json);
             }
             catch (Exception e)
             {
-                Debug.LogError("ODDBConverter.CreateDatabase failed to deserialize database - use default database. Error: " + e);
+                Debug.LogError("ODDBConverter.Import failed to deserialize database - use default database. Error: " + e);
             }
             
             var database = new ODDatabase();
@@ -37,13 +41,31 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             return database;
         }
         
-        public string Export(ODDatabase database)
+        public byte[] Export(ODDatabase database)
         {
             Assert.IsNotNull(database, "ODDBConverter.Export database is null");
             var dto = database.ToDTO();
-            var data = JsonConvert.SerializeObject(dto, Formatting.Indented);
+            var data = JsonConvert.SerializeObject(dto);
+            var compressed = Compress(Encoding.UTF8.GetBytes(data));
             OnDatabaseExported?.Invoke(database);
-            return data;
+            return compressed;
+        }
+        
+        public byte[] Compress(byte[] data)
+        {
+            using MemoryStream outputStream = new MemoryStream();
+            using (GZipStream gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
+                gzipStream.Write(data, 0, data.Length);
+            return outputStream.ToArray();
+        }
+
+        public byte[] Decompress(byte[] compressedData)
+        {
+            using MemoryStream inputStream = new MemoryStream(compressedData);
+            using MemoryStream outputStream = new MemoryStream();
+            using (GZipStream gzipStream = new GZipStream(inputStream, CompressionMode.Decompress))
+                gzipStream.CopyTo(outputStream);
+            return outputStream.ToArray();
         }
     }
 }
