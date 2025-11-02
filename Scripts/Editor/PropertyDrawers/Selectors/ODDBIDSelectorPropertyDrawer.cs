@@ -19,6 +19,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             if (property.propertyType != SerializedPropertyType.String)
                 return base.CreatePropertyGUI(property);
             
+            var attr = (ODDBIDSelectorAttribute)attribute;
+            
             var stringValue = property.stringValue;
             if (_service.IsValidID(stringValue) == false)
             {
@@ -43,7 +45,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             button.style.flexGrow = 6;
             button.clicked += () =>
             {
-                var dropdown = new ODDBIDDropDown(new AdvancedDropdownState());
+                var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowTables);
                 
                 var rect = container.worldBound;
                 dropdown.Show(rect);
