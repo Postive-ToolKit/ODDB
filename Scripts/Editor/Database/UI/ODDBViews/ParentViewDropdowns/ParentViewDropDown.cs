@@ -8,6 +8,7 @@ namespace TeamODD.ODDB.Editors.UI.ParentViewDropdowns
 {
     public class ParentViewDropDown : AdvancedDropdown
     {
+        private const string NONE = "None";
         private string[] IgnoreIds { get; }
         private readonly IODDBEditorUseCase _editorUseCase;
         public event Action<string> OnParentViewSelected;
@@ -30,6 +31,7 @@ namespace TeamODD.ODDB.Editors.UI.ParentViewDropdowns
                     ignoredIds.TrueForAll(view.IsChildOf) == false)
                 .ToList();
             var root = new AdvancedDropdownItem("Views");
+            root.AddChild(new ParentViewDropDownItem(NONE, string.Empty));
             foreach (var view in targetView)
             {
                 var item = new ParentViewDropDownItem(view.Name, view.ID);

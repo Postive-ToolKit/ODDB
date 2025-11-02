@@ -26,8 +26,6 @@ namespace TeamODD.ODDB.Editors.UI
                 parentViewDropDown.OnParentViewSelected += (viewId) =>
                 {
                     var resultView = _editorUseCase.GetViewByKey(viewId);
-                    if (resultView == null)
-                        return;
                     OnParentViewChanged?.Invoke(resultView);
                 };
             };
