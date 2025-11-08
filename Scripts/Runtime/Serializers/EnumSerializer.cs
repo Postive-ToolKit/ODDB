@@ -13,8 +13,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
         {
             if (data == null)
                 return string.Empty;
-            var enumValue = (int)data;
-            return enumValue.ToString();
+            return data.ToString();
         }
 
         public object Deserialize(string serializedData, string param)
@@ -25,10 +24,8 @@ namespace TeamODD.ODDB.Runtime.Serializers
             var enumDict = ODDBEnumUtility.GetEnumValues(param);
             if (enumDict == null)
                 return null;
-            if (int.TryParse(serializedData, out var intValue) == false)
-                return null;
             
-            return enumDict.GetValueOrDefault(intValue);
+            return enumDict.GetValueOrDefault(serializedData);
         }
     }
 }
