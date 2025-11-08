@@ -5,10 +5,10 @@ ODDB는 Unity에서 사용 가능한 반정형 오픈소스 데이터베이스 �
 생성된 테이블 데이터는 CSV 및 Google Sheets와 같은 외부 소스와 손쉽게 동기화할 수 있어 다양한 직군의 사람들이 협업하기에 용이합니다.
 
 ## 목차
-- 주요 기능
-- 테이블 에디터
-- 사용 방법
-- 설치 방법
+- [주요 기능](#주요-기능)
+- [ODDB Editor](#oddb-editor)
+- [사용 방법](#사용-방법)
+- [설치 방법](#설치-방법)
 
 ## 주요 기능
 ### 테이블 에디터
@@ -55,7 +55,7 @@ ODDB는 CSV 파일을 통해 테이블 데이터를 가져오고 내보낼 수 �
 #### Google Sheets 동기화
 ODDB는 Google Sheets와의 연동 기능도 제공합니다. CSV보다 더 직관적이고 유용한 기능들을 데이터 관리에 활용할 수 있습니다.
 단 ODDB를 Google Sheets와 연동하기 위해서 Google Sheets의 `Apps Script` 사용해야 합니다.
-자세한 Google Sheets 연동 방법은 [Google Sheets 연동 가이드](./GoogleSheetsGuide_KR.md)를 참고하시기 바랍니다.
+자세한 Google Sheets 연동 방법은 [Google Sheets 연동 가이드](./GoogleSheetGuides/GoogleSheetsGuide_KR.md)를 참고하시기 바랍니다.
 
 연동이 완료되었다면 `ODDB/Google Sheets/Import from Google Sheets` 메뉴를 통해 Google Sheets에서 데이터를 불러올 수 있으며, `ODDB/Google Sheets/Export to Google Sheets` 메뉴를 통해 현재 테이블 데이터를 Google Sheets로 내보낼 수 있습니다.
 
