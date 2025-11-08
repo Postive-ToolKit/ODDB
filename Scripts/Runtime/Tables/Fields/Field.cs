@@ -9,7 +9,7 @@ namespace TeamODD.ODDB.Runtime
     {
         public ODDBID ID = new ODDBID();
         public FieldType Type = new FieldType();
-        public string Name = string.Empty;
+        public string Name = "Default Field";
         
         public Field() {}
         public Field(ODDBID id, string name, ODDBDataType type)

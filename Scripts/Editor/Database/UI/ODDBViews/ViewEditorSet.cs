@@ -196,7 +196,7 @@ namespace TeamODD.ODDB.Editors.UI
             AddContent(viewEditor);
                 
             var createRow = new ToolbarButton();
-            createRow.text = "Add Metadata";
+            createRow.text = "Add Field";
             createRow.clicked += () =>
             {
                 _view.AddField(new Field());
