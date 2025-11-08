@@ -11,7 +11,7 @@ namespace Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV
     public class CSVUtility
     {
         public const string MENU_ROOT = ODDBEditorConst.MENU_ROOT + "CSV/";
-        [MenuItem(MENU_ROOT + "Export All Sheets to CSV")]
+        [MenuItem(MENU_ROOT + "Export to CSV")]
         public static void ExportAllSheetsToCSV()
         {
             try
@@ -70,7 +70,7 @@ namespace Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV
             }
         }
 
-        [MenuItem(MENU_ROOT + "Import db from CSV")]
+        [MenuItem(MENU_ROOT + "Import from CSV")]
         public static void ImportDatabaseFromCSV()
         {
             try

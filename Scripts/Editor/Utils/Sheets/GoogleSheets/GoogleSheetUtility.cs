@@ -12,7 +12,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
     public class ODDBGoogleSheetUtility
     {
-        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Load From Google Sheet")]
+        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Import from Google Sheets")]
         public static void LoadFromGoogleSheet()
         {
             if (ODDBSettings.Setting.IsInitialized == false)
@@ -80,7 +80,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             };
         }
 
-        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Save To Google Sheet")]
+        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Export to Google Sheets")]
         public static void SaveToGoogleSheet()
         {
             if (ODDBSettings.Setting.IsInitialized == false)
@@ -146,7 +146,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             };
         }
 
-        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Create App Script for Google Sheets")]
+        [MenuItem(GoogleSheetConfig.MENU_ROOT + "Create App Script")]
         public static void CreateGoogleSheetsAppScript()
         {
             if (ODDBSettings.Setting.IsInitialized == false)
