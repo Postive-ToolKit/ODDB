@@ -44,11 +44,11 @@ namespace TeamODD.ODDB.Runtime
             return _cells[index];
         }
         
-        public void SetData(int index, string data)
+        public void SetData(int index, string data, bool direct = false)
         {
             if (index >= _cells.Count || index < 0)
                 return;
-            _cells[index].SetData(data);
+            _cells[index].SetData(data, direct);
         }
         
         public void RemoveData(int index)

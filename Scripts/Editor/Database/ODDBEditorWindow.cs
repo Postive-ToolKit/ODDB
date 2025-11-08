@@ -20,7 +20,7 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDBEditorView _editorView;
         #endregion
 
-        [MenuItem("Window/ODDB Editor")]
+        [MenuItem(ODDBEditorConst.MENU_ROOT + "ODDB Editor")]
         public static void OpenWindow()
         {
             ODDBEditorWindow wnd = GetWindow<ODDBEditorWindow>();

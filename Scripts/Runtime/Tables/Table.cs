@@ -48,11 +48,12 @@ namespace TeamODD.ODDB.Runtime
             }
         }
         
-        public void AddRow()
+        public Row AddRow()
         {
             var newRow = new Row(TotalFields);
             _rows.Add(newRow.ID, newRow);
             OnRowChanged?.Invoke();
+            return newRow;
         }
 
         public void RemoveRow(int index)

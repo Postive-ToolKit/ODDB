@@ -1,0 +1,91 @@
+﻿const SECRET_KEY = "{GOOGLE_SHEET_API_SECRET}";
+/// <summary>
+/// Returns a JSON array of all sheets in the active spreadsheet with their names, IDs, and values.
+/// </summary>
+function doGet(e) {
+    if (e.parameter.secretKey !== SECRET_KEY)
+        return ContentService.createTextOutput(JSON.stringify({success: false, error: "Unauthorized"}))
+            .setMimeType(ContentService.MimeType.JSON);
+    
+    var activeSheet = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = activeSheet.getSheets();
+    var result = [];
+
+    for (var i = 0; i < sheets.length; i++) {
+        var sheet = sheets[i];
+        var data = sheet.getDataRange().getValues();
+        result.push({
+            Name: sheet.getName(),
+            ID: sheet.getSheetId(),
+            Values: data
+        });
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+/// <summary>
+/// Expects a JSON payload in the following format:
+/// </summary>
+/// <example>
+/// [
+///   {
+///     "Name": "Sheet1",
+///     "Values": [
+///       ["Header1", "Header2"],
+///       ["Row1Col1", "Row1Col2"],
+///       ["Row2Col1", "Row2Col2"]
+///     ]
+///   },
+///   {
+///     "Name": "Sheet2",
+///     "Values": [
+///       ["HeaderA", "HeaderB"],
+///       ["Row1ColA", "Row1ColB"]
+///     ]
+///   }
+/// ]
+/// </example>
+function doPost(e) {
+    if (e.parameter.secretKey !== SECRET_KEY)
+        return ContentService.createTextOutput(JSON.stringify({success: false, error: "Unauthorized"}))
+            .setMimeType(ContentService.MimeType.JSON);
+    
+    try {
+        var requestData = JSON.parse(e.postData.contents);
+        var activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        
+        if (!Array.isArray(requestData)) {
+            requestData = [requestData];
+        }
+        
+        for (var i = 0; i < requestData.length; i++) {
+            var sheetData = requestData[i];
+            var sheetName = sheetData.Name;
+            var values = sheetData.Values;
+            
+            if (!sheetName || !values) {
+                continue;
+            }
+            
+            var sheet = activeSpreadsheet.getSheetByName(sheetName);
+            if (!sheet) {
+                sheet = activeSpreadsheet.insertSheet(sheetName);
+            }
+            sheet.clear();
+            
+            if (values.length > 0 && values[0].length > 0) {
+                sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+            }
+        }
+        
+        return ContentService.createTextOutput(JSON.stringify({success: true}))
+            .setMimeType(ContentService.MimeType.JSON);
+            
+    } 
+    catch (error) 
+    {
+        return ContentService.createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+}

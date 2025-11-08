@@ -48,8 +48,6 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         [JsonConstructor]
         public ODDBID(string id)
         {
-            if (id.Length > ID_LENGTH) 
-                id = id.Substring(0, ID_LENGTH);
             ID = id;
         }
         

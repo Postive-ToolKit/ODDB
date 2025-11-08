@@ -21,8 +21,6 @@ namespace TeamODD.ODDB.Runtime.Serializers
             var assetPath = AssetDatabase.GetAssetPath(asset);
             if (string.IsNullOrEmpty(assetPath))
                 return string.Empty;
-            
-            Debug.Log(assetPath);
 
             var resourcesIndex = assetPath.IndexOf("Resources/", StringComparison.Ordinal);
             if (resourcesIndex < 0)

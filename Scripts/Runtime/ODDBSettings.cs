@@ -50,10 +50,10 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string PathFromResources => _pathFromResources;
         public string DBName => _dbName;
         public int IncrementCount => _incrementCount;
-        public string GoogleSheetsID => _googleSheetsID;
-        public string GoogleSheetApiKey => _googleSheetApiKey;
-        public string GoogleOAuthClientID => _googleOAuthClientID;
-        public string GoogleOAuthClientSecret => _googleOAuthClientSecret;
+        
+        public string GoogleSheetAPIURL => _googleSheetAPIURL;
+        public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
+        
         [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
         [PathSelector(true)]
@@ -64,19 +64,14 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Header("Increment Settings")]
         [Tooltip("When adding new items to the database, how many items to add at once.")]
         [SerializeField, Min(1)] private int _incrementCount = 10;
+        
         [Space(10)]
         [Header("Google Sheets Settings")]
+        [TextArea]
         [Tooltip("The ID of the Google Sheets document to sync with.")]
-        [SerializeField] private string _googleSheetsID = "";
+        [SerializeField] private string _googleSheetAPIURL = string.Empty;
         [Tooltip("API Key for Google Sheets (read-only operations).")]
-        [SerializeField] private string _googleSheetApiKey = "";
-        
-        [Space(5)]
-        [Header("Google OAuth2 Settings (for write operations)")]
-        [Tooltip("OAuth2 Client ID from Google Cloud Console.")]
-        [SerializeField] private string _googleOAuthClientID = "";
-        [Tooltip("OAuth2 Client Secret from Google Cloud Console.")]
-        [SerializeField] private string _googleOAuthClientSecret = "";
+        [SerializeField] private string _googleSheetAPISecretKey = string.Empty;
         private void OnValidate()
         {
             if(!string.IsNullOrEmpty(_dbPath))

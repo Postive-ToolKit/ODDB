@@ -17,18 +17,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         public static event Action<ODDatabase> OnDatabaseExported;
         public ODDatabase Import(byte[] binary)
         {
-            var decompressed = Decompress(binary);
-            var json = Encoding.UTF8.GetString(decompressed);
-            var databaseDto = new DatabaseDTO();
-            try
-            {
-                databaseDto = JsonConvert.DeserializeObject<DatabaseDTO>(json);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError("ODDBConverter.Import failed to deserialize database - use default database. Error: " + e);
-            }
-            
+            var databaseDto = ImportDTO(binary);
             var database = new ODDatabase();
             database.FromDTO(databaseDto);
             
@@ -45,13 +34,35 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         {
             Assert.IsNotNull(database, "ODDBConverter.Export database is null");
             var dto = database.ToDTO();
-            var data = JsonConvert.SerializeObject(dto);
-            var compressed = Compress(Encoding.UTF8.GetBytes(data));
+            var binary = ExportDTO(dto);
             OnDatabaseExported?.Invoke(database);
+            return binary;
+        }
+        
+        public DatabaseDTO ImportDTO(byte[] binary)
+        {
+            var decompressed = Decompress(binary);
+            var json = Encoding.UTF8.GetString(decompressed);
+            var databaseDto = new DatabaseDTO();
+            try
+            {
+                databaseDto = JsonConvert.DeserializeObject<DatabaseDTO>(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("ODDBConverter.ImportDTO failed to deserialize database DTO - use default database DTO. Error: " + e);
+            }
+            return databaseDto;
+        }
+        
+        public byte[] ExportDTO(DatabaseDTO databaseDto)
+        {
+            var data = JsonConvert.SerializeObject(databaseDto);
+            var compressed = Compress(Encoding.UTF8.GetBytes(data));
             return compressed;
         }
         
-        public byte[] Compress(byte[] data)
+        private byte[] Compress(byte[] data)
         {
             using MemoryStream outputStream = new MemoryStream();
             using (GZipStream gzipStream = new GZipStream(outputStream, CompressionMode.Compress))
@@ -59,7 +70,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             return outputStream.ToArray();
         }
 
-        public byte[] Decompress(byte[] compressedData)
+        private byte[] Decompress(byte[] compressedData)
         {
             using MemoryStream inputStream = new MemoryStream(compressedData);
             using MemoryStream outputStream = new MemoryStream();

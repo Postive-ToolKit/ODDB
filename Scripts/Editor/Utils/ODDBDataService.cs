@@ -10,12 +10,11 @@ namespace TeamODD.ODDB.Editors.Utils
         public bool LoadDatabase(string path, out ODDatabase database)
         {
             database = null;
-            if (!File.Exists(path))
+            if (LoadFile(path, out var binary) == false)
             {
-                Debug.LogError($"Database file not found at path: {path}");
+                Debug.LogError($"Failed to load file at path: {path}");
                 return false;
             }
-            var binary = File.ReadAllBytes(path);
             var converter = new ODDBConverter();
             database = converter.Import(binary);
             return database != null;
@@ -35,7 +34,19 @@ namespace TeamODD.ODDB.Editors.Utils
                 return false;
             }
         }
-        
+
+        public bool LoadFile(string path, out byte[] content)
+        {
+            content = null;
+            if (!File.Exists(path))
+            {
+                Debug.LogError($"File not found at path: {path}");
+                return false;
+            }
+            content = File.ReadAllBytes(path);
+            return true;
+        }
+
         public bool SaveFile(string path, byte[] content)
         {
             try

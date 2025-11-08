@@ -59,8 +59,14 @@ namespace TeamODD.ODDB.Runtime
         /// Sets the data for the cell by serializing the provided object.
         /// </summary>
         /// <param name="data"> The data to be serialized and stored in the cell.</param>
-        public void SetData(object data)
+        /// <param name="direct"> If true, the data is directly assigned as a string without serialization.</param>
+        public void SetData(object data, bool direct = false)
         {
+            if (direct)
+            {
+                _serializedData = data as string;
+                return;
+            }
             _serializedData = FieldType.Type.GetDataSerializer().Serialize(data, FieldType.Param);
         }
 
