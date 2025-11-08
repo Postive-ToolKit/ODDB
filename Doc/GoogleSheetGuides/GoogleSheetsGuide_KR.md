@@ -8,14 +8,22 @@ ODDB에서는 연동에 사용할 스크립트를 자동으로 생성하는 기�
 3. 스크립트가 생성되면 자동으로 클립보드에 복사됩니다.
 
 ## 2. Google Sheets에 Apps Script 추가하기
+<img width="899" height="357" alt="image" src="https://github.com/user-attachments/assets/b3a5f0c3-a550-4bec-976c-d177d0c98a81" />
 1. 구글 시트를 엽니다.
 2. 상단 메뉴에서 `확장 프로그램 > Apps Script`를 클릭합니다.
+
+<img width="1056" height="323" alt="image" src="https://github.com/user-attachments/assets/61a0c970-21a7-41db-8717-293a06eaa6c7" />
 3. 새로 열린 Apps Script 편집기에서 기존 코드를 모두 삭제합니다.
 4. 클립보드에 복사된 스크립트를 붙여넣습니다.
 
 ## 3. Apps Script 배포하기
+<img width="1124" height="321" alt="image" src="https://github.com/user-attachments/assets/1e5bec3a-ea47-43c6-96fd-5df4696d2fc6" />
 1. Apps Script 편집기 상단 메뉴에서 `배포 > 새 배포`를 클릭합니다.
+
+<img width="755" height="373" alt="image" src="https://github.com/user-attachments/assets/def3dc85-32e8-4f92-a520-2701fb345598" />
 2. `배포 유형`에서 `웹 앱`을 선택합니다.
+
+<img width="761" height="598" alt="image" src="https://github.com/user-attachments/assets/d52e98e8-7413-4890-84a1-03d94d309fa9" />
 3. `설명` 필드에 배포에 대한 설명을 입력합니다.
 4. `앱에 액세스할 수 있는 사용자` 옵션을 `모든 사용자(익명 사용자 포함)`로 설정합니다.
 5. `배포` 버튼을 클릭합니다.
@@ -27,6 +35,7 @@ ODDB에서는 연동에 사용할 스크립트를 자동으로 생성하는 기�
 4. `허용` 버튼을 클릭하여 권한을 승인합니다.
 
 ## 4. 웹 앱 URL 복사하기
+<img width="758" height="589" alt="image" src="https://github.com/user-attachments/assets/cb17bb6d-de1d-4770-ae4c-b89aac0a824c" />
 1. 배포가 완료되면 표시되는 `웹 앱 URL`을 복사합니다.
 2. ODDB Setting 파일의 `Google Sheets Settings` 섹션에서 `Google Sheets API URL" 필드에 복사한 URL을 붙여넣습니다.
 
