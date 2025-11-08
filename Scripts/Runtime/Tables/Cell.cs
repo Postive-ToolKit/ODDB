@@ -1,7 +1,6 @@
 ﻿using System;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enums;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime

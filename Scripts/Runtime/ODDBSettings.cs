@@ -54,6 +54,10 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string GoogleSheetAPIURL => _googleSheetAPIURL;
         public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
         
+        #if ADDRESSABLE_EXIST
+        public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
+        #endif
+        
         [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
         [PathSelector(true)]
@@ -72,6 +76,12 @@ namespace TeamODD.ODDB.Runtime.Settings
         [SerializeField] private string _googleSheetAPIURL = string.Empty;
         [Tooltip("API Key for Google Sheets (read-only operations).")]
         [SerializeField] private string _googleSheetAPISecretKey = string.Empty;
+        #if ADDRESSABLE_EXIST
+        [Space(10)]
+        [Header("Resource Settings")]
+        [Tooltip("If false, Database will return address of Addressable Asset - Not the asset itself.")]
+        [SerializeField] private bool _useAddressableAutoLoad = false;
+        #endif
         private void OnValidate()
         {
             if(!string.IsNullOrEmpty(_dbPath))

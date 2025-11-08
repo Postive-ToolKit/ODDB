@@ -3,7 +3,7 @@ using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Enums;
 
-namespace Plugins.ODDB.Scripts.Editor.Utils
+namespace TeamODD.ODDB.Editors.Utils
 {
     public static class EditorDataTypeExtensions
     {
@@ -13,7 +13,11 @@ namespace Plugins.ODDB.Scripts.Editor.Utils
             sb.Append(dataType.ToString());
             switch (dataType)
             {
-                case ODDBDataType.Addressable: case ODDBDataType.Resources: case ODDBDataType.Enum:
+                #if ADDRESSABLE_EXIST
+                case ODDBDataType.Addressable: 
+                #endif
+                case ODDBDataType.Resources: 
+                case ODDBDataType.Enum:
                     sb.Append(" - ").Append(param);
                     return sb.ToString();
                 case ODDBDataType.View:

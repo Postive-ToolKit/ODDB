@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -30,9 +31,11 @@ namespace TeamODD.ODDB.Runtime.Serializers
         public virtual object Deserialize(string serializedData, string param)
         {
             // Need to make how to handle async properly later
-            // TODO : Make setting to always wait for completion or get handle and let user handle it
             if (string.IsNullOrEmpty(serializedData))
                 return null;
+
+            if (ODDBSettings.Setting.UseAddressableAutoLoad == false)
+                return serializedData;
             
             var oddbRefDataType = ODDBReferenceDataType.Object;
             if (Enum.TryParse<ODDBReferenceDataType>(param, out var parsedType))

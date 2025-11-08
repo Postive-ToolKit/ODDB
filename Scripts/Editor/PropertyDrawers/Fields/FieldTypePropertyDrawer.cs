@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using Plugins.ODDB.Scripts.Editor.Utils;
+﻿using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
-using UnityEditor.UIElements;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers

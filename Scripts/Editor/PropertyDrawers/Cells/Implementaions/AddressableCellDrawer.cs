@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if ADDRESSABLE_EXIST
+using System;
 using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Editors.PropertyDrawers.Serializers;
 using TeamODD.ODDB.Runtime;
@@ -44,3 +45,4 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         }
     }
 }
+#endif
