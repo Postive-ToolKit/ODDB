@@ -12,16 +12,22 @@ namespace TeamODD.ODDB.Runtime.Enums
     public enum ODDBReferenceDataType
     {
         [ReferenceDataBind(typeof(Object))]
-        Object = 0,
+        Object,
         [ReferenceDataBind(typeof(ScriptableObject))]
-        ScriptableObject = 1,
+        ScriptableObject,
         [ReferenceDataBind(typeof(GameObject))]
-        GameObject = 2,
+        GameObject,
         [ReferenceDataBind(typeof(Sprite))]
-        Sprite = 3,
+        Sprite,
         [ReferenceDataBind(typeof(Texture))]
-        Texture = 4,
+        Texture,
         [ReferenceDataBind(typeof(AudioClip))]
-        AudioClip = 5,
+        AudioClip,
+        [ReferenceDataBind(typeof(AnimationClip))]
+        AnimationClip,
+        [ReferenceDataBind(typeof(Animator))]
+        Animator,
+        [ReferenceDataBind(typeof(Material))]
+        Material,
     }
 }
