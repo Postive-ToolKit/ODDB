@@ -40,7 +40,9 @@ namespace TeamODD.ODDB.Runtime.Settings
             get => Application.dataPath + DBPath;
             set{
                 _dbPath = value.Replace(Application.dataPath,"");
-                var curPath = _dbPath.Replace("/Resources/", "");
+                var curPath = _dbPath.Replace("/Resources", "");
+                if (curPath.StartsWith("/"))
+                    curPath = curPath.Substring(1);
                 _pathFromResources = curPath;
                 _isInitialized = true;
             }
@@ -53,6 +55,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         
         public string GoogleSheetAPIURL => _googleSheetAPIURL;
         public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
+        public bool DisableGoogleSheetExport => _disableGoogleSheetExport;
         
         #if ADDRESSABLE_EXIST
         public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
@@ -71,6 +74,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         
         [Space(10)]
         [Header("Google Sheets Settings")]
+        [SerializeField] private bool _disableGoogleSheetExport = false;
         [TextArea]
         [Tooltip("The ID of the Google Sheets document to sync with.")]
         [SerializeField] private string _googleSheetAPIURL = string.Empty;

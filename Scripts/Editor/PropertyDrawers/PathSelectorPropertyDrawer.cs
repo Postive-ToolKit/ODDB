@@ -1,41 +1,44 @@
 ﻿using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime.Attributes;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
     [CustomPropertyDrawer(typeof(PathSelectorAttribute))]
     public class PathSelectorPropertyDrawer : PropertyDrawer
     {
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            PathSelectorAttribute attr = (PathSelectorAttribute)attribute;
+            var attr = (PathSelectorAttribute)attribute;
 
-            EditorGUI.BeginProperty(position, label, property);
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
 
-            Rect textFieldRect = position;
-            textFieldRect.width -= 60;
+            var textField = new TextField(property.displayName);
+            textField.style.flexGrow = 3;
+            textField.BindProperty(property);
+            container.Add(textField);
 
-            Rect buttonRect = position;
-            buttonRect.x += position.width - 60;
-            buttonRect.width = 60;
-
-            EditorGUI.PropertyField(textFieldRect, property, label);
-
-            if (GUI.Button(buttonRect, "Browse"))
+            var button = new Button(() =>
             {
                 var pathSelector = new ODDBPathUtility();
+                var path = pathSelector.GetPath(attr.BasePath, attr.BasePath);
 
-                string path = pathSelector.GetPath(attr.BasePath, attr.BasePath);
-
-                if (!string.IsNullOrEmpty(path))
+                if (string.IsNullOrEmpty(path) == false)
                 {
                     property.stringValue = path;
+                    property.serializedObject.ApplyModifiedProperties();
                 }
-            }
-
-            EditorGUI.EndProperty();
+            })
+            {
+                style = { flexGrow = 1f},
+                text = "Browse"
+            };
+            container.Add(button);
+            return container;
         }
     }
 }

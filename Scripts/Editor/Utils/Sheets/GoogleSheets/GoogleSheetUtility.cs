@@ -89,6 +89,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 return;
             }
             
+            if (ODDBSettings.Setting.DisableGoogleSheetExport)
+            {
+                Debug.LogError("Google Sheets export is disabled in ODDB Settings.");
+                return;
+            }
+            
             if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
             {
                 Debug.LogError("Google Sheets API URL is not set in ODDB Settings.");
