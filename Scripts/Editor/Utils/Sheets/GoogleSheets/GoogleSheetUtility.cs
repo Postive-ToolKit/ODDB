@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
@@ -13,7 +14,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
     public class ODDBGoogleSheetUtility
     {
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Import from Google Sheets")]
-        public static void LoadFromGoogleSheet()
+        public static async void LoadFromGoogleSheet()
         {
             if (ODDBSettings.Setting.IsInitialized == false)
             {
@@ -29,25 +30,28 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             
             var url = $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
             
-            EditorUtility.DisplayProgressBar("ODDB", "Loading data from Google Sheets...", 0.3f);
-            
-            var request = UnityWebRequest.Get(url);
-            var operation = request.SendWebRequest();
-            operation.completed += _ =>
+            try
             {
-                try
+                EditorUtility.DisplayProgressBar("ODDB", "Loading data from Google Sheets...", 0.3f);
+                
+                using (var request = UnityWebRequest.Get(url))
                 {
+                    await request.SendWebRequest();
+
                     if (request.result != UnityWebRequest.Result.Success)
                     {
                         Debug.LogError($"Error fetching data from Google Sheets: {request.error}");
                         return;
                     }
 
-                    EditorUtility.DisplayProgressBar("ODDB", "Parsing sheet data...", 0.6f);
+                    EditorUtility.DisplayProgressBar("ODDB", "Parsing sheet data (Background)...", 0.6f);
                     
-                    // 응답 데이터 파싱
                     var jsonResponse = request.downloadHandler.text;
-                    var sheetDataList = JsonConvert.DeserializeObject<List<GoogleSheet>>(jsonResponse);
+                    
+                    // Parse JSON in background thread to avoid UI freeze
+                    var sheetDataList = await Task.Run(() => 
+                        JsonConvert.DeserializeObject<List<GoogleSheet>>(jsonResponse)
+                    );
 
                     if (sheetDataList == null || sheetDataList.Count == 0)
                     {
@@ -57,31 +61,30 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     
                     EditorUtility.DisplayProgressBar("ODDB", "Processing sheets...", 0.9f);
                     
-                    // 시트 정보 순차 출력
                     foreach (var sheetData in sheetDataList)
                     {
                         Debug.Log($"Sheet Name: {sheetData.Name}, Sheet ID: {sheetData.ID}, Rows: {sheetData.Values.Count}");
                     }
+                    
                     var sheetConverter = new ODDBSheetConverter();
                     sheetConverter.SaveAllSheets(sheetDataList.Select(gs => gs.ToSheetInfo()).ToList());
                     
                     Debug.Log($"✅ Successfully loaded {sheetDataList.Count} sheets from Google Sheets.");
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError($"Error processing data from Google Sheets: {e.Message}");
-                }
-                finally
-                {
-                    EditorUtility.ClearProgressBar();
-                    // refresh project
-                    AssetDatabase.Refresh();
-                }
-            };
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error processing data from Google Sheets: {e.Message}");
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                AssetDatabase.Refresh();
+            }
         }
 
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Export to Google Sheets")]
-        public static void SaveToGoogleSheet()
+        public static async void SaveToGoogleSheet()
         {
             if (ODDBSettings.Setting.IsInitialized == false)
             {
@@ -103,40 +106,44 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             
             var url = $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
             
-            EditorUtility.DisplayProgressBar("ODDB", "Preparing sheets for export...", 0.2f);
-            
-            var sheetConverter = new ODDBSheetConverter();
-            var sheetInfoList = sheetConverter.GetAllSheets()
-                .Select(sheetInfo =>
-                {
-                    var googleSheet = new GoogleSheet();
-                    googleSheet.FromSheetInfo(sheetInfo);
-                    return googleSheet;
-                })
-                .ToList();
-            if (sheetInfoList.Count == 0)
+            try
             {
-                EditorUtility.ClearProgressBar();
-                Debug.LogWarning("There are no sheets available to save.");
-                return;
-            }
-            
-            Debug.Log($"📄 Total Sheets to Save: {sheetInfoList.Count}");
-            
-            EditorUtility.DisplayProgressBar("ODDB", "Uploading to Google Sheets...", 0.5f);
-            
-            // post로 데이터 전송
-            var request = new UnityWebRequest(url, nameof(UnityWebRequest.Post));
-            var jsonData = JsonConvert.SerializeObject(sheetInfoList);
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            var operation = request.SendWebRequest();
-            operation.completed += _ =>
-            {
-                try
+                EditorUtility.DisplayProgressBar("ODDB", "Preparing sheets for export...", 0.2f);
+                
+                var sheetConverter = new ODDBSheetConverter();
+                var sheetInfoList = sheetConverter.GetAllSheets()
+                    .Select(sheetInfo =>
+                    {
+                        var googleSheet = new GoogleSheet();
+                        googleSheet.FromSheetInfo(sheetInfo);
+                        return googleSheet;
+                    })
+                    .ToList();
+
+                if (sheetInfoList.Count == 0)
                 {
+                    Debug.LogWarning("There are no sheets available to save.");
+                    return;
+                }
+                
+                Debug.Log($"📄 Total Sheets to Save: {sheetInfoList.Count}");
+                
+                EditorUtility.DisplayProgressBar("ODDB", "Serializing data (Background)...", 0.4f);
+
+                // Serialize in background
+                var jsonData = await Task.Run(() => JsonConvert.SerializeObject(sheetInfoList));
+                
+                EditorUtility.DisplayProgressBar("ODDB", "Uploading to Google Sheets...", 0.6f);
+                
+                using (var request = new UnityWebRequest(url, "POST"))
+                {
+                    byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+                    request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                    request.downloadHandler = new DownloadHandlerBuffer();
+                    request.SetRequestHeader("Content-Type", "application/json");
+                    
+                    await request.SendWebRequest();
+
                     if (request.result != UnityWebRequest.Result.Success)
                     {
                         Debug.LogError($"Error saving data to Google Sheets: {request.error}");
@@ -145,11 +152,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     
                     Debug.Log("✅ Data successfully saved to Google Sheets.");
                 }
-                finally
-                {
-                    EditorUtility.ClearProgressBar();
-                }
-            };
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error saving data to Google Sheets: {e.Message}");
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
         }
 
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Create App Script")]
