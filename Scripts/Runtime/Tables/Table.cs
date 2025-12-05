@@ -138,6 +138,11 @@ namespace TeamODD.ODDB.Runtime
             foreach (var rowData in _cachedData)
             {
                 var id = new ODDBID(rowData[0]);
+                if (_rows.ContainsKey(id))
+                {
+                    Debug.LogWarning($"Duplicate row ID found: {id}. Skipping this row.");
+                    continue;
+                }
                 var data = new string[rowData.Length - 1];
                 for (int i = 1; i < rowData.Length; i++)
                     data[i - 1] = rowData[i];
