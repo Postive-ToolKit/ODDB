@@ -128,15 +128,28 @@ namespace TeamODD.ODDB.Runtime
             Debug.LogError($"No entities of ID {id} found.");
             return null;
         }
+        
+        /// <summary>
+        /// Get all entities of type T
+        /// </summary>
+        /// <typeparam name="T"> The type of entities to retrieve </typeparam>
+        /// <returns> All entities of type T </returns>
         public static IEnumerable<T> GetEntities<T>() where T : ODDBEntity
         {
-            var type = typeof(T);
-            if (_entityTypeCache.ContainsKey(type))
+            var targetType = typeof(T);
+            var results = new List<T>();
+
+            foreach (var key in _entityTypeCache.Keys)
             {
-                return _entityTypeCache[type] as IEnumerable<T>;
+                if (targetType.IsAssignableFrom(key) == false)
+                    continue;
+                foreach (var entity in _entityTypeCache[key].Values)
+                {
+                    if (entity is T typedEntity)
+                        results.Add(typedEntity);
+                }
             }
-            Debug.LogError($"No entities of type {type} found.");
-            return null;
+            return results;
         }
     }
 }
