@@ -164,10 +164,28 @@ namespace TeamODD.ODDB.Editors.UI
         
         public void SetView(string viewKey)
         {
+            if (string.IsNullOrEmpty(viewKey))
+            {
+                _view = null;
+                _contentView.Clear();
+                _editorToolBar.Clear();
+                _toolbar.Clear();
+                return;
+            }
+
             // 이미 설정된 뷰와 동일하면 무시
             if (_view != null && _view.ID == viewKey)
                 return;
+            
             _view = _editorUseCase.GetViewByKey(viewKey);
+            if (_view == null)
+            {
+                _contentView.Clear();
+                _editorToolBar.Clear();
+                _toolbar.Clear();
+                return;
+            }
+
             _type = _editorUseCase.GetViewTypeByKey(_view.ID);
             SetMode(_type);
             CreateInfoEditor();

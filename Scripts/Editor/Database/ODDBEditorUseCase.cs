@@ -49,6 +49,7 @@ namespace TeamODD.ODDB.Editors.Window
             }
             
             _database.OnDataChanged += OnDataChanged;
+            _database.OnDataRemoved += OnDataChanged;
         }
         
         private void OnDataChanged(ODDBID id)
