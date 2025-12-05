@@ -111,7 +111,7 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     if (_table == null)
                         return;
-                    _table.RemoveRow(row.ID);
+                    _editorUseCase.RemoveRow(_table.ID, row.ID);
                 });
             };
 

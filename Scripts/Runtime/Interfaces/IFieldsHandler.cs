@@ -10,6 +10,7 @@ namespace TeamODD.ODDB.Runtime.Interfaces
         
         void AddField(Field field);
         void RemoveField(int index);
+        void InsertField(int index, Field field);
         void SwapFields(int indexA, int indexB);
         bool IsScopedField(int index);
         

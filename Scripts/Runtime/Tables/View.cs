@@ -91,6 +91,25 @@ namespace TeamODD.ODDB.Runtime
             OnFieldAdded?.Invoke(field);
         }
         
+        public void InsertField(int index, Field field)
+        {
+            int myStartIndex = 0;
+            if (ParentView != null) 
+                myStartIndex = ParentView.TotalFields.Count;
+             
+            int scopedIndex = index - myStartIndex;
+             
+            if (scopedIndex < 0 || scopedIndex > _fields.Count)
+            {
+                Debug.LogError($"Index {index} is out of range for insertion in this view.");
+                return;
+            }
+             
+            _fields.Insert(scopedIndex, field);
+            OnAddField(field);
+            OnFieldAdded?.Invoke(field);
+        }
+        
         public void RemoveField(int index)
         {
             if (!IsScopedField(index)) {

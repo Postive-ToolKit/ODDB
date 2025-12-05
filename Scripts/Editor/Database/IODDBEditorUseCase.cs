@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using TeamODD.ODDB.Editors.Commands;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -9,12 +10,21 @@ namespace TeamODD.ODDB.Editors.Window
     public interface IODDBEditorUseCase : IDisposable
     {
         public event Action<string> OnViewChanged;
+        public event Action OnHistoryChanged;
+        
         public IODDatabase DataBase { get; }
         public IView GetViewByKey(string key);
         public IEnumerable<IView> GetViews(Predicate<IView> predicate = null);
         public ODDBViewType GetViewTypeByKey(string key);
         public string GetViewName(string key);
         public void SetViewName(string key, string name);
+        
+        // Data Manipulation Methods
+        public void AddRow(string tableId);
+        public void RemoveRow(string tableId, string rowId);
+        public void AddField(string viewId, Field field);
+        public void RemoveField(string viewId, int index);
+
         public Type GetViewBindType(string key);
         public void SetViewBindType(string key, Type type);
         public IView GetViewParent(string key);
@@ -52,5 +62,12 @@ namespace TeamODD.ODDB.Editors.Window
         /// </summary>
         /// <param name="fullPath"> The full file path where the database should be saved.</param>
         public void SaveDatabase(string fullPath);
+        
+        public void Undo();
+        public void Redo();
+        
+        public IEnumerable<ICommand> GetUndoHistory();
+        public IEnumerable<ICommand> GetRedoHistory();
+        public void JumpToHistory(ICommand command);
     }
 }

@@ -51,7 +51,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string DBPath => _dbPath;
         public string PathFromResources => _pathFromResources;
         public string DBName => _dbName;
-        public int IncrementCount => _incrementCount;
+        public int MaxHistoryCount => _maxHistoryCount;
         
         public string GoogleSheetAPIURL => _googleSheetAPIURL;
         public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
@@ -68,9 +68,9 @@ namespace TeamODD.ODDB.Runtime.Settings
         [SerializeField] private string _pathFromResources;
         [SerializeField] private string _dbName = "ODDB.bytes";
         [Space(10)]
-        [Header("Increment Settings")]
-        [Tooltip("When adding new items to the database, how many items to add at once.")]
-        [SerializeField, Min(1)] private int _incrementCount = 10;
+        [Header("Editor Settings")]
+        [Tooltip("The maximum number of history items to keep in the undo stack.")]
+        [SerializeField, Min(1)] private int _maxHistoryCount = 50;
         
         [Space(10)]
         [Header("Google Sheets Settings")]

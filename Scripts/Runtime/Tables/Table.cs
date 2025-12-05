@@ -56,6 +56,13 @@ namespace TeamODD.ODDB.Runtime
             return newRow;
         }
 
+        public void RestoreRow(Row row)
+        {
+            if (_rows.ContainsKey(row.ID)) return;
+            _rows.Add(row.ID, row);
+            OnRowChanged?.Invoke();
+        }
+
         public void RemoveRow(int index)
         {
             var row = Rows.ElementAtOrDefault(index);

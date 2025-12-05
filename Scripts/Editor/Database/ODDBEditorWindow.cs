@@ -17,6 +17,7 @@ namespace TeamODD.ODDB.Editors.Window
         #region Layout
         private TwoPaneSplitView _splitView;
         private ODDBTreeView _tableTreeView;
+        private ODDBHistoryView _historyView;
         private ODDBEditorView _editorView;
         #endregion
 
@@ -40,10 +41,21 @@ namespace TeamODD.ODDB.Editors.Window
             // bind save key to window not view
             rootVisualElement.RegisterCallback<KeyDownEvent>(evt =>
             {
-                if (evt.keyCode == KeyCode.S && evt.ctrlKey)
+                if (evt.ctrlKey)
                 {
-                    var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
-                    _editorUseCase.SaveDatabase(fullPath);
+                    if (evt.keyCode == KeyCode.S)
+                    {
+                        var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+                        _editorUseCase.SaveDatabase(fullPath);
+                    }
+                    else if (evt.keyCode == KeyCode.Z)
+                    {
+                        _editorUseCase.Undo();
+                    }
+                    else if (evt.keyCode == KeyCode.Y)
+                    {
+                        _editorUseCase.Redo();
+                    }
                 }
             });
         }
@@ -83,9 +95,20 @@ namespace TeamODD.ODDB.Editors.Window
                 toolBarButton.text = "Selected : " + _editorUseCase.GetViewName(view);
             
             leftToolbar.Add(toolBarButton);
+
+            var historyToggle = new ToolbarToggle { text = "History" };
+            historyToggle.RegisterValueChangedCallback(evt =>
+            {
+                _historyView.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+            leftToolbar.Add(historyToggle);
             
             treeViewContainer.Add(leftToolbar);
             treeViewContainer.Add(_tableTreeView);
+            
+            _historyView = new ODDBHistoryView { style = { display = DisplayStyle.None, height = 150 } };
+            treeViewContainer.Add(_historyView);
+
             _splitView.Add(treeViewContainer);
             
             _editorView = new ODDBEditorView();

@@ -11,7 +11,8 @@ using UnityEngine.UIElements;
 namespace TeamODD.ODDB.Editors.UI
 {
     /// <summary>
-    /// View model for the ODDBDataEditor (Refactored)
+    /// The main container for editing a specific View or Table.
+    /// It coordinates the Header, Toolbar, and Content (Editor) components.
     /// </summary>
     public class ViewEditorSet : VisualElement, IHasView
     {
@@ -57,6 +58,9 @@ namespace TeamODD.ODDB.Editors.UI
             SetView(viewId);
         }
 
+        /// <summary>
+        /// Updates the view to display the specified view/table ID.
+        /// </summary>
         public void SetView(string viewKey)
         {
             if (string.IsNullOrEmpty(viewKey))
@@ -96,6 +100,9 @@ namespace TeamODD.ODDB.Editors.UI
             _contentView.Clear();
         }
 
+        /// <summary>
+        /// Switches the editor mode (View or Table) and rebuilds the content.
+        /// </summary>
         private void SetMode(ODDBViewType type)
         {
             _contentView.Clear();

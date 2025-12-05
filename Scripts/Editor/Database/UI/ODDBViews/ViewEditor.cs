@@ -70,7 +70,7 @@ namespace TeamODD.ODDB.Editors.UI
                 {
                     var normalizedIndex = _view.TotalFields.Count - _view.ScopedFields.Count + index;
                     if (_view != null && index < _view.TotalFields.Count)
-                        _view.RemoveField(normalizedIndex);
+                        _editorUseCase.RemoveField(_view.ID, normalizedIndex);
                 });
             };
 
