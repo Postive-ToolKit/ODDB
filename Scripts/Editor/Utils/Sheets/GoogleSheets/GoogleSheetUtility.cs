@@ -74,7 +74,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             }
             catch (Exception e)
             {
-                Debug.LogError($"Error processing data from Google Sheets: {e.Message}");
+                Debug.LogError($"Error processing data from Google Sheets");
+                Debug.LogException(e);
             }
             finally
             {
