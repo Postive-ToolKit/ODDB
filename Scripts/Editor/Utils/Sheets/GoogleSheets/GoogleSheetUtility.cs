@@ -8,6 +8,7 @@ using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEditor;
+using UnityEditor.Compilation;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
@@ -80,7 +81,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             finally
             {
                 EditorUtility.ClearProgressBar();
-                AssetDatabase.Refresh();
+                CompilationPipeline.RequestScriptCompilation();
             }
         }
 
