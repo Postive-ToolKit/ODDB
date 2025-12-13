@@ -59,7 +59,8 @@ namespace TeamODD.ODDB.Runtime.Settings
         
         #if ADDRESSABLE_EXIST
         public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
-        #endif
+        public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
+#endif
         
         [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
@@ -71,7 +72,10 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Header("Editor Settings")]
         [Tooltip("The maximum number of history items to keep in the undo stack.")]
         [SerializeField, Min(1)] private int _maxHistoryCount = 50;
-        
+        [Space(10)]
+        [Header("Utility")]
+        [Tooltip("Use the first column of the row as the row name when show dropdown selector in the editor.")]
+        [SerializeField] private bool _useFirstColumnAsRowName = false;
         [Space(10)]
         [Header("Google Sheets Settings")]
         [SerializeField] private bool _disableGoogleSheetExport = false;

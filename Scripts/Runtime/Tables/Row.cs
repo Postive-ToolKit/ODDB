@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 
@@ -85,9 +86,9 @@ namespace TeamODD.ODDB.Runtime
 
         public string GetName()
         {
-            if (_cells.Count > 0)
-                return _cells[0].GetData()?.ToString() ?? ID;
-            return ID.ToString();
+            if (ODDBSettings.Setting.UseFirstColumnAsRowName == false)
+                return ID.ToString();
+            return _cells[0]?.GetData()?.ToString() ?? ID;
         }
     }
 }
