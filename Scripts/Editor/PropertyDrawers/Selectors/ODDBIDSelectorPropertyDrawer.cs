@@ -1,4 +1,5 @@
-﻿using TeamODD.ODDB.Runtime.Attributes;
+﻿using System.Text;
+using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -22,27 +23,25 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var attr = (ODDBIDSelectorAttribute)attribute;
             
             var stringValue = property.stringValue;
-            if (_service.IsValidID(stringValue) == false)
-            {
-                stringValue = string.Empty;
-                property.stringValue = stringValue;
-                property.serializedObject.ApplyModifiedProperties();
-            }
+            var isValid = _service.IsValidID(stringValue);
             
-            var title = _service.GetName(stringValue);
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
-            container.tooltip = property.stringValue;
+            container.tooltip = GetTooltipText(isValid);
             
             var label = new Label(property.displayName);
             label.style.width = StyleKeyword.Auto;
             label.style.minWidth = 10;
-            label.style.flexGrow = 4;
+            label.style.flexGrow = 2;
             container.Add(label);
             
+            var textArea = new TextField();
+            textArea.style.flexGrow = 6;
+            textArea.value = stringValue;
+            
             var button = new Button();
-            button.text = title;
-            button.style.flexGrow = 6;
+            button.text = GetButtonText(isValid);
+            button.style.flexGrow = 2;
             button.clicked += () =>
             {
                 var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowTables);
@@ -53,13 +52,43 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 {
                     property.stringValue = newID;
                     property.serializedObject.ApplyModifiedProperties();
-                    button.text = _service.GetName(newID);
-                    container.tooltip = newID;
+                    button.text = GetButtonText(true);
+                    container.tooltip = GetTooltipText(true);
+                    textArea.value = newID;
+
                 };
             };
             container.Add(button);
-            return container;
             
+            textArea .RegisterValueChangedCallback(evt =>
+            {
+                property.stringValue = evt.newValue;
+                property.serializedObject.ApplyModifiedProperties();
+                var newID = evt.newValue;
+                textArea.value = newID;
+                var valid = _service.IsValidID(newID);
+                button.text = GetButtonText(valid);
+                container.tooltip = GetTooltipText(valid);
+            });
+            
+            return container;
+        }
+        
+        private string GetTooltipText(bool isValid)
+        {
+            return isValid ? "<color=green>Valid ID</color>" : "<color=red>Invalid ID</color>";
+        }
+        
+        private string GetButtonText(bool isValid)
+        {
+            var sb = new StringBuilder();
+            // Append X icon for invalid, check icon for valid
+            if (isValid)
+                sb.Append("<color=green>✔</color>");
+            else
+                sb.Append("<color=red>✘</color>");
+            sb.Append("Search");
+            return sb.ToString();
         }
     }
 }
