@@ -10,6 +10,7 @@ using UnityEngine.UIElements;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Entities;
 using UnityEditor.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
@@ -157,14 +158,13 @@ namespace TeamODD.ODDB.Editors.UI
             var currentType = bindType;
             while (currentType != null && currentType != typeof(object))
             {
-                var fields = currentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                var fields = currentType.GetFields(ODDBEntity.FieldFlags);
                 allFields.AddRange(fields);
                 currentType = currentType.BaseType;
             }
 
             // Filter only Unity-serializable fields (public or with [SerializeField])
             var serializableFields = allFields
-                .Where(f => f.IsPublic || f.GetCustomAttribute<SerializeField>() != null)
                 .OrderBy(f => f.MetadataToken)
                 .ToArray();
 

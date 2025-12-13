@@ -11,10 +11,12 @@ namespace TeamODD.ODDB.Runtime.Entities
 {
     public abstract class ODDBEntity
     {
+        public static readonly BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        
         public void Import(List<Field> tableMetas, Row row)
         {
             var entityType = this.GetType(); // 현재 인스턴스의 실제 타입
-            var fields = entityType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            var fields = entityType.GetFields(FieldFlags)
                 .OrderBy(f => f.MetadataToken) // 대체적으로 선언 순서에 가까움
                 .ToList();
             
