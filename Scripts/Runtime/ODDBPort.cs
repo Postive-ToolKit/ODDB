@@ -16,11 +16,28 @@ namespace TeamODD.ODDB.Runtime
         private static List<Action> _onDataPortedCallbacks = new List<Action>();
         private static ODDBSettings _settings;
         private static ODDatabase _database;
+        private static bool _isInitialized = false;
 
         #region Initialization
+        /// <summary>
+        /// Initialize the ODDB system, with an option to force re-initialization.
+        /// For Editor Initialization.
+        /// </summary>
+        /// <param name="isForce"> If true, forces re-initialization even if already initialized. </param>
+        public static void Initialize(bool isForce)
+        {
+            if (isForce)
+                _isInitialized = false;
+            Initialize();
+        }
+        
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         public static void Initialize()
         {
+            if (_isInitialized)
+                return;
+            _isInitialized = true;
+            
             // Initialize the ODDB system
             // This is where you would set up any necessary configurations or settings
             // for the ODDB system to function correctly.
