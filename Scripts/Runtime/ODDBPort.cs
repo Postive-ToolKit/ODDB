@@ -11,6 +11,7 @@ namespace TeamODD.ODDB.Runtime
 {
     public static class ODDBPort
     {
+        public static bool IsInitialized => _isInitialized;
         private static Dictionary<string, ODDBEntity> _entityCache = new();
         private static Dictionary<Type, Dictionary<string,ODDBEntity>> _entityTypeCache = new Dictionary<Type , Dictionary<string,ODDBEntity>>();
         private static List<Action> _onDataPortedCallbacks = new List<Action>();
