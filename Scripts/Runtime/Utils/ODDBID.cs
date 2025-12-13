@@ -58,7 +58,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         
         public static implicit operator string(ODDBID oddbid)
         {
-            return oddbid.ID;
+            return oddbid?.ID ?? string.Empty;
         }
         
         public static bool operator ==(ODDBID a, ODDBID b)
