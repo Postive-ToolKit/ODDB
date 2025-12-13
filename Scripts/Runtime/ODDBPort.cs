@@ -28,7 +28,12 @@ namespace TeamODD.ODDB.Runtime
         public static void Initialize(bool isForce)
         {
             if (isForce)
+            {
                 _isInitialized = false;
+                _entityCache.Clear();
+                _entityTypeCache.Clear();
+                _onDataPortedCallbacks.Clear();
+            }
             Initialize();
         }
         
