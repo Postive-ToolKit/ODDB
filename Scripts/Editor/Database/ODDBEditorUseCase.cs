@@ -35,7 +35,7 @@ namespace TeamODD.ODDB.Editors.Window
         
         private ODDatabase _database;
         private readonly ODDBDataService _dataService;
-        private readonly TeamODD.ODDB.Editors.Commands.CommandProcessor _commandProcessor = new TeamODD.ODDB.Editors.Commands.CommandProcessor();
+        private readonly Commands.CommandProcessor _commandProcessor = new();
 
         public ODDBEditorUseCase() 
         {
@@ -223,19 +223,29 @@ namespace TeamODD.ODDB.Editors.Window
 
         public IEnumerable<Row> GetViewRows(string viewId)
         {
+            var tableList = GetInheritedTables(viewId).ToList();
+            var rows = new List<Row>();
+            foreach (var table in tableList)
+                rows.AddRange(table.Rows);
+            return rows;
+        }
+        
+        public IEnumerable<Table> GetInheritedTables(string viewId)
+        {
             var view = GetViewByKey(viewId);
             if (view == null)
-                return Enumerable.Empty<Row>();
+                return Enumerable.Empty<Table>();
 
-            if (view is Table table)
-                return table.Rows;
-            
             var children = _database.GetAll()
                 .Where(v => v.ParentView != null && v.ParentView.ID == view.ID);
-            var rows = new List<Row>();
+            var tables = new List<Table>();
             foreach (var child in children)
-                rows.AddRange(GetViewRows(child.ID.ToString()));
-            return rows;
+            {
+                if (child is Table table)
+                    tables.Add(table);
+                tables.AddRange(GetInheritedTables(child.ID.ToString()));
+            }
+            return tables;
         }
 
         public Row GetRow(string rowId)

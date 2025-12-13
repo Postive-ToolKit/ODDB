@@ -40,6 +40,13 @@ namespace TeamODD.ODDB.Editors.Window
         /// <param name="viewId"> The ID of the view.</param>
         /// <returns> A string representing the rows of the view.</returns>
         public IEnumerable<Row> GetViewRows(string viewId);
+        
+        /// <summary>
+        /// Get all tables that the specified view inherits from.
+        /// </summary>
+        /// <param name="viewId"> The ID of the view.</param>
+        /// <returns> A collection of Table objects that the view inherits from.</returns>
+        public IEnumerable<Table> GetInheritedTables(string viewId);
 
         /// <summary>
         /// Find and return a Row object by its string identifier from the database.

@@ -30,16 +30,24 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
             if (string.IsNullOrEmpty(_viewId))
                 return new AdvancedDropdownItem("No View Selected");
 
-            var rows = _editorUseCase.GetViewRows(_viewId);
+            var tableList = _editorUseCase.GetInheritedTables(_viewId).ToList();
             
             var root = new AdvancedDropdownItem("Entities");
 
             root.AddChild(new ViewIdDropDownItem(NONE_OPTION, string.Empty));
-            foreach (var row in rows)
+            foreach (var table in tableList)
             {
-                var itemName = row.GetName();
-                var item = new ViewIdDropDownItem(itemName, row.ID.ToString());
-                root.AddChild(item);
+                var rows = table.Rows;
+                if (rows.Count == 0)
+                    continue;
+                var tableItem = new AdvancedDropdownItem(table.Name);
+                foreach (var row in rows)
+                {
+                    var itemName = row.GetName();
+                    var item = new ViewIdDropDownItem(itemName, row.ID.ToString());
+                    tableItem.AddChild(item);
+                }
+                root.AddChild(tableItem);
             }
             
             return root;
