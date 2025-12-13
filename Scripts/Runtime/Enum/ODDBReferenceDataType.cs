@@ -25,8 +25,8 @@ namespace TeamODD.ODDB.Runtime.Enums
         AudioClip,
         [ReferenceDataBind(typeof(AnimationClip))]
         AnimationClip,
-        [ReferenceDataBind(typeof(Animator))]
-        Animator,
+        [ReferenceDataBind(typeof(RuntimeAnimatorController))]
+        AnimationController,
         [ReferenceDataBind(typeof(Material))]
         Material,
     }
