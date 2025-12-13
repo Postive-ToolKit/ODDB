@@ -13,25 +13,25 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     {
         public event Action<string, string> OnIDSelected;
         private readonly ODDBSelectorService _service = new();
-        private readonly List<string> _targetTables = new List<string>();
+        private readonly List<Type> _targetTables = new List<Type>();
         
-        public ODDBIDDropDown(AdvancedDropdownState state, params string[] targetTables) : base(state)
+        public ODDBIDDropDown(AdvancedDropdownState state, params Type[] targetEntities) : base(state)
         {
-            _targetTables.AddRange(targetTables);
+            _targetTables.AddRange(targetEntities);
             minimumSize = new Vector2(0, 200);
         }
 
         protected override AdvancedDropdownItem BuildRoot()
         {
             var root = new AdvancedDropdownItem("ODDB IDs");
-            var targetIDs = _targetTables.Count == 0 ? _service.GetAllTableID().ToList() : _targetTables;
-            foreach (var tableId in targetIDs)
+            foreach (var targetType in _targetTables)
             {
-                var tableItem = new ODDBIDDropDownItem(_service.GetPureName(tableId), tableId);
-                var ids = _service.GetTableEntities(tableId);
+                var tableItem = new ODDBIDDropDownItem(targetType.Name, targetType.FullName);
+                var ids = _service.GetTypeEntities(targetType);
                 foreach (var id in ids)
                 {
-                    var idItem = new ODDBIDDropDownItem(_service.GetPureName(id), id);
+                    var itemName = $"{targetType.Name} - {id}";
+                    var idItem = new ODDBIDDropDownItem(itemName, id);
                     tableItem.AddChild(idItem);
                 }
                 root.AddChild(tableItem);

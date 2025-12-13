@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Linq;
+using TeamODD.ODDB.Runtime.Entities;
+using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Attributes
 {
@@ -10,15 +13,19 @@ namespace TeamODD.ODDB.Runtime.Attributes
         /// <summary>
         /// Allowed tables for selection.
         /// </summary>
-        public string[] AllowTables { get; }
+        public Type[] AllowEntities { get; private set; }
         
         /// <summary>
         /// Constructor for ODDBIDSelectorAttribute.
+        /// Constructor for ODDBIDSelectorAttribute.
         /// </summary>
-        /// <param name="allowTables"> Optional list of allowed tables for selection.</param>
-        public ODDBIDSelectorAttribute(params string[] allowTables)
+        /// <param name="allowEntities"> Optional list of allowed tables for selection.</param>
+        public ODDBIDSelectorAttribute(params Type[] allowEntities)
         {
-            AllowTables = allowTables;
+            AllowEntities = allowEntities
+                .Where(type => typeof(ODDBEntity).IsAssignableFrom(type))
+                .ToArray();
+
         }
     }
 }

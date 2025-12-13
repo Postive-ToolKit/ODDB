@@ -1,9 +1,9 @@
 ﻿using System.Text;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
@@ -11,7 +11,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CustomPropertyDrawer(typeof(ODDBIDSelectorAttribute))]
     public class ODDBIDSelectorPropertyDrawer : PropertyDrawer
     {
-        private static readonly ODDBSelectorService _service = new ODDBSelectorService();
+        private readonly ODDBSelectorService _service = new ODDBSelectorService();
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             if (ODDBSettings.Setting.IsInitialized == false)
@@ -19,6 +19,10 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             if (property.propertyType != SerializedPropertyType.String)
                 return base.CreatePropertyGUI(property);
+            
+            // Editor Initialization
+            if (ODDBPort.IsInitialized == false)
+                ODDBPort.Initialize();
             
             var attr = (ODDBIDSelectorAttribute)attribute;
             
@@ -45,7 +49,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             button.style.flexGrow = 2;
             button.clicked += () =>
             {
-                var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowTables);
+                var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowEntities);
                 
                 var rect = container.worldBound;
                 dropdown.Show(rect);

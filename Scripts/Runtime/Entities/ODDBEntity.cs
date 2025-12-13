@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Settings;
@@ -12,15 +13,19 @@ namespace TeamODD.ODDB.Runtime.Entities
     public abstract class ODDBEntity
     {
         public static readonly BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        
+
+        public string ID { get; private set; }
+
         public void Import(List<Field> tableMetas, Row row)
         {
-            var entityType = this.GetType(); // 현재 인스턴스의 실제 타입
+            var entityType = GetType();
             var fields = entityType.GetFields(FieldFlags)
-                .OrderBy(f => f.MetadataToken) // 대체적으로 선언 순서에 가까움
+                .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute)) == false)
+                .OrderBy(f => f.MetadataToken)
                 .ToList();
             
             var fieldIndex = 0;
+            ID = row.ID;
             
             for (int i = 0; i < tableMetas.Count && fieldIndex < fields.Count; i++)
             {
