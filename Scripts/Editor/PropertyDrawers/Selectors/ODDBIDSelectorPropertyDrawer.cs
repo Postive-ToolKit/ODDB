@@ -38,6 +38,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var textArea = new TextField();
             textArea.style.flexGrow = 6;
             textArea.value = stringValue;
+            container.Add(textArea);
             
             var button = new Button();
             button.text = GetButtonText(isValid);
