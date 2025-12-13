@@ -239,6 +239,10 @@ namespace TeamODD.ODDB.Editors.Window
             var children = _database.GetAll()
                 .Where(v => v.ParentView != null && v.ParentView.ID == view.ID);
             var tables = new List<Table>();
+            
+            if (view is Table tableView)
+                tables.Add(tableView);
+            
             foreach (var child in children)
             {
                 if (child is Table table)
