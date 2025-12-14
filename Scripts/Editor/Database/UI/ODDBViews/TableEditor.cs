@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Plugins.ODDB.Scripts.Editor.Utils.Elements;
 using TeamODD.ODDB.Editors.DTO;
 using UnityEditor;
@@ -158,7 +159,10 @@ namespace TeamODD.ODDB.Editors.UI
             var currentType = bindType;
             while (currentType != null && currentType != typeof(object))
             {
-                var fields = currentType.GetFields(ODDBEntity.FieldFlags);
+                var fields = currentType
+                    .GetFields(ODDBEntity.FieldFlags)
+                    .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute), false) == false);
+                
                 allFields.AddRange(fields);
                 currentType = currentType.BaseType;
             }
