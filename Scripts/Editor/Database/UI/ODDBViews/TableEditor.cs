@@ -160,7 +160,7 @@ namespace TeamODD.ODDB.Editors.UI
             while (currentType != null && currentType != typeof(object))
             {
                 var fields = currentType
-                    .GetFields(ODDBEntity.FieldFlags)
+                    .GetFields(ODDBEntity.FieldFlags | BindingFlags.DeclaredOnly)
                     .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute), false) == false);
                 
                 allFields.AddRange(fields);
