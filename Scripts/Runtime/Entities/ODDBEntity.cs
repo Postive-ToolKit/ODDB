@@ -83,13 +83,9 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var targetEntity = ODDBPort.GetEntity<ODDBEntity>(targetId);
                 if (targetEntity == null)
                     return;
-                
-                // try parse to field type
-                var parsedEntity = Convert.ChangeType(targetEntity, field.FieldType);
-                if (parsedEntity == null)
-                    return;
-                
-                field.SetValue(this, parsedEntity);
+
+                if (field.FieldType.IsAssignableFrom(targetEntity.GetType()))
+                    field.SetValue(this, targetEntity);
             });
         }
     }
