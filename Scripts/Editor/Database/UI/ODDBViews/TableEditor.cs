@@ -160,22 +160,17 @@ namespace TeamODD.ODDB.Editors.UI
             while (currentType != null && currentType != typeof(object))
             {
                 var fields = currentType
-                    .GetFields(ODDBEntity.FieldFlags | BindingFlags.DeclaredOnly)
+                    .GetFields(ODDBEntity.FieldFlags)
                     .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute), false) == false);
                 
-                allFields.AddRange(fields);
+                allFields.InsertRange(0, fields);
                 currentType = currentType.BaseType;
             }
 
-            // Filter only Unity-serializable fields (public or with [SerializeField])
-            var serializableFields = allFields
-                .OrderBy(f => f.MetadataToken)
-                .ToArray();
-
-            if (columnIndex < 0 || columnIndex >= serializableFields.Length)
+            if (columnIndex < 0 || columnIndex >= allFields.Count)
                 return string.Empty;
 
-            var field = serializableFields[columnIndex];
+            var field = allFields[columnIndex];
             
             // Check for InspectorNameAttribute first
             var inspectorAttr = field.GetCustomAttribute<InspectorNameAttribute>();

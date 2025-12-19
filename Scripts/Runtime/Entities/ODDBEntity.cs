@@ -12,18 +12,34 @@ namespace TeamODD.ODDB.Runtime.Entities
 {
     public abstract class ODDBEntity
     {
-        public static readonly BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
+        public static readonly BindingFlags FieldFlags =
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        private static Dictionary<Type, List<FieldInfo>> _fieldFieldCache = new Dictionary<Type, List<FieldInfo>>();
+        private static List<FieldInfo> GetFieldFields(Type type)
+        {
+            if (_fieldFieldCache.TryGetValue(type, out var cachedFields))
+                return cachedFields;
+            var results = new List<FieldInfo>();
+            var currentType = type;
+            while (currentType != null && currentType != typeof(object))
+            {
+                var fields = currentType
+                    .GetFields(FieldFlags)
+                    .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute), false) == false);
+                results.InsertRange(0, fields);
+                currentType = currentType.BaseType;
+            }
+            
+            _fieldFieldCache[type] = results;
+            return results;
+        }
+            
         public string ID { get; private set; }
 
         public void Import(List<Field> tableMetas, Row row)
         {
             var entityType = GetType();
-            var fields = entityType.GetFields(FieldFlags)
-                .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute)) == false)
-                .OrderBy(f => f.MetadataToken)
-                .ToList();
-            
+            var fields = GetFieldFields(entityType);
             var fieldIndex = 0;
             ID = row.ID;
             
