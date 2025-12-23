@@ -1,17 +1,99 @@
-﻿using System.Text;
-using TeamODD.ODDB.Runtime;
+﻿using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
+using UnityEngine;
+
+#if ODIN_INSPECTOR
+using Sirenix.OdinInspector.Editor;
+#else
+using System.Text;
 using UnityEngine.UIElements;
+#endif
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
+#if ODIN_INSPECTOR
+    public class ODDBIDSelectorAttributeDrawer : OdinAttributeDrawer<ODDBIDSelectorAttribute, string>
+    {
+        private const float ButtonWidth = 80f;
+        private const float Spacing = 2f;
+        private const string ValidTooltip = "<color=green>Valid ID</color>";
+        private const string InvalidTooltip = "<color=red>Invalid ID</color>";
+        private const string ValidButtonText = "<color=green>✔</color> Search";
+        private const string InvalidButtonText = "<color=red>✘</color> Search";
+        
+        private static GUIStyle _richButtonStyle;
+        private readonly ODDBSelectorService _service = new ODDBSelectorService();
+        
+        protected override void DrawPropertyLayout(GUIContent label)
+        {
+            if (ODDBSettings.Setting.IsInitialized == false)
+            {
+                CallNextDrawer(label);
+                return;
+            }
+            
+            if (ODDBPort.IsInitialized == false)
+                ODDBPort.Initialize();
+            
+            // Initialize rich text button style
+            if (_richButtonStyle == null)
+            {
+                _richButtonStyle = new GUIStyle(GUI.skin.button)
+                {
+                    richText = true
+                };
+            }
+            
+            var attr = Attribute;
+            var stringValue = ValueEntry.SmartValue ?? string.Empty;
+            var isValid = _service.IsValidID(stringValue);
+
+            var fullRect = EditorGUILayout.GetControlRect();
+            
+            var labelRect = new Rect(fullRect.x, fullRect.y, EditorGUIUtility.labelWidth, fullRect.height);
+            var buttonRect = new Rect(fullRect.xMax - ButtonWidth, fullRect.y, ButtonWidth, fullRect.height);
+            var textFieldRect = new Rect(labelRect.xMax + Spacing, fullRect.y, 
+                fullRect.xMax - labelRect.xMax - ButtonWidth - Spacing * 2, fullRect.height);
+            
+            if (label != null)
+            {
+                label.tooltip = GetTooltipText(isValid);
+                EditorGUI.LabelField(labelRect, label);
+            }
+            
+            var newValue = EditorGUI.TextField(textFieldRect, 
+                new GUIContent(string.Empty, GetTooltipText(isValid)), stringValue);
+            if (newValue != stringValue)
+            {
+                ValueEntry.SmartValue = newValue;
+            }
+            
+            if (GUI.Button(buttonRect, new GUIContent(GetButtonText(isValid)), _richButtonStyle))
+            {
+                var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowEntities);
+                dropdown.Show(fullRect);
+                dropdown.OnIDSelected += (_, newID) => ValueEntry.SmartValue = newID;
+            }
+        }
+        
+        private string GetTooltipText(bool isValid) => isValid ? ValidTooltip : InvalidTooltip;
+        private string GetButtonText(bool isValid) => isValid ? ValidButtonText : InvalidButtonText;
+    }
+#else
+
     [CustomPropertyDrawer(typeof(ODDBIDSelectorAttribute))]
     public class ODDBIDSelectorPropertyDrawer : PropertyDrawer
     {
+        private const string ValidTooltip = "<color=green>Valid ID</color>";
+        private const string InvalidTooltip = "<color=red>Invalid ID</color>";
+        private const string ValidButtonText = "<color=green>✔</color>Search";
+        private const string InvalidButtonText = "<color=red>✘</color>Search";
+        
         private readonly ODDBSelectorService _service = new ODDBSelectorService();
+        
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             if (ODDBSettings.Setting.IsInitialized == false)
@@ -20,12 +102,10 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             if (property.propertyType != SerializedPropertyType.String)
                 return base.CreatePropertyGUI(property);
             
-            // Editor Initialization
             if (ODDBPort.IsInitialized == false)
                 ODDBPort.Initialize();
             
             var attr = (ODDBIDSelectorAttribute)attribute;
-            
             var stringValue = property.stringValue;
             var isValid = _service.IsValidID(stringValue);
             
@@ -50,10 +130,9 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             button.clicked += () =>
             {
                 var dropdown = new ODDBIDDropDown(new AdvancedDropdownState(), attr.AllowEntities);
-                
                 var rect = container.worldBound;
                 dropdown.Show(rect);
-                dropdown.OnIDSelected += (newName, newID) =>
+                dropdown.OnIDSelected += (_, newID) =>
                 {
                     property.stringValue = newID;
                     property.serializedObject.ApplyModifiedProperties();
@@ -65,13 +144,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             };
             container.Add(button);
             
-            textArea .RegisterValueChangedCallback(evt =>
+            textArea.RegisterValueChangedCallback(evt =>
             {
                 property.stringValue = evt.newValue;
                 property.serializedObject.ApplyModifiedProperties();
-                var newID = evt.newValue;
-                textArea.value = newID;
-                var valid = _service.IsValidID(newID);
+                var valid = _service.IsValidID(evt.newValue);
                 button.text = GetButtonText(valid);
                 container.tooltip = GetTooltipText(valid);
             });
@@ -79,21 +156,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             return container;
         }
         
-        private string GetTooltipText(bool isValid)
-        {
-            return isValid ? "<color=green>Valid ID</color>" : "<color=red>Invalid ID</color>";
-        }
-        
-        private string GetButtonText(bool isValid)
-        {
-            var sb = new StringBuilder();
-            // Append X icon for invalid, check icon for valid
-            if (isValid)
-                sb.Append("<color=green>✔</color>");
-            else
-                sb.Append("<color=red>✘</color>");
-            sb.Append("Search");
-            return sb.ToString();
-        }
+        private string GetTooltipText(bool isValid) => isValid ? ValidTooltip : InvalidTooltip;
+        private string GetButtonText(bool isValid) => isValid ? ValidButtonText : InvalidButtonText;
     }
+#endif
 }
