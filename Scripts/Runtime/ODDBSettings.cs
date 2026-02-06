@@ -57,10 +57,11 @@ namespace TeamODD.ODDB.Runtime.Settings
         public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
         public bool DisableGoogleSheetExport => _disableGoogleSheetExport;
         
-        #if ADDRESSABLE_EXIST
+#if ADDRESSABLE_EXIST
         public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
-        public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
 #endif
+        public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
+
         
         [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
