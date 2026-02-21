@@ -108,6 +108,8 @@ namespace TeamODD.ODDB.Editors.UI
 
             toolColumn.bindCell = (element, index) =>
             {
+                if (_table == null || index < 0 || index >= _table.Rows.Count)
+                    return;
                 var row = _table.Rows.ElementAt(index);
                 var button = element as ODDBButton;
                 button!.ClearCallbacks();
