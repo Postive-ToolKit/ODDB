@@ -30,6 +30,7 @@ namespace TeamODD.ODDB.Editors.UI
             horizontalScrollingEnabled = true;
             showBorder = true;
             style.flexGrow = 1;
+            style.height = Length.Percent(100);
             bindingPath = "Rows";
             CreateColumns();
         }
@@ -59,6 +60,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (_table == null)
                 return;
             _tableDataDTO.Rows = _table.Rows;
+            RefreshItems();
         }
 
         private void CreateColumns()

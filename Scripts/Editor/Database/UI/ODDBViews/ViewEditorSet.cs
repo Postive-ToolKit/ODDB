@@ -31,7 +31,7 @@ namespace TeamODD.ODDB.Editors.UI
             
             style.flexDirection = FlexDirection.Column;
             style.flexGrow = 1;
-            style.flexShrink = 0;
+            style.flexShrink = 1;
             style.alignContent = Align.FlexStart;
             style.paddingBottom = 0;
             style.paddingTop = 0;
@@ -113,6 +113,8 @@ namespace TeamODD.ODDB.Editors.UI
             var content = ODDBContentFactory.CreateContent(type, _view, _editorUseCase, _editorToolBar);
             if (content != null)
             {
+                content.style.flexGrow = 1;
+                content.style.flexShrink = 1;
                 _contentView.Add(content);
                 if (content is IHasView hasView)
                 {
