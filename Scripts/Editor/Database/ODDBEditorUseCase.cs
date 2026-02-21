@@ -45,7 +45,14 @@ namespace TeamODD.ODDB.Editors.Window
             if(ODDBSettings.Setting.IsInitialized == false) 
             {
                 var pathSelector = new ODDBPathUtility();
-                ODDBSettings.Setting.Path = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
+                var pickedPath = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
+                if (!string.IsNullOrEmpty(pickedPath))
+                    ODDBSettings.Setting.Path = pickedPath;
+                else
+                {
+                    ODDBSettings.Setting.Path = ODDBSettings.BASE_PATH;
+                    Debug.LogWarning("Path selection was canceled. Using default path: " + ODDBSettings.BASE_PATH);
+                }
             }
             
             var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);

@@ -13,6 +13,12 @@ namespace TeamODD.ODDB.Editors.Utils
             string result;
             do{
                 result = EditorUtility.OpenFolderPanel("Set Path of Database File", basePath, "");
+                if (string.IsNullOrEmpty(result))
+                {
+                    EditorUtility.DisplayDialog("Canceled", "The path selection was canceled.", "OK");
+                    return null;
+                }
+                
                 if(!result.Contains(mustContain))
                 {
                     //Show error dialog
@@ -22,7 +28,7 @@ namespace TeamODD.ODDB.Editors.Utils
                     EditorUtility.DisplayDialog("Error", sb.ToString(), "OK");
                 }
                 //check is the derectory in the project resources folder
-            } while(string.IsNullOrEmpty(result)||!result.Contains(mustContain));
+            } while(!result.Contains(mustContain));
             //remove all backslash
             result = result.Replace("\\", "/");
             return result;

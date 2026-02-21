@@ -1,4 +1,5 @@
-﻿using TeamODD.ODDB.Runtime.Attributes;
+﻿using System;
+using TeamODD.ODDB.Runtime.Attributes;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -24,6 +25,7 @@ namespace TeamODD.ODDB.Runtime.Settings
                         AssetDatabase.CreateFolder("Assets", "Resources");
                     }
                     AssetDatabase.CreateAsset(settingFiles, "Assets/Resources/ODDBSettings.asset");
+                    settingFiles.Path = Application.dataPath + "/Resources";
                     AssetDatabase.SaveAssets();
                     #endif
                 }
@@ -37,13 +39,25 @@ namespace TeamODD.ODDB.Runtime.Settings
         public bool UseDebugLog => _useDebugLog;
         
         public string Path {
-            get => Application.dataPath + DBPath;
+            get => (Application.dataPath + DBPath).Replace("\\", "/");
             set{
-                _dbPath = value.Replace(Application.dataPath,"");
-                var curPath = _dbPath.Replace("/Resources", "");
-                if (curPath.StartsWith("/"))
-                    curPath = curPath.Substring(1);
-                _pathFromResources = curPath;
+                string newVal = value.Replace("\\", "/");
+                string dataPath = Application.dataPath.Replace("\\", "/");
+                _dbPath = newVal.Replace(dataPath, "");
+                
+                string resourcesTag = "/Resources";
+                int index = _dbPath.LastIndexOf(resourcesTag, StringComparison.OrdinalIgnoreCase);
+                if (index != -1)
+                {
+                    var resPath = _dbPath.Substring(index + resourcesTag.Length);
+                    if (resPath.StartsWith("/"))
+                        resPath = resPath.Substring(1);
+                    _pathFromResources = resPath;
+                }
+                else
+                {
+                    _pathFromResources = _dbPath.StartsWith("/") ? _dbPath.Substring(1) : _dbPath;
+                }
                 _isInitialized = true;
             }
         }
