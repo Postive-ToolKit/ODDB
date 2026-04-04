@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.DTO.Builders;
@@ -14,6 +14,8 @@ namespace TeamODD.ODDB.Runtime
         public event Action OnFieldsChanged;
         
         public event Action<Field> OnFieldAdded;
+
+        public event Action<int, int> OnFieldMoved;
         
         private const string DEFAULT_NAME = "Default Name";
         public ODDBID ID { get; set; }
@@ -30,6 +32,7 @@ namespace TeamODD.ODDB.Runtime
                 {
                     _parentView.OnFieldsChanged -= NotifyFieldsChanged;
                     _parentView.OnFieldAdded -= NotifyFieldAdded;
+                    _parentView.OnFieldMoved -= NotifyFieldMoved;
                 }
                 _parentView = value;
                 NotifyFieldsChanged();
@@ -37,6 +40,7 @@ namespace TeamODD.ODDB.Runtime
                     return;
                 _parentView.OnFieldsChanged += NotifyFieldsChanged;
                 _parentView.OnFieldAdded += NotifyFieldAdded;
+                _parentView.OnFieldMoved += NotifyFieldMoved;
                 
                 if(BindType == null)
                 {
@@ -119,18 +123,23 @@ namespace TeamODD.ODDB.Runtime
             _fields.RemoveAt(ConvertToScopedIndex(index));
             OnRemoveField(index);
         }
-        
-        public void SwapFields(int indexA, int indexB)
+
+        public void MoveField(int oldIndex, int newIndex)
         {
-            if (!IsScopedField(indexA) || !IsScopedField(indexB))
+            if (!IsScopedField(oldIndex) || !IsScopedField(newIndex))
             {
-                Debug.LogError($"Index {indexA} or {indexB} is out of range for this view.");
+                Debug.LogError($"Index {oldIndex} or {newIndex} is out of range for this view.");
                 return;
             }
-            var scopedIndexA = ConvertToScopedIndex(indexA);
-            var scopedIndexB = ConvertToScopedIndex(indexB);
-            (_fields[scopedIndexA], _fields[scopedIndexB]) = (_fields[scopedIndexB], _fields[scopedIndexA]);
-            OnSwapTableMeta(indexA, indexB);
+            var scopedOldIndex = ConvertToScopedIndex(oldIndex);
+            var scopedNewIndex = ConvertToScopedIndex(newIndex);
+            
+            var item = _fields[scopedOldIndex];
+            _fields.RemoveAt(scopedOldIndex);
+            _fields.Insert(scopedNewIndex, item);
+            
+            NotifyFieldMoved(oldIndex, newIndex);
+            NotifyFieldsChanged();
         }
 
         public bool IsScopedField(int index)
@@ -154,7 +163,7 @@ namespace TeamODD.ODDB.Runtime
         #region Virtual Event Methods
         protected virtual void OnAddField(Field field) { }
         protected virtual void OnRemoveField(int index) { }
-        protected virtual void OnSwapTableMeta(int indexA, int indexB) { }
+        protected virtual void OnMoveField(int oldIndex, int newIndex) { }
 
         public virtual void OnDatabaseInitialize(ODDatabase database)
         {
@@ -222,6 +231,12 @@ namespace TeamODD.ODDB.Runtime
         public void NotifyFieldAdded(Field field)
         {
             OnFieldAdded?.Invoke(field);
+        }
+
+        public void NotifyFieldMoved(int oldIndex, int newIndex)
+        {
+            OnMoveField(oldIndex, newIndex);
+            OnFieldMoved?.Invoke(oldIndex, newIndex);
         }
     }
 }

@@ -7,11 +7,13 @@ namespace TeamODD.ODDB.Runtime.Interfaces
         public event Action OnFieldsChanged;
         
         public event Action<Field> OnFieldAdded;
+
+        public event Action<int, int> OnFieldMoved;
         
         void AddField(Field field);
         void RemoveField(int index);
         void InsertField(int index, Field field);
-        void SwapFields(int indexA, int indexB);
+        void MoveField(int oldIndex, int newIndex);
         bool IsScopedField(int index);
         
         public void NotifyFieldsChanged();

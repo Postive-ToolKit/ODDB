@@ -175,6 +175,15 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.Execute(command);
         }
 
+        public void MoveField(string viewId, int oldIndex, int newIndex)
+        {
+            var view = GetViewByKey(viewId);
+            if (view == null) return;
+
+            var command = new TeamODD.ODDB.Editors.Commands.MoveFieldCommand(view, oldIndex, newIndex, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
         public Type GetViewBindType(string id)
         {
             var view = GetViewByKey(id);

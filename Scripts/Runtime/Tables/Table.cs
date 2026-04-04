@@ -40,11 +40,11 @@ namespace TeamODD.ODDB.Runtime
                 row.RemoveData(index);
         }
 
-        protected override void OnSwapTableMeta(int indexA, int indexB)
+        protected override void OnMoveField(int oldIndex, int newIndex)
         {
-            foreach (var row in Rows) 
+            foreach (var row in Rows)
             {
-                row.SwapData(indexA, indexB);
+                row.MoveData(oldIndex, newIndex);
             }
         }
         

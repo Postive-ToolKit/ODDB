@@ -59,11 +59,13 @@ namespace TeamODD.ODDB.Runtime
             _cells.RemoveAt(index);
         }
 
-        public void SwapData(int indexA, int indexB)
+        public void MoveData(int oldIndex, int newIndex)
         {
-            if (indexA >= 0 && indexA < _cells.Count && indexB >= 0 && indexB < _cells.Count)
+            if (oldIndex >= 0 && oldIndex < _cells.Count && newIndex >= 0 && newIndex < _cells.Count)
             {
-                (_cells[indexA], _cells[indexB]) = (_cells[indexB], _cells[indexA]);
+                var item = _cells[oldIndex];
+                _cells.RemoveAt(oldIndex);
+                _cells.Insert(newIndex, item);
             }
         }
 

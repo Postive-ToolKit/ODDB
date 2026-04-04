@@ -38,7 +38,10 @@ namespace TeamODD.ODDB.Editors.UI
         public override void SetView(string viewKey)
         {
             if (_table != null)
+            {
                 _table.OnRowChanged -= RefreshRows;
+                _table.OnFieldsChanged -= CreateColumns;
+            }
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not Table table)
                 return;
@@ -53,6 +56,7 @@ namespace TeamODD.ODDB.Editors.UI
             
             RefreshRows();
             _table.OnRowChanged += RefreshRows;
+            _table.OnFieldsChanged += CreateColumns;
         }
 
         private void RefreshRows()

@@ -24,6 +24,7 @@ namespace TeamODD.ODDB.Editors.Window
         public void RemoveRow(string tableId, string rowId);
         public void AddField(string viewId, Field field);
         public void RemoveField(string viewId, int index);
+        public void MoveField(string viewId, int oldIndex, int newIndex);
 
         public Type GetViewBindType(string key);
         public void SetViewBindType(string key, Type type);
