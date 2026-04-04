@@ -96,5 +96,11 @@ namespace TeamODD.ODDB.Runtime
         {
             return _list.AsReadOnly();
         }
+
+        public void Clear()
+        {
+            _dictionary.Clear();
+            _list.Clear();
+        }
     }
 }

@@ -40,55 +40,49 @@ namespace TeamODD.ODDB.Runtime.Entities
         {
             var entityType = GetType();
             var fields = GetFieldFields(entityType);
-            var fieldIndex = 0;
             ID = row.ID;
             
-            for (int i = 0; i < tableMetas.Count && fieldIndex < fields.Count; i++)
+            int metaCount = tableMetas.Count;
+            int fieldCount = fields.Count;
+
+            for (int i = 0; i < metaCount && i < fieldCount; i++)
             {
                 var meta = tableMetas[i];
-                var field = fields[fieldIndex];
-                var targetType = field.FieldType;
-                var rawValue = row.GetData(i).SerializedData;
+                var field = fields[i];
+                var cell = row.GetData(i);
+                if (cell == null) continue;
 
                 if (meta.Type == ODDBDataType.View)
                 {
-                    RegisterAsLazyLoad(field, rawValue);
-                    fieldIndex++;
+                    RegisterAsLazyLoad(field, cell.SerializedData);
                     continue;
                 }
 
-                var value = row.GetData(i).GetData();
+                var value = cell.GetData();
+                if (value == null)
+                {
+                    if (ODDBSettings.Setting.UseDebugLog)
+                    {
+                        Debug.LogWarning($"[Import Warning][{entityType.Name}] Field '{field.Name}' got 'null' from meta '{meta.Name}'");
+                    }
+                    continue;
+                }
 
-                if (targetType.IsInstanceOfType(value))
+                // FieldInfo.SetValue is relatively slow, but we've already cached the FieldInfo objects.
+                // For even more performance, one could use Expression Trees to compile setters, 
+                // but let's stick to cached FieldInfo for maximum AOT compatibility first.
+                try 
                 {
                     field.SetValue(this, value);
                 }
-                else if (value == null)
+                catch (Exception)
                 {
                     if (ODDBSettings.Setting.UseDebugLog)
                     {
-                        var stringBuilder = new StringBuilder();
-                        stringBuilder.Append($"[Import Warning][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
-                        stringBuilder.Append($"but got 'null' from meta '{meta.Name}'");
-                        stringBuilder.AppendLine();
-                        Debug.LogWarning(stringBuilder.ToString());
+                        Debug.LogError($"[Import Error][{entityType.Name}] Failed to set '{field.Name}' (Expected {field.FieldType}, Got {value.GetType()})");
                     }
                 }
-                else
-                {
-                    if (ODDBSettings.Setting.UseDebugLog)
-                    {
-                        var stringBuilder = new StringBuilder();
-                        stringBuilder.Append($"[Import Error][{GetType()}] Field '{field.Name}' expects type '{targetType}', ");
-                        stringBuilder.Append($"but got '{value?.GetType()}' from meta '{meta.Name}'");
-                        stringBuilder.AppendLine();
-                        Debug.LogError(stringBuilder.ToString());
-                    }
-
-                }
-                fieldIndex++;
             }
-
         }
 
         private void RegisterAsLazyLoad(FieldInfo field, string rawValue)

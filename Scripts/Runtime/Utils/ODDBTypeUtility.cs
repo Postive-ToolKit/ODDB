@@ -11,6 +11,8 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
     internal static class ODDBTypeUtility
     {
         private static readonly Dictionary<string, Type> _typeCache = new();
+        private static bool _isFullIndexed = false;
+
         public static bool TryConvertBindType(string bindType, out Type type)
         {
             type = null;
@@ -18,9 +20,9 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                 return true;
             
             if (_typeCache.TryGetValue(bindType, out type))
-                return true;
+                return type != null;
 
-            // Quick check for common types
+            // Quick check for common types or fully qualified names
             type = Type.GetType(bindType);
             if (type != null)
             {
@@ -34,9 +36,26 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                 return true;
             }
 
-            if (ODDBSettings.Setting.UseDebugLog) 
-                Debug.Log("[ODDBImporter] Cannot find bind type: " + bindType + " in current assembly, searching all assemblies...");
-            
+            // If still not found and we haven't done a full scan yet, do it now.
+            if (!_isFullIndexed)
+            {
+                if (ODDBSettings.Setting.UseDebugLog) 
+                    Debug.Log("[ODDBImporter] Performing one-time full assembly scan to index ODDBEntities...");
+                
+                PerformFullIndex();
+                _isFullIndexed = true;
+                
+                // Re-check cache after full indexing
+                if (_typeCache.TryGetValue(bindType, out type))
+                    return type != null;
+            }
+
+            Debug.LogError($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
+            return false;
+        }
+
+        private static void PerformFullIndex()
+        {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 Type[] types;
@@ -50,16 +69,18 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                 }
 
                 foreach (var t in types)
-                    if (t.FullName == bindType && !t.IsAbstract && t.IsSubclassOf(typeof(ODDBEntity)))
+                {
+                    if (!t.IsAbstract && t.IsSubclassOf(typeof(ODDBEntity)))
                     {
-                        type = t;
-                        _typeCache[bindType] = type;
-                        return true;
+                        // Index by both FullName and Name for flexibility
+                        if (!_typeCache.ContainsKey(t.FullName))
+                            _typeCache[t.FullName] = t;
+                            
+                        if (!_typeCache.ContainsKey(t.Name))
+                            _typeCache[t.Name] = t;
                     }
+                }
             }
-
-            Debug.LogError($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
-            return false;
         }
     }
 }

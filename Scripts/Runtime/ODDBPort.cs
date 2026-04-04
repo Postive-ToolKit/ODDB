@@ -128,6 +128,17 @@ namespace TeamODD.ODDB.Runtime
             {
                 callback?.Invoke();
             }
+
+            // Memory Trimming: After porting data to entities, 
+            // the raw row/cell data in _database is no longer needed at runtime.
+            #if !UNITY_EDITOR
+            if (_database != null)
+            {
+                _database.ClearTableData();
+                // We keep the _database and table structures for field metadata, 
+                // but individual cells are cleared.
+            }
+            #endif
         }
 
         private static bool TryConvertData(byte[] binary, out ODDatabase database)

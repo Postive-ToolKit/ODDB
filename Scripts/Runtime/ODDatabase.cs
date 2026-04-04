@@ -116,5 +116,28 @@ namespace TeamODD.ODDB.Runtime
                 }
             }
         }
+
+        public void Clear()
+        {
+            Tables.Clear();
+            Views.Clear();
+            OnDataChanged = null;
+            OnDataRemoved = null;
+        }
+
+        /// <summary>
+        /// Clears only the row data from all tables to save memory at runtime.
+        /// Use this after PortData is completed.
+        /// </summary>
+        public void ClearTableData()
+        {
+            foreach (var view in Tables.GetAll())
+            {
+                if (view is Table table)
+                {
+                    table.Clear();
+                }
+            }
+        }
     }
 }
