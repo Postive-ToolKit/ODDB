@@ -38,5 +38,8 @@ namespace TeamODD.ODDB.Runtime.Enums
         // Deprecated Types
         [DataTypeOption(true)]
         ID = 3000,
+        
+        // Custom Type
+        Custom = 9999,
     }
 }

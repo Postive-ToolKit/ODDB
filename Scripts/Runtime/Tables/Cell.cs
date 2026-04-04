@@ -66,7 +66,7 @@ namespace TeamODD.ODDB.Runtime
                 _serializedData = data as string;
                 return;
             }
-            _serializedData = FieldType.Type.GetDataSerializer().Serialize(data, FieldType.Param);
+            _serializedData = FieldType.Type.GetDataSerializer(FieldType.Param).Serialize(data, FieldType.Param);
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace TeamODD.ODDB.Runtime
         /// <returns> The deserialized object stored in the cell.</returns>
         public object GetData()
         {
-            return FieldType.Type.GetDataSerializer().Deserialize(_serializedData, FieldType.Param);
+            return FieldType.Type.GetDataSerializer(FieldType.Param).Deserialize(_serializedData, FieldType.Param);
         }
     }
 }

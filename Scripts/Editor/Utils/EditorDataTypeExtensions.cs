@@ -18,6 +18,7 @@ namespace TeamODD.ODDB.Editors.Utils
                 #endif
                 case ODDBDataType.Resources: 
                 case ODDBDataType.Enum:
+                case ODDBDataType.Custom:
                     sb.Append(" - ").Append(param);
                     return sb.ToString();
                 case ODDBDataType.View:

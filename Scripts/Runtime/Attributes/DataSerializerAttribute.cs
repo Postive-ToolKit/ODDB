@@ -26,14 +26,31 @@ namespace TeamODD.ODDB.Runtime.Attributes
     public static class ODDBDataSerializerAttributeExtensions
     {
         private static readonly Dictionary<ODDBDataType, IDataSerializer> _cache = new();
-        public static IDataSerializer GetDataSerializer(this ODDBDataType type)
+        private static readonly Dictionary<string, IDataSerializer> _customCache = new();
+
+        public static IDataSerializer GetDataSerializer(this ODDBDataType type, string param = "")
         {
+            if (type == ODDBDataType.Custom)
+            {
+                if (string.IsNullOrEmpty(param))
+                    return new StringSerializer();
+                
+                if (_customCache.Count == 0)
+                    InitCustomSerializers();
+                
+                return _customCache.TryGetValue(param, out var customSerializer) 
+                    ? customSerializer 
+                    : new StringSerializer();
+            }
+
             if (_cache.TryGetValue(type, out var cachedAttr))
                 return cachedAttr;
             
-            var attr = type
-                .GetType()
-                .GetField(type.ToString())
+            var fieldInfo = type.GetType().GetField(type.ToString());
+            if (fieldInfo == null)
+                return new StringSerializer();
+
+            var attr = fieldInfo
                 .GetCustomAttributes(typeof(DataSerializerAttribute), false)
                 .FirstOrDefault() as DataSerializerAttribute;
 
@@ -47,6 +64,30 @@ namespace TeamODD.ODDB.Runtime.Attributes
                                ?? new StringSerializer();
             }
             return _cache[type];
+        }
+
+        private static void InitCustomSerializers()
+        {
+            var serializerTypes = AppDomain.CurrentDomain
+                .GetAssemblies()
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => typeof(IDataSerializer).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract);
+
+            foreach (var serializerType in serializerTypes)
+            {
+                var attr = serializerType
+                    .GetCustomAttributes(typeof(CustomDataTypeAttribute), false)
+                    .FirstOrDefault() as CustomDataTypeAttribute;
+
+                if (attr == null)
+                    continue;
+
+                if (_customCache.ContainsKey(attr.TypeID))
+                    continue;
+
+                if (Activator.CreateInstance(serializerType) is IDataSerializer instance)
+                    _customCache[attr.TypeID] = instance;
+            }
         }
     }
 }

@@ -15,7 +15,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var fieldTypeProp = property.FindPropertyRelative(Cell.DATA_TYPE_FIELD);
             var dataType = (ODDBDataType)fieldTypeProp.FindPropertyRelative(FieldType.TYPE_FIELD).enumValueFlag;
             var param = fieldTypeProp.FindPropertyRelative(FieldType.PARAM_FIELD).stringValue;
-            return dataType.GetCellDrawer().CreatePropertyGUI(property, dataType, param);
+            return dataType.GetCellDrawer(param).CreatePropertyGUI(property, dataType, param);
         }
     }
 }
