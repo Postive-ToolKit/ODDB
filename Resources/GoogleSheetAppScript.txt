@@ -72,9 +72,11 @@ function doPost(e) {
             if (!sheet) {
                 sheet = activeSpreadsheet.insertSheet(sheetName);
             }
-            sheet.clear();
             
-            if (values.length > 0 && values[0].length > 0) {
+            // Use clearContents() instead of clear() to preserve formatting (colors, fonts, sizes, etc.)
+            sheet.clearContents();
+            
+            if (values && values.length > 0 && values[0].length > 0) {
                 sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
             }
         }
