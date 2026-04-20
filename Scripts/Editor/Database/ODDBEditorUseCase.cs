@@ -40,7 +40,7 @@ namespace TeamODD.ODDB.Editors.Window
         public ODDBEditorUseCase() 
         {
             _commandProcessor.MaxHistoryCount = ODDBSettings.Setting.MaxHistoryCount;
-            _commandProcessor.OnHistoryChanged += () => OnHistoryChanged?.Invoke();
+            _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
             _dataService = new ODDBDataService();
             if(ODDBSettings.Setting.IsInitialized == false) 
             {
@@ -80,6 +80,11 @@ namespace TeamODD.ODDB.Editors.Window
         private void OnDataChanged(ODDBID id)
         {
             OnViewChanged?.Invoke(id.ToString());
+        }
+
+        private void HandleHistoryChanged()
+        {
+            OnHistoryChanged?.Invoke();
         }
 
         public IView GetViewByKey(string id)
@@ -304,8 +309,8 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void Dispose()
         {
-            _commandProcessor.OnHistoryChanged -= () => OnHistoryChanged?.Invoke();
-            
+            _commandProcessor.OnHistoryChanged -= HandleHistoryChanged;
+
             _database.OnDataChanged -= OnDataChanged;
             _database.OnDataRemoved -= OnDataChanged;
             _database = null;
