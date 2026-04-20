@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using TeamODD.ODDB.Runtime.Settings;
@@ -14,6 +15,91 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
     public class ODDBGoogleSheetUtility
     {
+        /// <summary>
+        /// Task-based fetch helper used by <c>Backends.GoogleSheetsBackend</c>.
+        /// Returns sheets parsed from the configured API endpoint without touching
+        /// the local database. Legacy <see cref="LoadFromGoogleSheet"/> is retained
+        /// for backwards compatibility.
+        /// </summary>
+        public static async Task<List<SheetInfo>> LoadSheetsAsync(CancellationToken ct)
+        {
+            ThrowIfSettingsNotReady();
+
+            var url = BuildApiUrl();
+            using (var request = UnityWebRequest.Get(url))
+            {
+                await request.SendWebRequest();
+                ct.ThrowIfCancellationRequested();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                    throw new InvalidOperationException(
+                        $"Google Sheets fetch failed: {request.error}");
+
+                var jsonResponse = request.downloadHandler.text;
+                var googleSheets = await Task.Run(
+                    () => JsonConvert.DeserializeObject<List<GoogleSheet>>(jsonResponse),
+                    ct);
+
+                var result = new List<SheetInfo>();
+                if (googleSheets == null) return result;
+                foreach (var sheet in googleSheets)
+                    result.Add(sheet.ToSheetInfo());
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Task-based push helper used by <c>Backends.GoogleSheetsBackend</c>.
+        /// Serializes <paramref name="sheets"/> and posts them to the configured
+        /// endpoint. Legacy <see cref="SaveToGoogleSheet"/> is retained.
+        /// </summary>
+        public static async Task SaveSheetsAsync(IReadOnlyList<SheetInfo> sheets, CancellationToken ct)
+        {
+            if (sheets == null) throw new ArgumentNullException(nameof(sheets));
+            ThrowIfSettingsNotReady();
+
+            var payload = new List<GoogleSheet>(sheets.Count);
+            foreach (var sheet in sheets)
+            {
+                if (sheet == null) continue;
+                var googleSheet = new GoogleSheet();
+                googleSheet.FromSheetInfo(sheet);
+                payload.Add(googleSheet);
+            }
+
+            var jsonData = await Task.Run(() => JsonConvert.SerializeObject(payload), ct);
+
+            var url = BuildApiUrl();
+            using (var request = new UnityWebRequest(url, "POST"))
+            {
+                var bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+
+                await request.SendWebRequest();
+                ct.ThrowIfCancellationRequested();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                    throw new InvalidOperationException(
+                        $"Google Sheets push failed: {request.error}");
+            }
+        }
+
+        private static void ThrowIfSettingsNotReady()
+        {
+            if (ODDBSettings.Setting == null || !ODDBSettings.Setting.IsInitialized)
+                throw new InvalidOperationException("ODDBSettings is not initialized.");
+            if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
+                throw new InvalidOperationException(
+                    "GoogleSheetAPIURL is not configured in ODDBSettings.");
+        }
+
+        private static string BuildApiUrl()
+        {
+            return $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
+        }
+
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Import from Google Sheets")]
         public static async void LoadFromGoogleSheet()
         {

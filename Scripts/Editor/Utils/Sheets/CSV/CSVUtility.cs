@@ -132,6 +132,38 @@ namespace Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV
         }
 
 
+        /// <summary>
+        /// Writes a single <see cref="SheetInfo"/> to <paramref name="directory"/> as
+        /// <c>{sheet.Name}_{sheet.ID}.csv</c> using UTF-8 with BOM. Used by the
+        /// CsvSheetBackend for per-sheet export.
+        /// </summary>
+        public static void ExportSingleSheetToCSV(string directory, SheetInfo sheet)
+        {
+            if (string.IsNullOrEmpty(directory))
+                throw new ArgumentException("directory is required", nameof(directory));
+            if (sheet == null)
+                throw new ArgumentNullException(nameof(sheet));
+
+            var csvContent = ConvertSheetInfoToCSV(sheet);
+            var fileName = $"{sheet.Name}_{sheet.ID}.csv";
+            var filePath = Path.Combine(directory, fileName);
+            File.WriteAllText(filePath, csvContent, new UTF8Encoding(true));
+        }
+
+        /// <summary>
+        /// Attempts to parse a single CSV file into a <see cref="SheetInfo"/>.
+        /// Returns <c>true</c> when parsing succeeded and the sheet is non-empty.
+        /// </summary>
+        public static bool TryImportSingleSheet(string csvFilePath, out SheetInfo sheet)
+        {
+            sheet = null;
+            if (string.IsNullOrEmpty(csvFilePath) || !File.Exists(csvFilePath))
+                return false;
+
+            sheet = ConvertCSVToSheetInfo(csvFilePath);
+            return sheet != null && !sheet.IsEmpty;
+        }
+
         private static string ConvertSheetInfoToCSV(SheetInfo sheetInfo)
         {
             var csvBuilder = new StringBuilder();
