@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
@@ -90,6 +91,53 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 sheets.Add(CreateSheetsFromTable(table));
             }
             return sheets;
+        }
+
+        /// <summary>
+        /// Converts a single <see cref="Table"/> into a <see cref="SheetInfo"/>.
+        /// Delegates to the same internal builder used by <see cref="GetAllSheets"/>
+        /// so byte-identical output is guaranteed for per-table exports.
+        /// </summary>
+        public SheetInfo ExportTable(Table table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            return CreateSheetsFromTable(table);
+        }
+
+        /// <summary>
+        /// Writes a single <see cref="SheetInfo"/> back into the given <paramref name="table"/>,
+        /// replacing its rows in place. Caller is responsible for persisting the database after
+        /// the sheet has been applied (see <see cref="ODDBDataService"/> or UseCase.SaveDatabase).
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the sheet's ID does not match the target table's ID.
+        /// </exception>
+        public void ApplySheetToTable(Table table, SheetInfo sheet)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            if (sheet == null) throw new ArgumentNullException(nameof(sheet));
+            if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX))
+                return;
+
+            string tableIdStr = table.ID;
+            if (!string.Equals(tableIdStr, sheet.ID))
+                throw new InvalidOperationException(
+                    $"Sheet id '{sheet.ID}' does not match target table id '{tableIdStr}'.");
+
+            table.Clear();
+
+            for (int i = 1; i < sheet.Values.Count; i++)
+            {
+                var rowData = sheet.Values[i];
+                if (rowData == null || rowData.Count == 0) continue;
+
+                var newRow = table.AddRow();
+                newRow.ID = new ODDBID(rowData[0]);
+                for (int j = 1; j < rowData.Count; j++)
+                {
+                    newRow.SetData(j - 1, rowData[j], true);
+                }
+            }
         }
 
         private SheetInfo CreateSheetsFromTable(Table table)
