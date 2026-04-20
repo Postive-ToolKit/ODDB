@@ -6,7 +6,7 @@ using UnityEngine;
 namespace TeamODD.ODDB.Runtime.Utils.Converters
 {
     [Serializable]
-    public class ODDBID
+    public class ODDBID : IEquatable<ODDBID>
     {
         public const string ID_FIELD_NAME = nameof(_id);
         private const int ID_LENGTH = 8;
@@ -78,9 +78,15 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             return ID.GetHashCode();
         }
 
+        public bool Equals(ODDBID other)
+        {
+            if (other is null) return false;
+            return string.Equals(ID, other.ID);
+        }
+
         public override bool Equals(object obj)
         {
-            return ID.Equals(obj);
+            return obj is ODDBID other && Equals(other);
         }
     }
 }
