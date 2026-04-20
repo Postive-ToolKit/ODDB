@@ -45,7 +45,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             if (ctx == null) throw new ArgumentNullException(nameof(ctx));
 
             progress?.Report(0.1f);
-            var sheets = await GoogleSheetUtility.LoadSheetsAsync(ct);
+            var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ct);
             progress?.Report(0.9f);
             var filtered = FilterSheets(sheets, ctx.Scope);
             progress?.Report(1f);
@@ -64,7 +64,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             progress?.Report(0.1f);
             var filtered = FilterSheets(sheets, ctx.Scope);
             progress?.Report(0.4f);
-            await GoogleSheetUtility.SaveSheetsAsync(filtered, ct);
+            await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, ct);
             progress?.Report(1f);
         }
 
