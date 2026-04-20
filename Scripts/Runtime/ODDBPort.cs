@@ -159,6 +159,16 @@ namespace TeamODD.ODDB.Runtime
             _onDataPortedCallbacks.Add(callback);
         }
 
+        /// <summary>
+        /// Enumerates the IDs of entities currently live in the runtime entity cache.
+        /// Used by ODDBID's domain-reload rebuild so the collision-avoidance set can be
+        /// repopulated from still-loaded entities rather than cleared outright.
+        /// </summary>
+        public static IEnumerable<string> GetLiveEntityIds()
+        {
+            return _entityCache.Keys;
+        }
+
         #endregion
 
         /// <summary>

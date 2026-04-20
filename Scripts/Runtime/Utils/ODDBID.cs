@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using TeamODD.ODDB.Runtime.Infrastructure;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Utils.Converters
@@ -11,6 +12,34 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         public const string ID_FIELD_NAME = nameof(_id);
         private const int ID_LENGTH = 8;
         private static readonly HashSet<string> _currentCreatedId = new HashSet<string>();
+
+        private sealed class TrackedIdCache : IClearableCache
+        {
+            public void Clear()
+            {
+                _currentCreatedId.Clear();
+                foreach (var liveId in ODDBPort.GetLiveEntityIds())
+                {
+                    if (!string.IsNullOrEmpty(liveId))
+                        _currentCreatedId.Add(liveId);
+                }
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterTrackedIdCacheAtRuntime()
+        {
+            DomainReloadHub.Register(new TrackedIdCache());
+        }
+
+#if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+        private static void RegisterTrackedIdCacheInEditor()
+        {
+            DomainReloadHub.Register(new TrackedIdCache());
+        }
+#endif
+
         private static string GenerateID()
         {
             var id = Guid.NewGuid().ToString().Replace("-", "").Substring(0, ID_LENGTH);
