@@ -20,6 +20,10 @@ namespace TeamODD.ODDB.Editors.Window
         public void SetViewName(string key, string name);
         
         // Data Manipulation Methods
+        public void AddTable();
+        public void AddView();
+        public void RemoveTable(string tableId);
+        public void RemoveView(string viewId);
         public void AddRow(string tableId);
         public void RemoveRow(string tableId, string rowId);
         public void AddField(string viewId, Field field);

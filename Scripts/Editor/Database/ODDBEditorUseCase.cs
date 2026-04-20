@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TeamODD.ODDB.Editors.Commands;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
@@ -35,7 +36,7 @@ namespace TeamODD.ODDB.Editors.Window
         
         private ODDatabase _database;
         private readonly ODDBDataService _dataService;
-        private readonly Commands.CommandProcessor _commandProcessor = new();
+        private readonly CommandProcessor _commandProcessor = new();
 
         public ODDBEditorUseCase() 
         {
@@ -128,7 +129,61 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(id);
             if (view == null) return;
             
-            var command = new TeamODD.ODDB.Editors.Commands.SetViewNameCommand(view, name, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
+            var command = new SetViewNameCommand(view, name, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
+            _commandProcessor.Execute(command);
+        }
+
+        /// <summary>
+        /// Executes a command to create a new Table via the undo/redo pipeline.
+        /// </summary>
+        public void AddTable()
+        {
+            if (_database == null) return;
+            var command = new AddViewItemCommand(
+                _database.Tables,
+                "Add Table",
+                id => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
+        /// <summary>
+        /// Executes a command to create a new View via the undo/redo pipeline.
+        /// </summary>
+        public void AddView()
+        {
+            if (_database == null) return;
+            var command = new AddViewItemCommand(
+                _database.Views,
+                "Add View",
+                id => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
+        /// <summary>
+        /// Executes a command to delete a Table by id via the undo/redo pipeline.
+        /// </summary>
+        public void RemoveTable(string tableId)
+        {
+            if (_database == null || string.IsNullOrEmpty(tableId)) return;
+            var command = new RemoveViewItemCommand(
+                _database.Tables,
+                new ODDBID(tableId),
+                "Remove Table",
+                id => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
+        /// <summary>
+        /// Executes a command to delete a View by id via the undo/redo pipeline.
+        /// </summary>
+        public void RemoveView(string viewId)
+        {
+            if (_database == null || string.IsNullOrEmpty(viewId)) return;
+            var command = new RemoveViewItemCommand(
+                _database.Views,
+                new ODDBID(viewId),
+                "Remove View",
+                id => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -140,7 +195,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(tableId);
             if (view is not Table table) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.AddRowCommand(table, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            var command = new AddRowCommand(table, (id) => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -152,7 +207,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(tableId);
             if (view is not Table table) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.RemoveRowCommand(table, rowId, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            var command = new RemoveRowCommand(table, rowId, (id) => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -164,7 +219,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(viewId);
             if (view == null) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.AddFieldCommand(view, field, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            var command = new AddFieldCommand(view, field, (id) => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -176,7 +231,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(viewId);
             if (view == null) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.RemoveFieldCommand(view, index, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            var command = new RemoveFieldCommand(view, index, (id) => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -185,7 +240,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(viewId);
             if (view == null) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.MoveFieldCommand(view, oldIndex, newIndex, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            var command = new MoveFieldCommand(view, oldIndex, newIndex, (id) => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -205,7 +260,7 @@ namespace TeamODD.ODDB.Editors.Window
             var view = GetViewByKey(id);
             if (view == null) return;
 
-            var command = new TeamODD.ODDB.Editors.Commands.SetBindTypeCommand(view, type, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
+            var command = new SetBindTypeCommand(view, type, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
             _commandProcessor.Execute(command);
         }
 
@@ -228,7 +283,7 @@ namespace TeamODD.ODDB.Editors.Window
             
             if (parent == null && !string.IsNullOrEmpty(parentKey)) return; 
 
-            var command = new TeamODD.ODDB.Editors.Commands.SetParentCommand(view, parent, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
+            var command = new SetParentCommand(view, parent, (viewId) => _database.NotifyDataChanged(new ODDBID(viewId)));
             _commandProcessor.Execute(command);
         }
 
@@ -303,9 +358,9 @@ namespace TeamODD.ODDB.Editors.Window
         public void Undo() => _commandProcessor.Undo();
         public void Redo() => _commandProcessor.Redo();
         
-        public IEnumerable<TeamODD.ODDB.Editors.Commands.ICommand> GetUndoHistory() => _commandProcessor.GetUndoList();
-        public IEnumerable<TeamODD.ODDB.Editors.Commands.ICommand> GetRedoHistory() => _commandProcessor.GetRedoList();
-        public void JumpToHistory(TeamODD.ODDB.Editors.Commands.ICommand command) => _commandProcessor.JumpTo(command);
+        public IEnumerable<ICommand> GetUndoHistory() => _commandProcessor.GetUndoList();
+        public IEnumerable<ICommand> GetRedoHistory() => _commandProcessor.GetRedoList();
+        public void JumpToHistory(ICommand command) => _commandProcessor.JumpTo(command);
 
         public void Dispose()
         {

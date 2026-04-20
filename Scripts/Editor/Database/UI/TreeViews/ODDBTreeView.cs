@@ -62,15 +62,13 @@ namespace TeamODD.ODDB.Editors.UI
                 CreateDatabaseContextMenu(evt);
             });
             UpdateItemSource();
-            //Rebuild();
-            schedule.Execute(Update).Every(100);
         }
         
         public void SetTypes(params Type[] viewTypes)
         {
             _viewTypes.Clear();
             _viewTypes.AddRange(viewTypes);
-            IsDirty = true;
+            ScheduleRebuild();
         }
 
         private void CreateVisualElement(VisualElement element, int index)
@@ -160,20 +158,12 @@ namespace TeamODD.ODDB.Editors.UI
 
             if (_viewTypes.Contains(typeof(Table)))
             {
-                menu.AddItem(new GUIContent("Add/Table"), false, () =>
-                {
-                    _database.Tables.Create();
-                    IsDirty = true;
-                });
+                menu.AddItem(new GUIContent("Add/Table"), false, () => _editorUseCase.AddTable());
             }
 
             if (_viewTypes.Contains(typeof(View)))
             {
-                menu.AddItem(new GUIContent("Add/View"), false, () =>
-                {
-                    _database.Views.Create();
-                    IsDirty = true;
-                });
+                menu.AddItem(new GUIContent("Add/View"), false, () => _editorUseCase.AddView());
             }
 
             menu.AddItem(new GUIContent("Delete"), false, () =>
@@ -181,12 +171,11 @@ namespace TeamODD.ODDB.Editors.UI
                 if (_view == null)
                     return;
                 if (_view is Table table)
-                    _database.Tables.Delete(table.ID);
+                    _editorUseCase.RemoveTable(table.ID);
                 else if (_view is View view)
-                    _database.Views.Delete(view.ID);
+                    _editorUseCase.RemoveView(view.ID);
                 _view = null;
                 OnViewSelected?.Invoke(null);
-                IsDirty = true;
             });
             menu.ShowAsContext();
         }
@@ -210,13 +199,15 @@ namespace TeamODD.ODDB.Editors.UI
             if (_database == null)
                 return;
             var view = _database.GetView(new ODDBID(viewId));
-            if (view == null)
-                return;
-            if (!_indexMapping.ContainsKey(view.ID))
-                return;
-            if (_itemActions.ContainsKey(viewId)) 
+            if (view != null && _indexMapping.ContainsKey(view.ID) && _itemActions.ContainsKey(viewId))
                 _itemActions[viewId].Invoke();
+            ScheduleRebuild();
+        }
+
+        private void ScheduleRebuild()
+        {
             IsDirty = true;
+            Update();
         }
     }
 }

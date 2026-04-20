@@ -1,6 +1,7 @@
 using System;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Editors.Commands
 {
@@ -10,6 +11,83 @@ namespace TeamODD.ODDB.Editors.Commands
         public DateTime ExecutionTime { get; set; }
         public abstract void Execute();
         public abstract void Undo();
+    }
+
+    public class AddViewItemCommand : BaseCommand
+    {
+        private readonly IRepository<IView> _repo;
+        private readonly string _displayName;
+        private readonly Action<string> _notifyChanged;
+        private IView _createdItem;
+        private ODDBID _createdId;
+
+        public override string Name => _displayName;
+
+        public AddViewItemCommand(IRepository<IView> repo, string displayName, Action<string> notifyChanged)
+        {
+            _repo = repo;
+            _displayName = displayName;
+            _notifyChanged = notifyChanged;
+        }
+
+        public override void Execute()
+        {
+            if (_createdItem == null)
+            {
+                _createdItem = _repo.Create();
+                _createdId = _createdItem.ID;
+            }
+            else
+            {
+                _repo.Update(_createdId, _createdItem);
+            }
+            _notifyChanged?.Invoke(_createdId);
+        }
+
+        public override void Undo()
+        {
+            if (_createdId != null)
+            {
+                _repo.Delete(_createdId);
+                _notifyChanged?.Invoke(_createdId);
+            }
+        }
+    }
+
+    public class RemoveViewItemCommand : BaseCommand
+    {
+        private readonly IRepository<IView> _repo;
+        private readonly ODDBID _id;
+        private readonly string _displayName;
+        private readonly Action<string> _notifyChanged;
+        private IView _removedItem;
+
+        public override string Name => _displayName;
+
+        public RemoveViewItemCommand(IRepository<IView> repo, ODDBID id, string displayName, Action<string> notifyChanged)
+        {
+            _repo = repo;
+            _id = id;
+            _displayName = displayName;
+            _notifyChanged = notifyChanged;
+        }
+
+        public override void Execute()
+        {
+            _removedItem = _repo.Read(_id);
+            if (_removedItem == null)
+                return;
+            _repo.Delete(_id);
+            _notifyChanged?.Invoke(_id);
+        }
+
+        public override void Undo()
+        {
+            if (_removedItem == null)
+                return;
+            _repo.Update(_id, _removedItem);
+            _notifyChanged?.Invoke(_id);
+        }
     }
 
     public class SetViewNameCommand : BaseCommand
