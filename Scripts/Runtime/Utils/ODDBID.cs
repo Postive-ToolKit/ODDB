@@ -63,8 +63,9 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         
         public static bool operator ==(ODDBID a, ODDBID b)
         {
+            if (ReferenceEquals(a, b)) return true;
             if (a is null || b is null) return false;
-            return a.ID.Equals(b.ID);
+            return string.Equals(a.ID, b.ID);
         }
 
         public static bool operator !=(ODDBID a, ODDBID b)
