@@ -1,16 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Commands;
 using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Editors.Utils.Sheets;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEditor;
-using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace TeamODD.ODDB.Editors.Window
 {
@@ -37,6 +41,8 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDatabase _database;
         private readonly ODDBDataService _dataService;
         private readonly CommandProcessor _commandProcessor = new();
+        private string _selectedTableId;
+        private const int PreImportBackupKeep = 3;
 
         public ODDBEditorUseCase() 
         {
@@ -361,6 +367,230 @@ namespace TeamODD.ODDB.Editors.Window
         public IEnumerable<ICommand> GetUndoHistory() => _commandProcessor.GetUndoList();
         public IEnumerable<ICommand> GetRedoHistory() => _commandProcessor.GetRedoList();
         public void JumpToHistory(ICommand command) => _commandProcessor.JumpTo(command);
+
+        public void SetSelectionContext(string tableId)
+        {
+            _selectedTableId = string.IsNullOrEmpty(tableId) ? null : tableId;
+        }
+
+        public bool TryGetSelectedTableId(out string tableId)
+        {
+            tableId = _selectedTableId;
+            return !string.IsNullOrEmpty(tableId);
+        }
+
+        public async Task ExportAsync(
+            ExportScope scope,
+            ISheetBackend backend,
+            IProgress<float> progress = null,
+            CancellationToken ct = default)
+        {
+            if (backend == null) throw new ArgumentNullException(nameof(backend));
+            if (_database == null) throw new InvalidOperationException("Database not loaded.");
+
+            var ctx = await backend.PrepareAsync(scope, BackendIntent.Export);
+            if (ctx.Cancelled) return;
+
+            var stopwatch = Stopwatch.StartNew();
+            var sheetCount = 0;
+            var rowCount = 0;
+            var status = "success";
+            try
+            {
+                EditorApplication.LockReloadAssemblies();
+                var sheets = CollectSheets(scope);
+                sheetCount = sheets.Count;
+                rowCount = TotalDataRows(sheets);
+                await backend.SaveAsync(ctx, sheets, progress, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                status = "cancelled";
+                throw;
+            }
+            catch (Exception)
+            {
+                status = "failure";
+                throw;
+            }
+            finally
+            {
+                EditorApplication.UnlockReloadAssemblies();
+                stopwatch.Stop();
+                LogOperation("Export", backend, scope, sheetCount, rowCount, stopwatch.ElapsedMilliseconds, status, null);
+            }
+        }
+
+        public async Task ImportAsync(
+            ExportScope scope,
+            ISheetBackend backend,
+            IProgress<float> progress = null,
+            CancellationToken ct = default)
+        {
+            if (backend == null) throw new ArgumentNullException(nameof(backend));
+            if (_database == null) throw new InvalidOperationException("Database not loaded.");
+
+            var ctx = await backend.PrepareAsync(scope, BackendIntent.Import);
+            if (ctx.Cancelled) return;
+
+            var backupPath = CreatePreImportBackup();
+            var stopwatch = Stopwatch.StartNew();
+            var sheetCount = 0;
+            var rowCount = 0;
+            var status = "success";
+            try
+            {
+                EditorApplication.LockReloadAssemblies();
+                var sheets = await backend.LoadAsync(ctx, progress, ct);
+                var converter = new ODDBSheetConverter();
+                var affected = ApplySheetsToDatabase(scope, sheets, converter);
+                sheetCount = affected.Count;
+                rowCount = TotalDataRows(affected);
+                PersistDatabase();
+                _commandProcessor.Clear();
+                NotifyAffectedViews(affected);
+            }
+            catch (OperationCanceledException)
+            {
+                status = "cancelled";
+                throw;
+            }
+            catch (Exception)
+            {
+                status = "failure";
+                throw;
+            }
+            finally
+            {
+                EditorApplication.UnlockReloadAssemblies();
+                stopwatch.Stop();
+                LogOperation("Import", backend, scope, sheetCount, rowCount, stopwatch.ElapsedMilliseconds, status, backupPath);
+            }
+        }
+
+        private IReadOnlyList<SheetInfo> CollectSheets(ExportScope scope)
+        {
+            var converter = new ODDBSheetConverter();
+            if (scope.All) return converter.GetAllSheets();
+
+            if (_database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table table)
+                throw new InvalidOperationException(
+                    $"Table '{scope.TargetTableId}' not found in current database.");
+            return new List<SheetInfo> { converter.ExportTable(table) };
+        }
+
+        private IReadOnlyList<SheetInfo> ApplySheetsToDatabase(
+            ExportScope scope, IReadOnlyList<SheetInfo> sheets, ODDBSheetConverter converter)
+        {
+            var applied = new List<SheetInfo>();
+            if (scope.All)
+            {
+                foreach (var sheet in sheets)
+                {
+                    if (sheet == null) continue;
+                    if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX)) continue;
+                    if (_database.Tables.Read(new ODDBID(sheet.ID)) is not Table table)
+                    {
+                        Debug.LogWarning($"Import: table {sheet.ID} not found in current database; skipping.");
+                        continue;
+                    }
+                    converter.ApplySheetToTable(table, sheet);
+                    applied.Add(sheet);
+                }
+                return applied;
+            }
+
+            var targetSheet = sheets.FirstOrDefault(s => s != null && s.ID == scope.TargetTableId);
+            if (targetSheet == null)
+                throw new InvalidOperationException(
+                    $"No sheet found for table id '{scope.TargetTableId}'.");
+            if (_database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table targetTable)
+                throw new InvalidOperationException(
+                    $"Table '{scope.TargetTableId}' not found in current database.");
+            converter.ApplySheetToTable(targetTable, targetSheet);
+            applied.Add(targetSheet);
+            return applied;
+        }
+
+        private void PersistDatabase()
+        {
+            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            _dataService.SaveDatabase(_database, fullPath);
+        }
+
+        private void NotifyAffectedViews(IReadOnlyList<SheetInfo> sheets)
+        {
+            foreach (var sheet in sheets)
+            {
+                if (sheet == null || string.IsNullOrEmpty(sheet.ID)) continue;
+                _database.NotifyDataChanged(new ODDBID(sheet.ID));
+            }
+        }
+
+        private string CreatePreImportBackup()
+        {
+            if (_database == null || ODDBSettings.Setting == null) return null;
+            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            if (!File.Exists(fullPath)) return null;
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var backupPath = $"{fullPath}.preimport-{timestamp}.bak";
+            try
+            {
+                File.Copy(fullPath, backupPath, true);
+                RotateBackups(fullPath, PreImportBackupKeep);
+                return backupPath;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Pre-import backup failed: {e.Message}");
+                return null;
+            }
+        }
+
+        private static void RotateBackups(string originalFullPath, int keep)
+        {
+            var directory = Path.GetDirectoryName(originalFullPath);
+            if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory)) return;
+            var baseName = Path.GetFileName(originalFullPath);
+            var pattern = $"{baseName}.preimport-*.bak";
+            var backups = Directory.GetFiles(directory, pattern);
+            if (backups.Length <= keep) return;
+            Array.Sort(backups, (a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
+            for (var i = keep; i < backups.Length; i++)
+            {
+                try { File.Delete(backups[i]); } catch { /* best-effort rotation */ }
+            }
+        }
+
+        private static int TotalDataRows(IReadOnlyList<SheetInfo> sheets)
+        {
+            var total = 0;
+            foreach (var sheet in sheets)
+            {
+                var count = sheet?.Values?.Count ?? 0;
+                if (count > 1) total += count - 1;
+            }
+            return total;
+        }
+
+        private static void LogOperation(
+            string intent,
+            ISheetBackend backend,
+            ExportScope scope,
+            int sheetCount,
+            int rowCount,
+            long durationMs,
+            string status,
+            string backupPath)
+        {
+            var backendName = (backend.DisplayName ?? "unknown").ToLowerInvariant().Replace(' ', '_');
+            var message =
+                $"[ODDB:{intent}] backend={backendName} scope={scope} sheets={sheetCount} rows={rowCount} duration={durationMs}ms status={status}";
+            if (!string.IsNullOrEmpty(backupPath))
+                message += $" backupPath={backupPath}";
+            Debug.Log(message);
+        }
 
         public void Dispose()
         {

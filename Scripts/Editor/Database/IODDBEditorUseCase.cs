@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Commands;
+using TeamODD.ODDB.Editors.Utils.Sheets;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -77,9 +80,26 @@ namespace TeamODD.ODDB.Editors.Window
         
         public void Undo();
         public void Redo();
-        
+
         public IEnumerable<ICommand> GetUndoHistory();
         public IEnumerable<ICommand> GetRedoHistory();
         public void JumpToHistory(ICommand command);
+
+        // Selection push model (UI -> UseCase). UI pushes changes; UseCase never polls.
+        public void SetSelectionContext(string tableId);
+        public bool TryGetSelectedTableId(out string tableId);
+
+        // Sheet export/import via pluggable backend.
+        public Task ExportAsync(
+            ExportScope scope,
+            ISheetBackend backend,
+            IProgress<float> progress = null,
+            CancellationToken ct = default);
+
+        public Task ImportAsync(
+            ExportScope scope,
+            ISheetBackend backend,
+            IProgress<float> progress = null,
+            CancellationToken ct = default);
     }
 }
