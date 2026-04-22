@@ -1,32 +1,50 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+using System;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Entities;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
-    public sealed class BindClassSelectView : ToolbarMenu, IHasView
+    public sealed class BindClassSelectView : ToolbarButton, IHasView
     {
         public event Action<Type> OnBindClassChanged;
         private const string BIND_CLASS_NOT_FOUND = "None";
         private const string TEXT_PREFIX = "Bind Class: ";
         private Type _baseType;
-        private readonly Dictionary<string,Type> _bindableClasses = new();
         private IODDBEditorUseCase _editorUseCase;
         private string _currentViewId;
+        private Type _currentBindType;
         
         public BindClassSelectView()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             _editorUseCase.OnViewChanged += OnViewChanged;
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+            clicked += OnClicked;
+        }
+
+        private void OnClicked()
+        {
+            if (_baseType == null) return;
+            
+            var dropdown = new BindClassDropdown(
+                new AdvancedDropdownState(), 
+                _baseType, 
+                _baseType == typeof(ODDBEntity), 
+                _currentBindType
+            );
+            dropdown.OnBindClassSelected += type =>
+            {
+                _currentBindType = type;
+                text = TEXT_PREFIX + (type?.Name ?? BIND_CLASS_NOT_FOUND);
+                OnBindClassChanged?.Invoke(type);
+            };
+            dropdown.Show(worldBound);
         }
 
         private void OnViewChanged(string viewId)
@@ -57,56 +75,10 @@ namespace TeamODD.ODDB.Editors.UI
             if(view.ParentView != null && view.ParentView.BindType != null)
                 parentBind = view.ParentView.BindType;
             
-            _baseType = parentBind;
-            if(_baseType == null) 
-                _baseType = typeof(ODDBEntity);
-            CreateDropDown();
-            if (view.BindType != null)
-                text = TEXT_PREFIX + view.BindType.Name;
-            else
-                text = TEXT_PREFIX + BIND_CLASS_NOT_FOUND;
-        }
-
-        private void CreateDropDown()
-        {
-            _bindableClasses.Clear();
-            menu.ClearItems();
-            var baseType = _baseType;
-            var allTypes = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(asm => {
-                    try {
-                        return asm.GetTypes();
-                    }
-                    catch (ReflectionTypeLoadException e)
-                    {
-                        return e.Types.Where(t => t != null);
-                    }
-                })
-                .Where(t => t != null && t.IsSubclassOf(baseType) && !t.IsAbstract)
-                .ToArray();
-
-            // add "None" option if baseType is ODDBEntity
-            if (_baseType == typeof(ODDBEntity))
-                menu.AppendAction(BIND_CLASS_NOT_FOUND, _ => OnSelectedChange(BIND_CLASS_NOT_FOUND));
+            _baseType = parentBind ?? typeof(ODDBEntity);
+            _currentBindType = view.BindType;
             
-            
-            if (!baseType.IsAbstract)
-            {
-                _bindableClasses.Add(baseType.Name, baseType);
-                menu.AppendAction(baseType.Name, _ => OnSelectedChange(baseType.Name));
-            }
-                
-            
-            foreach (var type in allTypes)
-            {
-                _bindableClasses[type.Name] = type;
-                menu.AppendAction(type.Name, _ => OnSelectedChange(type.Name));
-            }
-        }
-        
-        private void OnSelectedChange(string newValue)
-        {
-            OnBindClassChanged?.Invoke(_bindableClasses.GetValueOrDefault(newValue));
+            text = TEXT_PREFIX + (view.BindType?.Name ?? BIND_CLASS_NOT_FOUND);
         }
         
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
@@ -115,7 +87,6 @@ namespace TeamODD.ODDB.Editors.UI
                 _editorUseCase.OnViewChanged -= OnViewChanged;
                 _editorUseCase = null;
             }
-
             _currentViewId = null;
         }
     }

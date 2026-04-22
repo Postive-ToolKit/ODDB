@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
@@ -17,6 +17,7 @@ namespace TeamODD.ODDB.Editors.UI.ParentViewDropdowns
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             IgnoreIds = ignoredIds;
+            minimumSize = new UnityEngine.Vector2(200, 300);
         }
 
         protected override AdvancedDropdownItem BuildRoot()
