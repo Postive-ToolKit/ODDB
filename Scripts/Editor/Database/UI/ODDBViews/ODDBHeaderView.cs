@@ -15,7 +15,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly Toolbar _toolbar;
         private IView _view;
-        private ODDBViewType _type;
+        private ODDBViewType _mode;
         public Action<ODDBViewType> OnTypeChanged;
 
         public ODDBHeaderView(IODDBEditorUseCase editorUseCase)
@@ -25,16 +25,17 @@ namespace TeamODD.ODDB.Editors.UI
             Add(_toolbar);
         }
 
-        public void UpdateView(IView view, ODDBViewType type)
+        public void UpdateView(IView view, ODDBViewType mode)
         {
             _view = view;
-            _type = type;
+            _mode = mode;
             Rebuild();
         }
 
         public void ClearView()
         {
             _view = null;
+            _mode = ODDBViewType.None;
             _toolbar.Clear();
         }
 
@@ -43,10 +44,26 @@ namespace TeamODD.ODDB.Editors.UI
             _toolbar.Clear();
             if (_view == null) return;
 
+            var selectedType = _view is Table ? ODDBViewType.Table : ODDBViewType.View;
+
+            var titleLabel = new Label($"Selected {selectedType}") 
+            { 
+                style = 
+                { 
+                    unityFontStyleAndWeight = FontStyle.Bold, 
+                    unityTextAlign = TextAnchor.MiddleLeft, 
+                    paddingLeft = 5, 
+                    paddingRight = 5 
+                } 
+            };
+            _toolbar.Add(titleLabel);
+
             // Name
             var nameButton = new ToolbarButton { text = "Name" };
+            nameButton.tooltip = "The name of this View/Table";
             _toolbar.Add(nameButton);
             var nameTextField = new TextField { value = _view.Name, style = { minWidth = 200 } };
+            nameTextField.tooltip = "Edit the display name used inside the ODDB editor";
             nameTextField.RegisterValueChangedCallback(evt =>
             {
                 _editorUseCase.SetViewName(_view.ID, evt.newValue);
@@ -55,6 +72,7 @@ namespace TeamODD.ODDB.Editors.UI
 
             // ID
             var idButton = new ToolbarButton { text = "ID" };
+            idButton.tooltip = "Click to copy ID to clipboard";
             idButton.RegisterCallback<ClickEvent>(evt =>
             {
                 EditorGUIUtility.systemCopyBuffer = _view.ID;
@@ -68,18 +86,30 @@ namespace TeamODD.ODDB.Editors.UI
                 isReadOnly = true,
                 style = { flexGrow = 0, flexShrink = 1 }
             };
+            idTextField.tooltip = "Read-only unique identifier for this item";
             idTextField.SetEnabled(false);
             _toolbar.Add(idTextField);
 
             // Type Menu
-            var editorMenu = new ToolbarMenu { text = _type.ToString() };
-            editorMenu.menu.AppendAction("View", _ => OnTypeChanged?.Invoke(ODDBViewType.View));
+            var editorMenu = new ToolbarMenu { text = $"Mode: {GetModeLabel(_mode)}" };
+            editorMenu.tooltip = "Switch between View (schema) and Table (data) editing modes";
+            editorMenu.menu.AppendAction("View Fields", _ => OnTypeChanged?.Invoke(ODDBViewType.View));
             
-            if (_type == ODDBViewType.Table)
+            if (selectedType == ODDBViewType.Table)
             {
-                editorMenu.menu.AppendAction("Table", _ => OnTypeChanged?.Invoke(ODDBViewType.Table));
+                editorMenu.menu.AppendAction("Table Rows", _ => OnTypeChanged?.Invoke(ODDBViewType.Table));
             }
             _toolbar.Add(editorMenu);
+        }
+
+        private static string GetModeLabel(ODDBViewType mode)
+        {
+            return mode switch
+            {
+                ODDBViewType.View => "View Fields",
+                ODDBViewType.Table => "Table Rows",
+                _ => "None"
+            };
         }
     }
 }

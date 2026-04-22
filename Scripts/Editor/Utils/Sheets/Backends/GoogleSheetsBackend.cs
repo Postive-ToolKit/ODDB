@@ -44,11 +44,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
         {
             if (ctx == null) throw new ArgumentNullException(nameof(ctx));
 
-            progress?.Report(0.1f);
+            ReportStage(progress, "Loading data from Google Sheets...", 0.1f);
             var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ct);
-            progress?.Report(0.9f);
+            ReportStage(progress, "Parsing sheet data...", 0.7f);
             var filtered = FilterSheets(sheets, ctx.Scope);
-            progress?.Report(1f);
+            ReportStage(progress, "Processing sheets...", 0.95f);
             return filtered;
         }
 
@@ -61,11 +61,18 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             if (ctx == null) throw new ArgumentNullException(nameof(ctx));
             if (sheets == null) throw new ArgumentNullException(nameof(sheets));
 
-            progress?.Report(0.1f);
+            ReportStage(progress, "Preparing sheets for export...", 0.1f);
             var filtered = FilterSheets(sheets, ctx.Scope);
-            progress?.Report(0.4f);
+            ReportStage(progress, "Serializing data...", 0.3f);
+            ReportStage(progress, "Uploading to Google Sheets...", 0.5f);
             await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, ct);
-            progress?.Report(1f);
+            ReportStage(progress, "Finalizing...", 0.95f);
+        }
+
+        private static void ReportStage(IProgress<float> progress, string stage, float value)
+        {
+            EditorUtility.DisplayProgressBar("ODDB Google Sheets", stage, value);
+            progress?.Report(value);
         }
 
         private static IReadOnlyList<SheetInfo> FilterSheets(IReadOnlyList<SheetInfo> sheets, ExportScope scope)

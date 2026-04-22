@@ -23,7 +23,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly ODDBHeaderView _headerView;
         
         private IView _view;
-        private ODDBViewType _type;
+        private ODDBViewType _mode;
         
         public ViewEditorSet(string viewId)
         {
@@ -79,13 +79,13 @@ namespace TeamODD.ODDB.Editors.UI
                 return;
             }
 
-            _type = _editorUseCase.GetViewTypeByKey(_view.ID);
+            _mode = _editorUseCase.GetViewTypeByKey(_view.ID);
             
             // Update Header
-            _headerView.UpdateView(_view, _type);
+            _headerView.UpdateView(_view, _mode);
             
             // Update Content & Mode
-            SetMode(_type);
+            SetMode(_mode);
             
             // Update Listeners
             foreach (var listener in _viewListeners)
@@ -95,6 +95,7 @@ namespace TeamODD.ODDB.Editors.UI
         private void ClearView()
         {
             _view = null;
+            _mode = ODDBViewType.None;
             _headerView.ClearView();
             _editorToolBar.Clear();
             _contentView.Clear();
@@ -105,6 +106,8 @@ namespace TeamODD.ODDB.Editors.UI
         /// </summary>
         private void SetMode(ODDBViewType type)
         {
+            _mode = type;
+            _headerView.UpdateView(_view, _mode);
             _contentView.Clear();
             _editorToolBar.Clear();
             _viewListeners.Clear();

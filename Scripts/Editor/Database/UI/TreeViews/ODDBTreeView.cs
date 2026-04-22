@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Editors.UI.Interfaces;
+using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
@@ -38,30 +39,66 @@ namespace TeamODD.ODDB.Editors.UI
             // 스타일 설정
             style.flexGrow = 1;
             
-            makeItem = () => 
-                new Label() 
-                {
-                    style = {
-                        unityTextAlign = TextAnchor.MiddleLeft,
-                        flexGrow = 1,
-                    },
-                };
+            makeItem = MakeItem;
             bindItem = CreateVisualElement;
             selectionChanged += OnSelectionChanged;
 
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
             
-            // add context menu when right click
-            RegisterCallback<ContextClickEvent>(evt =>
-            {
-                if (evt.button != 1)
-                    return;
-                if (_database == null)
-                    return;
-                CreateDatabaseContextMenu(evt);
-            });
+            RegisterCallback<ContextClickEvent>(CreateBackgroundContextMenu);
             UpdateItemSource();
+        }
+
+        private VisualElement MakeItem()
+        {
+            var container = new VisualElement
+            {
+                style = {
+                    flexDirection = FlexDirection.Row,
+                    alignItems = Align.Center,
+                    flexGrow = 1,
+                }
+            };
+
+            var icon = new VisualElement
+            {
+                style = {
+                    width = 8,
+                    height = 8,
+                    marginRight = 4,
+                    marginLeft = 2,
+                    borderTopLeftRadius = 2,
+                    borderTopRightRadius = 2,
+                    borderBottomLeftRadius = 2,
+                    borderBottomRightRadius = 2,
+                }
+            };
+
+            var label = new Label
+            {
+                style = {
+                    unityTextAlign = TextAnchor.MiddleLeft,
+                    flexGrow = 1,
+                },
+            };
+
+            container.Add(icon);
+            container.Add(label);
+
+            container.RegisterCallback<ContextClickEvent>(evt =>
+            {
+                if (label.userData is not IView view)
+                    return;
+
+                _view = view;
+                SetSelectionWithoutNotify(new[] { _indexMapping[view.ID] });
+                OnViewSelected?.Invoke(view.ID);
+                CreateItemContextMenu();
+                evt.StopPropagation();
+            });
+
+            return container;
         }
         
         public void SetTypes(params Type[] viewTypes)
@@ -74,15 +111,43 @@ namespace TeamODD.ODDB.Editors.UI
         private void CreateVisualElement(VisualElement element, int index)
         {
             var data = GetItemDataForIndex<IView>(index);
-            var label = (Label)element;
+            var container = element;
+            var icon = container[0];
+            var label = (Label)container[1];
+            label.userData = data;
+            
+            bool isTable = data is Table;
             label.text = data.Name;
             
-            // 
+            if (isTable)
+            {
+                icon.style.backgroundColor = new Color(0.357f, 0.608f, 0.835f);
+                label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            }
+            else
+            {
+                icon.style.backgroundColor = new Color(0.439f, 0.678f, 0.278f);
+                label.style.unityFontStyleAndWeight = FontStyle.Normal;
+            }
             
-            element.style.backgroundColor = data is Table ?
-                new Color(1f, .5f, .5f, 0.3f) :
-                new Color(.5f, .5f, 1f, 0.3f);
-            _itemActions[data.ID] = () => label.text = data.Name;
+            label.tooltip = $"{(isTable ? "Table" : "View")}: {data.Name}\nID: {data.ID}";
+            
+            _itemActions[data.ID] = () =>
+            {
+                bool table = data is Table;
+                label.text = data.Name;
+                if (table)
+                {
+                    icon.style.backgroundColor = new Color(0.357f, 0.608f, 0.835f);
+                    label.style.unityFontStyleAndWeight = FontStyle.Bold;
+                }
+                else
+                {
+                    icon.style.backgroundColor = new Color(0.439f, 0.678f, 0.278f);
+                    label.style.unityFontStyleAndWeight = FontStyle.Normal;
+                }
+                label.tooltip = $"{(table ? "Table" : "View")}: {data.Name}\nID: {data.ID}";
+            };
         }
         private void UpdateItemSource()
         {
@@ -152,7 +217,35 @@ namespace TeamODD.ODDB.Editors.UI
             }
         }
         
-        private void CreateDatabaseContextMenu(ContextClickEvent evt)
+        private void CreateBackgroundContextMenu(ContextClickEvent evt)
+        {
+            if (evt.target != this)
+                return;
+
+            if (_database == null)
+                return;
+
+            _view = null;
+            SetSelectionWithoutNotify(System.Array.Empty<int>());
+            OnViewSelected?.Invoke(null);
+
+            var menu = new GenericMenu();
+
+            if (_viewTypes.Contains(typeof(Table)))
+            {
+                menu.AddItem(new GUIContent("Add/Table"), false, () => _editorUseCase.AddTable());
+            }
+
+            if (_viewTypes.Contains(typeof(View)))
+            {
+                menu.AddItem(new GUIContent("Add/View"), false, () => _editorUseCase.AddView());
+            }
+
+            menu.ShowAsContext();
+            evt.StopPropagation();
+        }
+
+        private void CreateItemContextMenu()
         {
             var menu = new GenericMenu();
 
@@ -166,6 +259,7 @@ namespace TeamODD.ODDB.Editors.UI
                 menu.AddItem(new GUIContent("Add/View"), false, () => _editorUseCase.AddView());
             }
 
+            menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Delete"), false, () =>
             {
                 if (_view == null)
@@ -177,6 +271,14 @@ namespace TeamODD.ODDB.Editors.UI
                 _view = null;
                 OnViewSelected?.Invoke(null);
             });
+
+            if (_view is Table contextTable)
+            {
+                var capturedTableId = contextTable.ID;
+                menu.AddSeparator(string.Empty);
+                ODDBImportExportMenu.AppendTableContextMenu(menu, _editorUseCase, capturedTableId);
+            }
+
             menu.ShowAsContext();
         }
 

@@ -16,10 +16,11 @@ namespace TeamODD.ODDB.Editors.UI
     {
         public event Action<Type> OnBindClassChanged;
         private const string BIND_CLASS_NOT_FOUND = "None";
-        private const string TEXT_PREFIX = "Bind : ";
+        private const string TEXT_PREFIX = "Bind Class: ";
         private Type _baseType;
         private readonly Dictionary<string,Type> _bindableClasses = new();
         private IODDBEditorUseCase _editorUseCase;
+        private string _currentViewId;
         
         public BindClassSelectView()
         {
@@ -30,11 +31,23 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void OnViewChanged(string viewId)
         {
-            SetView(viewId);
+            if (string.IsNullOrEmpty(_currentViewId))
+                return;
+
+            if (_currentViewId == viewId)
+            {
+                SetView(_currentViewId);
+                return;
+            }
+
+            var currentView = _editorUseCase?.GetViewByKey(_currentViewId);
+            if (currentView?.ParentView != null && currentView.ParentView.ID == viewId)
+                SetView(_currentViewId);
         }
         
         public void SetView(string viewKey)
         {
+            _currentViewId = viewKey;
             Type parentBind = null;
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view == null) {
@@ -102,6 +115,8 @@ namespace TeamODD.ODDB.Editors.UI
                 _editorUseCase.OnViewChanged -= OnViewChanged;
                 _editorUseCase = null;
             }
+
+            _currentViewId = null;
         }
     }
 }

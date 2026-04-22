@@ -13,7 +13,7 @@ namespace TeamODD.ODDB.Editors.UI
     public sealed class ParentViewSelectView : ToolbarButton, IHasView
     {
         public event Action<IView> OnParentViewChanged;
-        private const string INHERIT_PREFIX = "Inherit : ";
+        private const string INHERIT_PREFIX = "Inherits: ";
         private IODDBEditorUseCase _editorUseCase;
         private IView _view;
         public ParentViewSelectView()
@@ -26,6 +26,9 @@ namespace TeamODD.ODDB.Editors.UI
                 parentViewDropDown.OnParentViewSelected += (viewId) =>
                 {
                     var resultView = _editorUseCase.GetViewByKey(viewId);
+                    text = resultView != null
+                        ? INHERIT_PREFIX + resultView.Name
+                        : INHERIT_PREFIX + "None";
                     OnParentViewChanged?.Invoke(resultView);
                 };
             };

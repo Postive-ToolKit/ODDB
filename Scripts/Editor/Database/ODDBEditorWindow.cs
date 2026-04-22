@@ -1,7 +1,9 @@
 using System.IO;
 using TeamODD.ODDB.Editors.UI;
+using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -37,6 +39,7 @@ namespace TeamODD.ODDB.Editors.Window
             CreateLayout();
             
             _tableTreeView.OnViewSelected += _editorView.SetView;
+            _tableTreeView.OnViewSelected += PushSelectionContext;
             
             // bind save key to window not view
             rootVisualElement.RegisterCallback<KeyDownEvent>(evt =>
@@ -62,6 +65,69 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void CreateLayout()
         {
+            rootVisualElement.style.flexDirection = FlexDirection.Column;
+            
+            _tableTreeView = new ODDBTreeView(typeof(View), typeof(Table));
+            
+            var topToolbar = new Toolbar();
+            var toolBarMenu = new ToolbarMenu();
+            toolBarMenu.text = "All";
+            toolBarMenu.tooltip = "Filter the tree to show all items or only Views";
+            toolBarMenu.menu.AppendAction("All", action =>
+            {
+                _tableTreeView.SetTypes(typeof(View), typeof(Table));
+                toolBarMenu.text = "All";
+            });
+            toolBarMenu.menu.AppendAction("Views", action =>
+            {
+                _tableTreeView.SetTypes(typeof(View));
+                toolBarMenu.text = "Views";
+            });
+            topToolbar.Add(toolBarMenu);
+
+            var selectionLabel = new Label();
+            selectionLabel.text = "Selected: None";
+            selectionLabel.tooltip = "No View or Table is currently selected";
+            selectionLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+            selectionLabel.style.paddingLeft = 6;
+            selectionLabel.style.paddingRight = 6;
+            selectionLabel.style.flexGrow = 1;
+            
+            _tableTreeView.OnViewSelected += view =>
+            {
+                if (string.IsNullOrEmpty(view))
+                {
+                    selectionLabel.text = "Selected: None";
+                    selectionLabel.tooltip = "No View or Table is currently selected";
+                }
+                else
+                {
+                    var viewType = _editorUseCase.GetViewTypeByKey(view);
+                    var viewName = _editorUseCase.GetViewName(view);
+                    selectionLabel.text = $"Selected {viewType}: {viewName}";
+                    selectionLabel.tooltip = $"{viewType}: {viewName}\nID: {view}";
+                }
+            };
+            
+            topToolbar.Add(selectionLabel);
+
+            var exportMenu = new ToolbarMenu { text = "Export" };
+            ODDBImportExportMenu.BuildToolbarExportMenu(exportMenu, _editorUseCase);
+            topToolbar.Add(exportMenu);
+
+            var importMenu = new ToolbarMenu { text = "Import" };
+            ODDBImportExportMenu.BuildToolbarImportMenu(importMenu, _editorUseCase);
+            topToolbar.Add(importMenu);
+
+            var historyToggle = new ToolbarToggle { text = "History" };
+            historyToggle.RegisterValueChangedCallback(evt =>
+            {
+                _historyView.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+            topToolbar.Add(historyToggle);
+            
+            rootVisualElement.Add(topToolbar);
+            
             _splitView = new TwoPaneSplitView
             {
                 style = {
@@ -71,39 +137,7 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneInitialDimension = 250
             };
             var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
-            _tableTreeView = new ODDBTreeView(typeof(View), typeof(Table));
             
-            var leftToolbar = new Toolbar();
-            var toolBarMenu = new ToolbarMenu();
-            toolBarMenu.text = "Table";
-            toolBarMenu.menu.AppendAction("Table", action =>
-            {
-                _tableTreeView.SetTypes(typeof(View), typeof(Table));
-                toolBarMenu.text = "Table";
-            });
-            toolBarMenu.menu.AppendAction("View", action =>
-            {
-                _tableTreeView.SetTypes(typeof(View));
-                toolBarMenu.text = "View";
-            });
-            leftToolbar.Add(toolBarMenu);
-
-            var toolBarButton = new ToolbarButton();
-            toolBarButton.text = "Selected : None";
-            
-            _tableTreeView.OnViewSelected += view =>
-                toolBarButton.text = "Selected : " + _editorUseCase.GetViewName(view);
-            
-            leftToolbar.Add(toolBarButton);
-
-            var historyToggle = new ToolbarToggle { text = "History" };
-            historyToggle.RegisterValueChangedCallback(evt =>
-            {
-                _historyView.style.display = evt.newValue ? DisplayStyle.Flex : DisplayStyle.None;
-            });
-            leftToolbar.Add(historyToggle);
-            
-            treeViewContainer.Add(leftToolbar);
             treeViewContainer.Add(_tableTreeView);
             
             _historyView = new ODDBHistoryView { style = { display = DisplayStyle.None, height = 150 } };
@@ -115,6 +149,16 @@ namespace TeamODD.ODDB.Editors.Window
             _splitView.Add(_editorView);
             
             rootVisualElement.Add(_splitView);
+        }
+
+        private void PushSelectionContext(string viewId)
+        {
+            if (_editorUseCase == null) return;
+            var tableId = !string.IsNullOrEmpty(viewId)
+                          && _editorUseCase.GetViewTypeByKey(viewId) == ODDBViewType.Table
+                ? viewId
+                : null;
+            _editorUseCase.SetSelectionContext(tableId);
         }
 
         private void OnDestroy()

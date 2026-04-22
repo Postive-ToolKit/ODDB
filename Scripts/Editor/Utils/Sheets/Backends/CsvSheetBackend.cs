@@ -43,12 +43,19 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
             var files = FilterFiles(Directory.GetFiles(directory, "*.csv"), ctx.Scope);
             var result = new List<SheetInfo>(files.Length);
+            if (files.Length == 0)
+            {
+                ReportStage(progress, "No matching CSV files found.", 1f);
+                return Task.FromResult<IReadOnlyList<SheetInfo>>(result);
+            }
             for (var i = 0; i < files.Length; i++)
             {
                 ct.ThrowIfCancellationRequested();
+                var fileName = Path.GetFileName(files[i]);
+                var value = (i + 1f) / files.Length;
+                ReportStage(progress, $"Reading CSV ({i + 1}/{files.Length}): {fileName}", value);
                 if (CSVUtility.TryImportSingleSheet(files[i], out var sheet))
                     result.Add(sheet);
-                progress?.Report(files.Length == 0 ? 1f : (i + 1f) / files.Length);
             }
             return Task.FromResult<IReadOnlyList<SheetInfo>>(result);
         }
@@ -70,13 +77,25 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             Directory.CreateDirectory(directory);
 
             var filtered = FilterSheets(sheets, ctx.Scope);
+            if (filtered.Count == 0)
+            {
+                ReportStage(progress, "No sheets to write.", 1f);
+                return Task.CompletedTask;
+            }
             for (var i = 0; i < filtered.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
+                var value = (i + 1f) / filtered.Count;
+                ReportStage(progress, $"Writing CSV ({i + 1}/{filtered.Count}): {filtered[i]?.Name}", value);
                 CSVUtility.ExportSingleSheetToCSV(directory, filtered[i]);
-                progress?.Report(filtered.Count == 0 ? 1f : (i + 1f) / filtered.Count);
             }
             return Task.CompletedTask;
+        }
+
+        private static void ReportStage(IProgress<float> progress, string stage, float value)
+        {
+            EditorUtility.DisplayProgressBar("ODDB CSV", stage, value);
+            progress?.Report(value);
         }
 
         private static string[] FilterFiles(string[] files, ExportScope scope)

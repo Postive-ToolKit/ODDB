@@ -35,7 +35,8 @@ namespace TeamODD.ODDB.Editors.UI
         private static void AddViewButtons(IView view, IODDBEditorUseCase useCase, Toolbar toolbar)
         {
             // Add Field Button
-            var createRow = new ToolbarButton { text = "Add Field" };
+            var createRow = new ToolbarButton { text = "+ Add Field" };
+            createRow.tooltip = "Add a new field (column) to this View's schema";
             createRow.clicked += () =>
             {
                 useCase.AddField(view.ID, new Field());
@@ -44,7 +45,7 @@ namespace TeamODD.ODDB.Editors.UI
 
             // Bind Class Select
             var bindClassSelectView = new BindClassSelectView();
-            bindClassSelectView.SetView(view.ID);
+            bindClassSelectView.tooltip = "Select a C# class to bind this data to at runtime";
             bindClassSelectView.OnBindClassChanged += bindType =>
             {
                 useCase.SetViewBindType(view.ID, bindType);
@@ -53,11 +54,11 @@ namespace TeamODD.ODDB.Editors.UI
 
             // Parent Select
             var inheritSelectView = new ParentViewSelectView();
+            inheritSelectView.tooltip = "Select a parent View to inherit fields from";
             inheritSelectView.OnParentViewChanged += parentView =>
             {
                 useCase.SetViewParent(view.ID, parentView?.ID);
             };
-            inheritSelectView.SetView(view.ID);
             AddToolbar(toolbar, inheritSelectView, view.ID);
         }
 
@@ -66,7 +67,8 @@ namespace TeamODD.ODDB.Editors.UI
             if (table == null) return;
 
             // Create Row Button
-            var createRow = new ToolbarButton { text = "Create Row" };
+            var createRow = new ToolbarButton { text = "+ Create Row" };
+            createRow.tooltip = "Add a new data row to this Table";
             createRow.clicked += () =>
             {
                 useCase.AddRow(table.ID);
@@ -75,7 +77,7 @@ namespace TeamODD.ODDB.Editors.UI
             
             // Bind Class Select
             var bindClassSelectView = new BindClassSelectView();
-            bindClassSelectView.SetView(table.ID);
+            bindClassSelectView.tooltip = "Select a C# class to bind this data to at runtime";
             bindClassSelectView.OnBindClassChanged += bindType =>
             {
                 useCase.SetViewBindType(table.ID, bindType);
@@ -84,11 +86,11 @@ namespace TeamODD.ODDB.Editors.UI
 
             // Parent Select
             var inheritSelectView = new ParentViewSelectView();
+            inheritSelectView.tooltip = "Select a parent View to inherit fields from";
             inheritSelectView.OnParentViewChanged += parentView =>
             {
                 useCase.SetViewParent(table.ID, parentView?.ID);
             };
-            inheritSelectView.SetView(table.ID);
             AddToolbar(toolbar, inheritSelectView, table.ID);
         }
 
