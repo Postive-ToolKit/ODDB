@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
@@ -48,29 +50,21 @@ namespace TeamODD.ODDB.Runtime
         {
             if (_isInitialized)
                 return;
+
+            _settings = LoadSettings();
+            if (_settings == null)
+                return;
+
+            if (_settings.DisableAutoInitialization)
+                return;
+
             _isInitialized = true;
 
-            // Initialize the ODDB system
-            // This is where you would set up any necessary configurations or settings
-            // for the ODDB system to function correctly.
-            _settings = Resources.Load<ODDBSettings>(nameof(ODDBSettings));
-            if (_settings == null)
-            {
-                Debug.LogError("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
-                return;
-            }
-
-            var fullPath = Path.Combine(_settings.PathFromResources, _settings.DBName);
-            var filePath = Path.ChangeExtension(fullPath, null);
-            var databaseAsset = Resources.Load<TextAsset>(filePath);
+            var databaseAsset = LoadDatabaseAsset(_settings);
             if (databaseAsset == null)
-            {
-                Debug.LogError($"Database asset not found at path: {filePath}");
                 return;
-            }
 
-            var binary = databaseAsset.bytes;
-            if (!TryConvertData(binary, out _database))
+            if (!TryConvertData(databaseAsset.bytes, out _database))
             {
                 Debug.LogError("Failed to convert database data.");
                 return;
@@ -86,6 +80,81 @@ namespace TeamODD.ODDB.Runtime
                 Debug.LogError($"Error during data porting: {e.Message}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Initializes the ODDB system asynchronously, allowing non-blocking database loading.
+        /// Use this when you want to avoid startup hitches with large databases.
+        /// </summary>
+        /// <param name="isForce">If true, forces re-initialization even if already initialized.</param>
+        /// <param name="cancellationToken">Token to cancel the async operation.</param>
+        /// <param name="progress">Reports initialization progress (0.0 to 1.0).</param>
+        public static async Task InitializeAsync(bool isForce = false, CancellationToken cancellationToken = default, IProgress<float> progress = null)
+        {
+            if (_isInitialized && !isForce)
+                return;
+
+            if (isForce)
+            {
+                _isInitialized = false;
+                _entityCache.Clear();
+                _entityTypeCache.Clear();
+                _onDataPortedCallbacks.Clear();
+            }
+
+            _isInitialized = true;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _settings = LoadSettings();
+            if (_settings == null)
+            {
+                Debug.LogError("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
+                return;
+            }
+            progress?.Report(0.1f);
+
+            var databaseAsset = await LoadDatabaseAssetAsync(_settings, cancellationToken);
+            if (databaseAsset == null)
+            {
+                Debug.LogError("Database asset not found.");
+                return;
+            }
+            progress?.Report(0.25f);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Decompression + deserialization can run on a background thread
+            var binary = databaseAsset.bytes;
+            var database = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!TryConvertData(binary, out var db))
+                    return null;
+                return db;
+            }, cancellationToken);
+
+            if (database == null)
+            {
+                Debug.LogError("Failed to convert database data.");
+                return;
+            }
+            _database = database;
+            progress?.Report(0.75f);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Entity creation must run on the main thread (Unity/Reflection restrictions)
+            Debug.Log("ODDB system initialized successfully.");
+            try
+            {
+                PortData();
+            }
+            catch (InvalidOperationException e)
+            {
+                Debug.LogError($"Error during data porting: {e.Message}");
+                throw;
+            }
+            progress?.Report(1.0f);
         }
 
         private static void PortData()
@@ -139,6 +208,42 @@ namespace TeamODD.ODDB.Runtime
                 // but individual cells are cleared.
             }
             #endif
+        }
+
+        private static ODDBSettings LoadSettings()
+        {
+            var settings = Resources.Load<ODDBSettings>(nameof(ODDBSettings));
+            if (settings == null)
+                Debug.LogError("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
+            return settings;
+        }
+
+        private static TextAsset LoadDatabaseAsset(ODDBSettings settings)
+        {
+            var fullPath = Path.Combine(settings.PathFromResources, settings.DBName);
+            var filePath = Path.ChangeExtension(fullPath, null);
+            var asset = Resources.Load<TextAsset>(filePath);
+            if (asset == null)
+                Debug.LogError($"Database asset not found at path: {filePath}");
+            return asset;
+        }
+
+        private static async Task<TextAsset> LoadDatabaseAssetAsync(ODDBSettings settings, CancellationToken cancellationToken)
+        {
+            var fullPath = Path.Combine(settings.PathFromResources, settings.DBName);
+            var filePath = Path.ChangeExtension(fullPath, null);
+            var request = Resources.LoadAsync<TextAsset>(filePath);
+
+            while (!request.isDone)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Yield();
+            }
+
+            var asset = request.asset as TextAsset;
+            if (asset == null)
+                Debug.LogError($"Database asset not found at path: {filePath}");
+            return asset;
         }
 
         private static bool TryConvertData(byte[] binary, out ODDatabase database)

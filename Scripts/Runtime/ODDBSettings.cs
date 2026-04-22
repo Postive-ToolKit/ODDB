@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using TeamODD.ODDB.Runtime.Attributes;
 using UnityEngine;
 
@@ -75,6 +75,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
 #endif
         public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
+        public bool DisableAutoInitialization => _disableAutoInitialization;
 
         
         [HideInInspector] private bool _isInitialized = false;
@@ -91,6 +92,8 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Header("Utility")]
         [Tooltip("Use the first column of the row as the row name when show dropdown selector in the editor.")]
         [SerializeField] private bool _useFirstColumnAsRowName = false;
+        [Tooltip("If true, disables automatic initialization at startup. Use ODDBPort.InitializeAsync() for manual async initialization.")]
+        [SerializeField] private bool _disableAutoInitialization = false;
         [Space(10)]
         [Header("Google Sheets Settings")]
         [SerializeField] private bool _disableGoogleSheetExport = false;
