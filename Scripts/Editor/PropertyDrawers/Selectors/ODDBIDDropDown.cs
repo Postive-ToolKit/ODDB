@@ -24,18 +24,20 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         protected override AdvancedDropdownItem BuildRoot()
         {
             var root = new AdvancedDropdownItem("ODDB IDs");
-            foreach (var targetType in _targetTables)
+            var options = _service.GetOptions(_targetTables.ToArray());
+
+            foreach (var group in options.GroupBy(option => option.EntityType).OrderBy(group => group.Key.Name))
             {
-                var tableItem = new ODDBIDDropDownItem(targetType.Name, targetType.FullName);
-                var ids = _service.GetTypeEntities(targetType);
-                foreach (var id in ids)
+                var typeItem = new ODDBIDDropDownItem(group.Key.Name, group.Key.FullName);
+                foreach (var option in group.OrderBy(option => option.DisplayName))
                 {
-                    var itemName = $"{targetType.Name} - {id}";
-                    var idItem = new ODDBIDDropDownItem(itemName, id);
-                    tableItem.AddChild(idItem);
+                    var idItem = new ODDBIDDropDownItem(option.DisplayName, option.ID);
+                    typeItem.AddChild(idItem);
                 }
-                root.AddChild(tableItem);
+
+                root.AddChild(typeItem);
             }
+
             return root;
         }
         

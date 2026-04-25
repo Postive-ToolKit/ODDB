@@ -23,9 +23,17 @@ namespace TeamODD.ODDB.Runtime.Attributes
         public ODDBIDSelectorAttribute(params Type[] allowEntities)
         {
             AllowEntities = allowEntities
-                .Where(type => typeof(ODDBEntity).IsAssignableFrom(type))
+                .Where(IsValidSelectorFilter)
                 .ToArray();
 
+        }
+
+        private static bool IsValidSelectorFilter(Type type)
+        {
+            if (type == null)
+                return false;
+
+            return type.IsInterface || typeof(ODDBEntity).IsAssignableFrom(type);
         }
     }
 }

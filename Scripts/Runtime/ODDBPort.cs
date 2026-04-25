@@ -338,11 +338,11 @@ namespace TeamODD.ODDB.Runtime
         /// <returns> All entities that implement the specified interface type </returns>
         public static IEnumerable<ODDBEntity> GetEntities(Type type)
         {
-            if (_entityTypeCache.TryGetValue(type, out var cached))
-                return cached.Values;
+            if (type == null)
+                return Enumerable.Empty<ODDBEntity>();
 
             var newDict = new Dictionary<string, ODDBEntity>();
-            foreach (var kvp in _entityTypeCache)
+            foreach (var kvp in _entityTypeCache.ToList())
             {
                 if (type.IsAssignableFrom(kvp.Key) == false)
                     continue;
