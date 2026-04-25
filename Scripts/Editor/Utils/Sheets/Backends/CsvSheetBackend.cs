@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV;
+using TeamODD.ODDB.Editors.UI.Progress;
 using UnityEditor;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
@@ -94,8 +95,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
         private static void ReportStage(IProgress<float> progress, string stage, float value)
         {
-            EditorUtility.DisplayProgressBar("ODDB CSV", stage, value);
-            progress?.Report(value);
+            ODDBProgress.Report(progress, stage, value);
         }
 
         private static string[] FilterFiles(string[] files, ExportScope scope)

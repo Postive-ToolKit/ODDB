@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
@@ -48,7 +49,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ct);
             ReportStage(progress, "Parsing sheet data...", 0.7f);
             var filtered = FilterSheets(sheets, ctx.Scope);
-            ReportStage(progress, "Processing sheets...", 0.95f);
+            ReportSheets(progress, filtered, "Processing downloaded sheet", 0.75f, 0.95f);
             return filtered;
         }
 
@@ -63,16 +64,40 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
             ReportStage(progress, "Preparing sheets for export...", 0.1f);
             var filtered = FilterSheets(sheets, ctx.Scope);
-            ReportStage(progress, "Serializing data...", 0.3f);
-            ReportStage(progress, "Uploading to Google Sheets...", 0.5f);
+            ReportSheets(progress, filtered, "Preparing sheet for upload", 0.15f, 0.45f);
+            ReportStage(progress, $"Uploading {filtered.Count} sheet(s) to Google Sheets...", 0.5f);
             await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, ct);
             ReportStage(progress, "Finalizing...", 0.95f);
         }
 
         private static void ReportStage(IProgress<float> progress, string stage, float value)
         {
-            EditorUtility.DisplayProgressBar("ODDB Google Sheets", stage, value);
-            progress?.Report(value);
+            ODDBProgress.Report(progress, stage, value);
+        }
+
+        private static void ReportSheets(
+            IProgress<float> progress,
+            IReadOnlyList<SheetInfo> sheets,
+            string action,
+            float start,
+            float end)
+        {
+            if (sheets == null || sheets.Count == 0)
+            {
+                ReportStage(progress, $"{action}: no sheets.", end);
+                return;
+            }
+
+            for (var i = 0; i < sheets.Count; i++)
+            {
+                var sheetName = string.IsNullOrEmpty(sheets[i]?.Name) ? sheets[i]?.ID : sheets[i].Name;
+                if (string.IsNullOrEmpty(sheetName))
+                    sheetName = "Unnamed sheet";
+
+                var t = (i + 1f) / sheets.Count;
+                var value = start + (end - start) * t;
+                ReportStage(progress, $"{action} ({i + 1}/{sheets.Count}): {sheetName}", value);
+            }
         }
 
         private static IReadOnlyList<SheetInfo> FilterSheets(IReadOnlyList<SheetInfo> sheets, ExportScope scope)

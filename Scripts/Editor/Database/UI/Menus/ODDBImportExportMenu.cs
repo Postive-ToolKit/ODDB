@@ -1,4 +1,5 @@
 using System;
+using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Editors.Utils.Sheets;
 using TeamODD.ODDB.Editors.Utils.Sheets.Backends;
 using TeamODD.ODDB.Editors.Window;
@@ -86,10 +87,18 @@ namespace TeamODD.ODDB.Editors.UI.Menus
         private static async void RunExport(IODDBEditorUseCase useCase, ExportScope scope, ISheetBackend backend)
         {
             var title = $"ODDB Export ({backend.DisplayName})";
+            if (ODDBProgressScope.IsActive)
+            {
+                EditorUtility.DisplayDialog(title, "Another ODDB import/export operation is already running.", "OK");
+                return;
+            }
+
             try
             {
-                EditorUtility.DisplayProgressBar(title, "Preparing export...", 0f);
-                await useCase.ExportAsync(scope, backend);
+                using (var progress = ODDBProgressScope.Show(title, "Preparing export...", 0f))
+                {
+                    await useCase.ExportAsync(scope, backend, progress);
+                }
                 EditorUtility.DisplayDialog(title, $"Export completed ({scope}).", "OK");
             }
             catch (OperationCanceledException)
@@ -100,15 +109,17 @@ namespace TeamODD.ODDB.Editors.UI.Menus
                 Debug.LogException(e);
                 EditorUtility.DisplayDialog(title, $"Export failed: {e.Message}", "OK");
             }
-            finally
-            {
-                EditorUtility.ClearProgressBar();
-            }
         }
 
         private static async void RunImport(IODDBEditorUseCase useCase, ExportScope scope, ISheetBackend backend)
         {
             var title = $"ODDB Import ({backend.DisplayName})";
+            if (ODDBProgressScope.IsActive)
+            {
+                EditorUtility.DisplayDialog(title, "Another ODDB import/export operation is already running.", "OK");
+                return;
+            }
+
             var confirm = EditorUtility.DisplayDialog(
                 title,
                 $"Import will overwrite current data ({scope}).\n" +
@@ -119,8 +130,10 @@ namespace TeamODD.ODDB.Editors.UI.Menus
 
             try
             {
-                EditorUtility.DisplayProgressBar(title, "Preparing import...", 0f);
-                await useCase.ImportAsync(scope, backend);
+                using (var progress = ODDBProgressScope.Show(title, "Preparing import...", 0f))
+                {
+                    await useCase.ImportAsync(scope, backend, progress);
+                }
                 EditorUtility.DisplayDialog(title, $"Import completed ({scope}).", "OK");
             }
             catch (OperationCanceledException)
@@ -130,10 +143,6 @@ namespace TeamODD.ODDB.Editors.UI.Menus
             {
                 Debug.LogException(e);
                 EditorUtility.DisplayDialog(title, $"Import failed: {e.Message}", "OK");
-            }
-            finally
-            {
-                EditorUtility.ClearProgressBar();
             }
         }
 
