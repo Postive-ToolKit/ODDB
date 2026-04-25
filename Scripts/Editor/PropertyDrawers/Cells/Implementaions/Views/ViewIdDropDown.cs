@@ -44,8 +44,9 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
                 var tableItem = new AdvancedDropdownItem(table.Name);
                 foreach (var row in rows)
                 {
-                    var itemName = row.GetName();
-                    var item = new ViewIdDropDownItem(itemName, row.ID.ToString());
+                    var rowId = row.ID.ToString();
+                    var itemName = ViewIdDropDownItem.FormatDisplayName(row.GetName(), rowId);
+                    var item = new ViewIdDropDownItem(itemName, rowId);
                     tableItem.AddChild(item);
                 }
                 root.AddChild(tableItem);

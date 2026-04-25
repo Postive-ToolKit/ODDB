@@ -26,9 +26,7 @@ namespace TeamODD.ODDB.Editors.UI
                 parentViewDropDown.OnParentViewSelected += (viewId) =>
                 {
                     var resultView = _editorUseCase.GetViewByKey(viewId);
-                    text = resultView != null
-                        ? INHERIT_PREFIX + resultView.Name
-                        : INHERIT_PREFIX + "None";
+                    text = INHERIT_PREFIX + FormatViewReference(resultView);
                     OnParentViewChanged?.Invoke(resultView);
                 };
             };
@@ -42,10 +40,19 @@ namespace TeamODD.ODDB.Editors.UI
             _view = view;
             
             if (_view.ParentView != null) {
-                text = INHERIT_PREFIX + _view.ParentView.Name;
+                text = INHERIT_PREFIX + FormatViewReference(_view.ParentView);
             } else {
                 text = INHERIT_PREFIX + "None";
             }
+        }
+
+        private static string FormatViewReference(IView view)
+        {
+            if (view == null)
+                return "None";
+
+            var id = view.ID?.ToString();
+            return ODDBEditorDisplayUtility.FormatNameWithId(view.Name, id);
         }
     }
 }

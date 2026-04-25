@@ -35,7 +35,7 @@ namespace TeamODD.ODDB.Editors.UI.ParentViewDropdowns
             root.AddChild(new ParentViewDropDownItem(NONE, string.Empty));
             foreach (var view in targetView)
             {
-                var item = new ParentViewDropDownItem(view.Name, view.ID);
+                var item = new ParentViewDropDownItem(FormatViewReference(view.Name, view.ID), view.ID);
                 root.AddChild(item);
             }
             return root;
@@ -46,6 +46,11 @@ namespace TeamODD.ODDB.Editors.UI.ParentViewDropdowns
             if (item is not ParentViewDropDownItem parentViewDropDownItem)
                 return;
             OnParentViewSelected?.Invoke(parentViewDropDownItem.Id);
+        }
+
+        private static string FormatViewReference(string name, string id)
+        {
+            return ODDBEditorDisplayUtility.FormatNameWithId(name, id);
         }
     }
 }

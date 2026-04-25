@@ -1,4 +1,5 @@
-﻿using UnityEditor.IMGUI.Controls;
+﻿using TeamODD.ODDB.Editors.Utils;
+using UnityEditor.IMGUI.Controls;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
 {
@@ -11,6 +12,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
         public ViewIdDropDownItem(string name, string id) : base(name)
         {
             Id = id;
+        }
+
+        public static string FormatDisplayName(string name, string id)
+        {
+            return ODDBEditorDisplayUtility.FormatNameWithId(name, id);
         }
     }
 }

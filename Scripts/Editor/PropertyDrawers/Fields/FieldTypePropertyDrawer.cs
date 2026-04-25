@@ -32,9 +32,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     if (paramProperty != null)
                         paramProperty.stringValue = newParam;
                     property.serializedObject.ApplyModifiedProperties();
-                    button.text = newEnum.ToString();
-                    if (string.IsNullOrEmpty(name) == false && newEnum.ToString().Equals(name) == false)
-                        button.text += $" - {name}";
+                    button.text = newEnum.GetName(newParam);
                 };
             };
             return button;

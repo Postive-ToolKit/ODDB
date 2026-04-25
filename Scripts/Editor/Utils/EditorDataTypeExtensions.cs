@@ -23,12 +23,16 @@ namespace TeamODD.ODDB.Editors.Utils
                     return sb.ToString();
                 case ODDBDataType.View:
                     var useCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-                    if (useCase != null && useCase.GetViewByKey(param) != null)
-                        sb.Append(" - ").Append(useCase.GetViewName(param));
+                    var view = useCase?.GetViewByKey(param);
+                    if (view != null)
+                        sb.Append(" - ").Append(ODDBEditorDisplayUtility.FormatNameWithId(view.Name, view.ID));
+                    else if (string.IsNullOrEmpty(param) == false)
+                        sb.Append(" - ").Append(param);
                     return sb.ToString();
                 default:
                     return sb.ToString();
             }
         }
+
     }
 }
