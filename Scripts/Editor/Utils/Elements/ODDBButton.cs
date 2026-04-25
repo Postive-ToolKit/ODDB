@@ -35,7 +35,8 @@ namespace Plugins.ODDB.Scripts.Editor.Utils.Elements
 
         private void OnClickEvent(ClickEvent evt)
         {
-            foreach (var callback in _callbacks)
+            var callbacks = _callbacks.ToArray();
+            foreach (var callback in callbacks)
                 callback.Invoke(evt);
         }
         
