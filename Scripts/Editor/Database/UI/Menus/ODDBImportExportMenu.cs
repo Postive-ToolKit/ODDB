@@ -136,5 +136,6 @@ namespace TeamODD.ODDB.Editors.UI.Menus
                 EditorUtility.ClearProgressBar();
             }
         }
+
     }
 }

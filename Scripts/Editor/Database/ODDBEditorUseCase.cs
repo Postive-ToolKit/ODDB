@@ -569,7 +569,7 @@ namespace TeamODD.ODDB.Editors.Window
             foreach (var sheet in sheets)
             {
                 var count = sheet?.Values?.Count ?? 0;
-                if (count > 1) total += count - 1;
+                if (count > 2) total += count - 2;
             }
             return total;
         }

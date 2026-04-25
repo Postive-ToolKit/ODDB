@@ -19,6 +19,72 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 Debug.LogError("Failed to load Database");
         }
 
+        private readonly struct SheetHeaderInfo
+        {
+            public readonly int DataStartIndex;
+            public readonly int IdColumnIndex;
+            public readonly IReadOnlyList<int> DataColumnIndices;
+
+            public SheetHeaderInfo(int dataStartIndex, int idColumnIndex, IReadOnlyList<int> dataColumnIndices)
+            {
+                DataStartIndex = dataStartIndex;
+                IdColumnIndex = idColumnIndex;
+                DataColumnIndices = dataColumnIndices;
+            }
+        }
+
+        private static bool TryParseSheetHeader(SheetInfo sheet, out SheetHeaderInfo headerInfo)
+        {
+            headerInfo = default;
+            if (sheet.Values.Count == 0) return false;
+
+            var nameRow = sheet.Values[0];
+            if (nameRow.Count == 0) return false;
+            if (nameRow[0] != SheetConfig.ROW_NAME_MARKER) return false;
+
+            var dataStartIndex = sheet.Values.Count > 1
+                && sheet.Values[1].Count > 0
+                && sheet.Values[1][0] == SheetConfig.ROW_TYPE_MARKER
+                    ? 2
+                    : 1;
+
+            var dataColumnIndices = new List<int>();
+            for (int i = 2; i < nameRow.Count; i++)
+            {
+                var columnName = nameRow[i];
+                if (!string.IsNullOrEmpty(columnName) && columnName.StartsWith(SheetConfig.IGNORE_PREFIX))
+                    continue;
+                dataColumnIndices.Add(i);
+            }
+
+            headerInfo = new SheetHeaderInfo(dataStartIndex, 1, dataColumnIndices);
+            return true;
+        }
+
+        private static bool IsCommentRow(List<string> row)
+        {
+            if (row == null || row.Count == 0) return true;
+            var firstCell = row[0];
+            return !string.IsNullOrEmpty(firstCell)
+                && firstCell.StartsWith(SheetConfig.ROW_COMMENT_PREFIX);
+        }
+
+        private static void ApplyRowDataToTable(Table table, List<string> rowData, SheetHeaderInfo headerInfo)
+        {
+            if (rowData.Count <= headerInfo.IdColumnIndex)
+                return;
+
+            var newRow = table.AddRow();
+            newRow.ID = new ODDBID(rowData[headerInfo.IdColumnIndex]);
+
+            for (int fieldIndex = 0; fieldIndex < headerInfo.DataColumnIndices.Count; fieldIndex++)
+            {
+                var columnIndex = headerInfo.DataColumnIndices[fieldIndex];
+                if (columnIndex < rowData.Count)
+                    newRow.SetData(fieldIndex, rowData[columnIndex], true);
+            }
+        }
+
         /// <summary>
         /// Load ODDatabaseDTO from database file
         /// </summary>
@@ -50,7 +116,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             {
                 if (sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX))
                     continue;
-                
+
                 var table = _dB.Tables.Read(new ODDBID(sheet.ID)) as Table;
                 if (table == null)
                 {
@@ -58,25 +124,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                     continue;
                 }
 
-                // Clear existing rows
-                table.Clear();
-
-                // Skip header row and populate data rows
-                for (int i = 1; i < sheet.Values.Count; i++)
-                {
-                    var rowData = sheet.Values[i];
-                    
-                    // First element is the Row ID
-                    var rowId = new ODDBID(rowData[0]);
-                    var newRow = table.AddRow();
-                    newRow.ID = rowId;
-                    // Populate cell data (skip the first element which is the ID)
-                    for (int j = 1; j < rowData.Count; j++)
-                    {
-                        var cellData = rowData[j];
-                        newRow.SetData(j - 1, cellData, true);
-                    }
-                }
+                ApplySheetToTable(table, sheet);
             }
             SaveDatabaseToFile(_dB);
         }
@@ -124,19 +172,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 throw new InvalidOperationException(
                     $"Sheet id '{sheet.ID}' does not match target table id '{tableIdStr}'.");
 
+            if (!TryParseSheetHeader(sheet, out var headerInfo))
+                return;
+
             table.Clear();
 
-            for (int i = 1; i < sheet.Values.Count; i++)
+            for (int i = headerInfo.DataStartIndex; i < sheet.Values.Count; i++)
             {
                 var rowData = sheet.Values[i];
                 if (rowData == null || rowData.Count == 0) continue;
-
-                var newRow = table.AddRow();
-                newRow.ID = new ODDBID(rowData[0]);
-                for (int j = 1; j < rowData.Count; j++)
-                {
-                    newRow.SetData(j - 1, rowData[j], true);
-                }
+                if (IsCommentRow(rowData)) continue;
+                ApplyRowDataToTable(table, rowData, headerInfo);
             }
         }
 
@@ -148,20 +194,21 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 ID = table.ID,
             };
 
-            // Create header row with "ID" in the first column, followed by field names
-            var headerRow = new List<string> { "ID" };
+            var nameRow = new List<string> { SheetConfig.ROW_NAME_MARKER, "ID" };
             foreach (var field in table.TotalFields)
-                headerRow.Add(field.Name);
-            sheet.Values.Add(headerRow);
+                nameRow.Add(field.Name);
+            sheet.Values.Add(nameRow);
 
-            // Add data rows
+            var typeRow = new List<string> { SheetConfig.ROW_TYPE_MARKER, "ID" };
+            foreach (var field in table.TotalFields)
+                typeRow.Add(field.Type.ToString());
+            sheet.Values.Add(typeRow);
+
             foreach (var rowData in table.Rows)
             {
                 var row = new List<string>();
-                // First element is the Row ID
+                row.Add("");
                 row.Add(rowData.ID);
-                    
-                // Add cell data (skip the first element which is the ID)
                 for (int i = 0; i < table.TotalFields.Count; i++)
                 {
                     var cellData = rowData.GetData(i);
