@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Commands;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Utils.Sheets;
+using TeamODD.ODDB.Editors.Utils.Sheets.Validation;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -433,7 +434,7 @@ namespace TeamODD.ODDB.Editors.Window
             var ctx = await backend.PrepareAsync(scope, BackendIntent.Import);
             if (ctx.Cancelled) return;
 
-            var backupPath = CreatePreImportBackup();
+            var backupPath = (string)null;
             var stopwatch = Stopwatch.StartNew();
             var sheetCount = 0;
             var rowCount = 0;
@@ -442,6 +443,16 @@ namespace TeamODD.ODDB.Editors.Window
             {
                 EditorApplication.LockReloadAssemblies();
                 var sheets = await backend.LoadAsync(ctx, progress, ct);
+                var validationReport = SheetImportValidator.Validate(sheets, scope, _database);
+                if (validationReport.Issues.Count > 0)
+                {
+                    var summary = validationReport.ToSummaryString();
+                    if (validationReport.HasErrors)
+                        throw new InvalidOperationException(summary);
+                    Debug.LogWarning(summary);
+                }
+
+                backupPath = CreatePreImportBackup();
                 var converter = new ODDBSheetConverter();
                 var affected = ApplySheetsToDatabase(scope, sheets, converter);
                 sheetCount = affected.Count;
