@@ -6,8 +6,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Commands;
+using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Utils.Sheets;
+using TeamODD.ODDB.Editors.Utils.Sheets.Diff;
 using TeamODD.ODDB.Editors.Utils.Sheets.Validation;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
@@ -451,6 +453,14 @@ namespace TeamODD.ODDB.Editors.Window
                         throw new InvalidOperationException(summary);
                     Debug.LogWarning(summary);
                 }
+
+                var diffReport = SheetImportDiffBuilder.Build(sheets, scope, _database);
+                var accepted = progress is IODDBImportPreviewPresenter presenter
+                    ? await presenter.ShowImportPreviewAsync(diffReport, validationReport, ct)
+                    : true;
+
+                if (!accepted)
+                    throw new OperationCanceledException("Import cancelled from preview window.");
 
                 backupPath = CreatePreImportBackup();
                 var converter = new ODDBSheetConverter();

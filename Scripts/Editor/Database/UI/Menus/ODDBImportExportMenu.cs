@@ -128,21 +128,21 @@ namespace TeamODD.ODDB.Editors.UI.Menus
                 "Cancel");
             if (!confirm) return;
 
-            try
+            using (var progress = ODDBProgressScope.Show(title, "Preparing import...", 0f))
             {
-                using (var progress = ODDBProgressScope.Show(title, "Preparing import...", 0f))
+                try
                 {
                     await useCase.ImportAsync(scope, backend, progress);
+                    await progress.ShowResultAsync($"Import completed ({scope}).", false);
                 }
-                EditorUtility.DisplayDialog(title, $"Import completed ({scope}).", "OK");
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-                EditorUtility.DisplayDialog(title, $"Import failed: {e.Message}", "OK");
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                    await progress.ShowResultAsync($"Import failed: {e.Message}", true);
+                }
             }
         }
 
