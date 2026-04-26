@@ -50,8 +50,22 @@ namespace TeamODD.ODDB.Runtime
         
         public Row AddRow()
         {
-            var newRow = new Row(TotalFields);
-            _rows.Add(newRow.ID, newRow);
+            return AddRow(new ODDBID());
+        }
+
+        public Row AddRow(ODDBID id)
+        {
+            if (id == null) throw new ArgumentNullException(nameof(id));
+
+            var key = id.ToString();
+            if (_rows.ContainsKey(key))
+                throw new InvalidOperationException($"Row ID '{key}' already exists.");
+
+            var newRow = new Row(TotalFields)
+            {
+                ID = id
+            };
+            _rows.Add(key, newRow);
             OnRowChanged?.Invoke();
             return newRow;
         }

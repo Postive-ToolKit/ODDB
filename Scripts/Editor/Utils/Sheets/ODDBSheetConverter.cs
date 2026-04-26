@@ -19,6 +19,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 Debug.LogError("Failed to load Database");
         }
 
+        public ODDBSheetConverter(ODDatabase database)
+        {
+            _dB = database ?? throw new ArgumentNullException(nameof(database));
+        }
+
         private readonly struct SheetHeaderInfo
         {
             public readonly int DataStartIndex;
@@ -74,8 +79,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (rowData.Count <= headerInfo.IdColumnIndex)
                 return;
 
-            var newRow = table.AddRow();
-            newRow.ID = new ODDBID(rowData[headerInfo.IdColumnIndex]);
+            var rowId = rowData[headerInfo.IdColumnIndex];
+            if (string.IsNullOrEmpty(rowId))
+                return;
+
+            if (table.GetRow(rowId) != null)
+            {
+                Debug.LogWarning($"Duplicate row ID found during sheet import: {rowId}. Skipping this row.");
+                return;
+            }
+
+            var newRow = table.AddRow(new ODDBID(rowId));
 
             for (int fieldIndex = 0; fieldIndex < headerInfo.DataColumnIndices.Count; fieldIndex++)
             {
@@ -88,7 +102,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
         /// <summary>
         /// Load ODDatabaseDTO from database file
         /// </summary>
-        private ODDatabase LoadDatabaseFromFile()
+        private static ODDatabase LoadDatabaseFromFile()
         {
             var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
             var dataService = new ODDBDataService();
