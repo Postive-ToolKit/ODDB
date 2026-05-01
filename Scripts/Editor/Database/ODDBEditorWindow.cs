@@ -1,4 +1,5 @@
 using System.IO;
+using TeamODD.ODDB.Editors.CodeGen.UI;
 using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
@@ -118,6 +119,13 @@ namespace TeamODD.ODDB.Editors.Window
             var importMenu = new ToolbarMenu { text = "Import" };
             ODDBImportExportMenu.BuildToolbarImportMenu(importMenu, _editorUseCase);
             topToolbar.Add(importMenu);
+
+            var generateCodeMenu = new ToolbarMenu { text = "Generate Code" };
+            generateCodeMenu.menu.AppendAction("Generate All",
+                _ => ODDBCodeGenMenu.RunGenerateAll());
+            generateCodeMenu.menu.AppendAction("Open Generated Folder",
+                _ => ODDBCodeGenMenu.OpenGeneratedFolder());
+            topToolbar.Add(generateCodeMenu);
 
             var historyToggle = new ToolbarToggle { text = "History" };
             historyToggle.RegisterValueChangedCallback(evt =>

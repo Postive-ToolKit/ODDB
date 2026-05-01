@@ -76,6 +76,7 @@ namespace TeamODD.ODDB.Runtime.Settings
 #endif
         public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
         public bool DisableAutoInitialization => _disableAutoInitialization;
+        public string GeneratedCodePath => _generatedCodePath;
 
         
         [HideInInspector] private bool _isInitialized = false;
@@ -94,6 +95,11 @@ namespace TeamODD.ODDB.Runtime.Settings
         [SerializeField] private bool _useFirstColumnAsRowName = false;
         [Tooltip("If true, disables automatic initialization at startup. Use ODDBPort.InitializeAsync() for manual async initialization.")]
         [SerializeField] private bool _disableAutoInitialization = false;
+        [Space(10)]
+        [Header("Code Generation")]
+        [Tooltip("Output folder for generated POCO classes (Assets-relative). Leave empty to disable code generation.")]
+        [PathSelector(true)]
+        [SerializeField] private string _generatedCodePath = string.Empty;
         [Space(10)]
         [Header("Google Sheets Settings")]
         [SerializeField] private bool _disableGoogleSheetExport = false;

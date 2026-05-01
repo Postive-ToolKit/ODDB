@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TeamODD.ODDB.Editors.CodeGen.UI;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
@@ -277,6 +278,15 @@ namespace TeamODD.ODDB.Editors.UI
                 var capturedTableId = contextTable.ID;
                 menu.AddSeparator(string.Empty);
                 ODDBImportExportMenu.AppendTableContextMenu(menu, _editorUseCase, capturedTableId);
+            }
+
+            if (_view != null)
+            {
+                var capturedViewId = _view.ID.ToString();
+                if (!(_view is Table))
+                    menu.AddSeparator(string.Empty);
+                menu.AddItem(new GUIContent("Generate Code"), false, () =>
+                    ODDBCodeGenMenu.RunGenerateSelection(new[] { capturedViewId }));
             }
 
             menu.ShowAsContext();
