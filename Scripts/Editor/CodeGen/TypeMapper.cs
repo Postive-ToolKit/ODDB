@@ -157,8 +157,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
             {
                 var attr = type.GetCustomAttribute<CustomDataTypeAttribute>();
                 if (attr == null) continue;
-                if (!index.ContainsKey(attr.TypeID))
-                    index[attr.TypeID] = type;
+                if (attr.DataType != null && !index.ContainsKey(attr.TypeID))
+                    index[attr.TypeID] = attr.DataType;
             }
             return index;
         }
