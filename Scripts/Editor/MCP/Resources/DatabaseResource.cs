@@ -8,7 +8,21 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
     public class DatabaseResource : IMcpResource
     {
         private readonly IODDBEditorUseCase _useCase;
-        public DatabaseResource(IODDBEditorUseCase useCase) => _useCase = useCase;
+        // Settings are cached at construction (which happens on the main thread
+        // during BootServer). Background-thread reads must not call
+        // ODDBSettings.Setting since it invokes Resources.Load.
+        private readonly string _dbPath;
+        private readonly bool _enableMcp;
+        private readonly string _mcpHost;
+
+        public DatabaseResource(IODDBEditorUseCase useCase)
+        {
+            _useCase = useCase;
+            var s = ODDBSettings.Setting;
+            _dbPath = s?.FullDBPath;
+            _enableMcp = s?.EnableMCPServer ?? false;
+            _mcpHost = s?.MCPServerHost;
+        }
 
         public string UriOrTemplate => "oddb://database";
         public string Description => "ODDB database metadata (view counts, settings snapshot, MCP port).";
@@ -19,7 +33,6 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
         public object Read(string uri)
         {
             var views = _useCase.GetViews()?.ToList();
-            var settings = ODDBSettings.Setting;
             int viewCount = 0, tableCount = 0;
             if (views != null)
             {
@@ -37,9 +50,9 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
                 mcpPort = ODDBEditorRuntime.McpPort,
                 settings = new
                 {
-                    dbPath = settings?.FullDBPath,
-                    enableMcp = settings?.EnableMCPServer,
-                    mcpHost = settings?.MCPServerHost,
+                    dbPath = _dbPath,
+                    enableMcp = _enableMcp,
+                    mcpHost = _mcpHost,
                 },
             };
         }

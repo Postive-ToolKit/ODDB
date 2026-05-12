@@ -67,12 +67,25 @@ namespace TeamODD.ODDB.Editors
                 return;
             }
 
+            // Pre-initialize the use case on this (main) thread so background
+            // handlers don't trip Unity's main-thread checks (Resources.Load,
+            // ScriptableObject access) on first request. After this, the use
+            // case and its database are ready to be read from any thread.
+            try { var _ = UseCase; }
+            catch (System.Exception ex) { McpLog.Warn($"use case init failed: {ex.Message}"); }
+
             _dispatcher = new McpDispatcher();
             _toolRegistry = new McpToolRegistry();
             _resourceRegistry = new McpResourceRegistry();
 
             _resourceRegistry.Register(new MCP.Resources.DatabaseResource(UseCase));
-            // Additional resources and tools are added in subsequent registrations below.
+            _resourceRegistry.Register(new MCP.Resources.ViewsResource(UseCase));
+            _resourceRegistry.Register(new MCP.Resources.ViewDetailResource(UseCase));
+            _resourceRegistry.Register(new MCP.Resources.TableRowsResource(UseCase));
+            _resourceRegistry.Register(new MCP.Resources.TableInheritedResource(UseCase));
+            _resourceRegistry.Register(new MCP.Resources.CommandHistoryResource(UseCase));
+            _resourceRegistry.Register(new MCP.Resources.BindTypesResource());
+            _resourceRegistry.Register(new MCP.Resources.DataTypesResource());
 
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
@@ -126,8 +139,11 @@ namespace TeamODD.ODDB.Editors
                     return McpResponse.Failure(id, McpError.Of(McpErrorKind.NotFound, $"resource not found: {uri}"));
                 try
                 {
-                    // Resource handlers may read Unity assets that require main thread.
-                    var payload = McpMainThread.Run(() => res.Read(uri));
+                    // Resources are read on the background thread. They must avoid
+                    // touching Unity-only APIs (ScriptableObject.Setting access is
+                    // already cached on the main thread above; database state is
+                    // plain C# objects and thread-safe to read).
+                    var payload = res.Read(uri);
                     return McpResponse.Success(id, new
                     {
                         contents = new[] { new { uri, mimeType = res.MimeType ?? "application/json", text = JsonConvert.SerializeObject(payload) } },
