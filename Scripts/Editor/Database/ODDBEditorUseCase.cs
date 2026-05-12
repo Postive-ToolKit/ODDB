@@ -221,6 +221,21 @@ namespace TeamODD.ODDB.Editors.Window
         }
 
         /// <summary>
+        /// Routes a single-cell mutation through the command pipeline (undo/redo, history).
+        /// Intended for external callers (e.g. MCP tools); the in-editor UI bypasses this.
+        /// </summary>
+        public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue)
+        {
+            var view = GetViewByKey(tableId);
+            if (view is not Table table) return;
+
+            var command = new SetCellDataCommand(
+                table, rowId, fieldIndex, newValue,
+                (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
+        /// <summary>
         /// Executes a command to add a new field to a View.
         /// </summary>
         public void AddField(string viewId, Field field)
