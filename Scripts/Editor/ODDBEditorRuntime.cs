@@ -1,20 +1,25 @@
+using System.Net;
+using TeamODD.ODDB.Editors.MCP;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 
 namespace TeamODD.ODDB.Editors
 {
     /// <summary>
-    /// Editor-process singleton that owns the IODDBEditorUseCase instance.
-    /// Previously the window owned this; extracting it allows the MCP server
-    /// (and any other editor-level subsystem) to share the same use case and
-    /// database state so external mutations show up in the window immediately.
+    /// Editor-process singleton that owns the IODDBEditorUseCase instance and
+    /// runs the in-Editor MCP HTTP server. Extracting these out of the window
+    /// lets the MCP server and the editor share state so AI-driven mutations
+    /// show up in the window immediately.
     /// </summary>
     [InitializeOnLoad]
     public static class ODDBEditorRuntime
     {
         private static IODDBEditorUseCase _useCase;
+        private static ODDBMcpServer _server;
+        private static McpDispatcher _dispatcher;
 
         public static IODDBEditorUseCase UseCase
         {
@@ -31,17 +36,63 @@ namespace TeamODD.ODDB.Editors
         }
 
         public static IODDatabase Database => UseCase.DataBase;
+        public static int? McpPort => _server?.Port;
+        public static McpDispatcher Dispatcher => _dispatcher;
 
         static ODDBEditorRuntime()
         {
-            // The use case is created lazily on first access so editor startup
-            // doesn't trigger any UI (e.g. path picker) before the editor is
-            // fully ready. The MCP server bootstrap will be added in Task 8.
+            // Boot inline. The server itself doesn't touch the use case until
+            // a request arrives, so the on-first-run picker UI (which lives
+            // inside ODDBEditorUseCase's ctor) only fires when the user first
+            // opens the editor window or an MCP tool is called.
+            BootServer();
+            AssemblyReloadEvents.beforeAssemblyReload += StopServer;
+        }
+
+        private static void BootServer()
+        {
+            var settings = ODDBSettings.Setting;
+            if (settings == null || !settings.EnableMCPServer)
+            {
+                McpLog.Lifecycle("server disabled via settings");
+                return;
+            }
+
+            _dispatcher = new McpDispatcher();
+            // Concrete handlers (initialize, tools/*, resources/*) are wired in Task 9.
+
+            int requestedPort = settings.MCPServerPort;
+            string host = settings.MCPServerHost;
+            for (int i = 0; i < 10; i++)
+            {
+                int port = requestedPort + i;
+                try
+                {
+                    _server = new ODDBMcpServer();
+                    _server.Start(host, port, _dispatcher);
+                    McpLog.Lifecycle(i > 0
+                        ? $"port {requestedPort} in use, listening on http://{host}:{port}"
+                        : $"listening on http://{host}:{port}");
+                    return;
+                }
+                catch (HttpListenerException)
+                {
+                    _server = null;
+                }
+            }
+            McpLog.Error($"failed to bind any port in [{requestedPort}, {requestedPort + 9}]");
+        }
+
+        private static void StopServer()
+        {
+            _server?.Stop();
+            _server = null;
         }
 
         // For tests only — drops the singleton so the next access rebuilds it.
         internal static void ResetForTesting()
         {
+            StopServer();
             _useCase?.Dispose();
             _useCase = null;
         }

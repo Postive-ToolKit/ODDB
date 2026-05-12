@@ -9,16 +9,16 @@ namespace TeamODD.ODDB.Editors.MCP
         {
             // Avoid touching the singleton until it's safe (Settings.Setting may
             // create assets on first access during Editor boot).
-            try
-            {
-                if (ODDBSettings.Setting != null && !ODDBSettings.Setting.MCPServerVerbose) return;
-            }
-            catch
-            {
-                return;
-            }
+            bool verbose = false;
+            try { verbose = ODDBSettings.Setting != null && ODDBSettings.Setting.MCPServerVerbose; }
+            catch { }
+            if (!verbose) return;
             Debug.Log($"[ODDB-MCP] {msg}");
         }
+
+        // Always-logged variants for lifecycle events that need to surface
+        // regardless of verbose setting (server start/stop, port fallback).
+        public static void Lifecycle(string msg) => Debug.Log($"[ODDB-MCP] {msg}");
 
         public static void Warn(string msg) => Debug.LogWarning($"[ODDB-MCP] {msg}");
         public static void Error(string msg) => Debug.LogError($"[ODDB-MCP] {msg}");
