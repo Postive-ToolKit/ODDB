@@ -1,5 +1,8 @@
 using System.Net;
+using Newtonsoft.Json;
 using TeamODD.ODDB.Editors.MCP;
+using TeamODD.ODDB.Editors.MCP.Resources;
+using TeamODD.ODDB.Editors.MCP.Tools;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -20,6 +23,8 @@ namespace TeamODD.ODDB.Editors
         private static IODDBEditorUseCase _useCase;
         private static ODDBMcpServer _server;
         private static McpDispatcher _dispatcher;
+        private static McpToolRegistry _toolRegistry;
+        private static McpResourceRegistry _resourceRegistry;
 
         public static IODDBEditorUseCase UseCase
         {
@@ -38,6 +43,8 @@ namespace TeamODD.ODDB.Editors
         public static IODDatabase Database => UseCase.DataBase;
         public static int? McpPort => _server?.Port;
         public static McpDispatcher Dispatcher => _dispatcher;
+        public static McpToolRegistry Tools => _toolRegistry;
+        public static McpResourceRegistry Resources => _resourceRegistry;
 
         static ODDBEditorRuntime()
         {
@@ -59,7 +66,73 @@ namespace TeamODD.ODDB.Editors
             }
 
             _dispatcher = new McpDispatcher();
-            // Concrete handlers (initialize, tools/*, resources/*) are wired in Task 9.
+            _toolRegistry = new McpToolRegistry();
+            _resourceRegistry = new McpResourceRegistry();
+
+            // Concrete tool and resource registrations are added in later tasks.
+
+            _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
+            {
+                protocolVersion = "2024-11-05",
+                serverInfo = new { name = "ODDB", version = "1.7.1" },
+                capabilities = new { tools = new { }, resources = new { } },
+            }));
+
+            _dispatcher.Register("ping", (id, p) => McpResponse.Success(id, new { }));
+
+            _dispatcher.Register("tools/list", (id, p) => McpResponse.Success(id, new
+            {
+                tools = _toolRegistry.ListAsJson(),
+            }));
+
+            _dispatcher.Register("resources/list", (id, p) => McpResponse.Success(id, new
+            {
+                resources = _resourceRegistry.ListAsJson(),
+            }));
+
+            _dispatcher.Register("tools/call", (id, p) =>
+            {
+                var name = p?["name"]?.ToString();
+                var args = p?["arguments"];
+                if (string.IsNullOrEmpty(name))
+                    return McpResponse.Failure(id, McpError.InvalidRequest("missing tool name"));
+                if (!_toolRegistry.TryGet(name, out var tool))
+                    return McpResponse.Failure(id, McpError.MethodNotFound($"tool:{name}"));
+                try
+                {
+                    var result = tool.Execute(args);
+                    return McpResponse.Success(id, new
+                    {
+                        content = new[] { new { type = "text", text = JsonConvert.SerializeObject(result) } },
+                    });
+                }
+                catch (McpException ex)
+                {
+                    return McpResponse.Failure(id, McpError.Of(ex.Kind, ex.Message, ex.Details));
+                }
+            });
+
+            _dispatcher.Register("resources/read", (id, p) =>
+            {
+                var uri = p?["uri"]?.ToString();
+                if (string.IsNullOrEmpty(uri))
+                    return McpResponse.Failure(id, McpError.InvalidRequest("missing uri"));
+                var res = _resourceRegistry.Match(uri);
+                if (res == null)
+                    return McpResponse.Failure(id, McpError.Of(McpErrorKind.NotFound, $"resource not found: {uri}"));
+                try
+                {
+                    var payload = res.Read(uri);
+                    return McpResponse.Success(id, new
+                    {
+                        contents = new[] { new { uri, mimeType = res.MimeType ?? "application/json", text = JsonConvert.SerializeObject(payload) } },
+                    });
+                }
+                catch (McpException ex)
+                {
+                    return McpResponse.Failure(id, McpError.Of(ex.Kind, ex.Message, ex.Details));
+                }
+            });
 
             int requestedPort = settings.MCPServerPort;
             string host = settings.MCPServerHost;
@@ -75,9 +148,10 @@ namespace TeamODD.ODDB.Editors
                         : $"listening on http://{host}:{port}");
                     return;
                 }
-                catch (HttpListenerException)
+                catch (System.Exception ex)
                 {
                     _server = null;
+                    McpLog.Warn($"bind to {port} failed: {ex.Message}");
                 }
             }
             McpLog.Error($"failed to bind any port in [{requestedPort}, {requestedPort + 9}]");
