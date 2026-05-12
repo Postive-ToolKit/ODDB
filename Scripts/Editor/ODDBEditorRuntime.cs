@@ -3,6 +3,9 @@ using Newtonsoft.Json;
 using TeamODD.ODDB.Editors.MCP;
 using TeamODD.ODDB.Editors.MCP.Resources;
 using TeamODD.ODDB.Editors.MCP.Tools;
+using TeamODD.ODDB.Editors.MCP.Tools.Data;
+using TeamODD.ODDB.Editors.MCP.Tools.Schema;
+using TeamODD.ODDB.Editors.MCP.Tools.System;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -79,31 +82,31 @@ namespace TeamODD.ODDB.Editors
             _resourceRegistry = new McpResourceRegistry();
 
             // Tools
-            _toolRegistry.Register(new MCP.Tools.Data.AddRowTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Data.RemoveRowTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Data.SetCellTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.AddViewTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.AddTableTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.RemoveViewTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.RemoveTableTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.AddFieldTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.RemoveFieldTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.MoveFieldTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.SetViewNameTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.SetViewBindTypeTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.Schema.SetViewParentTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.System.GenerateCodeTool(UseCase));
-            _toolRegistry.Register(new MCP.Tools.System.SaveDatabaseTool(UseCase));
+            _toolRegistry.Register(new AddRowTool(UseCase));
+            _toolRegistry.Register(new RemoveRowTool(UseCase));
+            _toolRegistry.Register(new SetCellTool(UseCase));
+            _toolRegistry.Register(new AddViewTool(UseCase));
+            _toolRegistry.Register(new AddTableTool(UseCase));
+            _toolRegistry.Register(new RemoveViewTool(UseCase));
+            _toolRegistry.Register(new RemoveTableTool(UseCase));
+            _toolRegistry.Register(new AddFieldTool(UseCase));
+            _toolRegistry.Register(new RemoveFieldTool(UseCase));
+            _toolRegistry.Register(new MoveFieldTool(UseCase));
+            _toolRegistry.Register(new SetViewNameTool(UseCase));
+            _toolRegistry.Register(new SetViewBindTypeTool(UseCase));
+            _toolRegistry.Register(new SetViewParentTool(UseCase));
+            _toolRegistry.Register(new GenerateCodeTool(UseCase));
+            _toolRegistry.Register(new SaveDatabaseTool(UseCase));
 
             // Resources
-            _resourceRegistry.Register(new MCP.Resources.DatabaseResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.ViewsResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.ViewDetailResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.TableRowsResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.TableInheritedResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.CommandHistoryResource(UseCase));
-            _resourceRegistry.Register(new MCP.Resources.BindTypesResource());
-            _resourceRegistry.Register(new MCP.Resources.DataTypesResource());
+            _resourceRegistry.Register(new DatabaseResource(UseCase));
+            _resourceRegistry.Register(new ViewsResource(UseCase));
+            _resourceRegistry.Register(new ViewDetailResource(UseCase));
+            _resourceRegistry.Register(new TableRowsResource(UseCase));
+            _resourceRegistry.Register(new TableInheritedResource(UseCase));
+            _resourceRegistry.Register(new CommandHistoryResource(UseCase));
+            _resourceRegistry.Register(new BindTypesResource());
+            _resourceRegistry.Register(new DataTypesResource());
 
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {

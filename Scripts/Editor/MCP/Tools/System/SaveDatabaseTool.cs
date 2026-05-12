@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using TeamODD.ODDB.Editors.Window;
@@ -23,7 +24,7 @@ namespace TeamODD.ODDB.Editors.MCP.Tools.System
                 _useCase.SaveDatabase(fullPath);
                 return new { success = true, path = fullPath };
             }
-            catch (global::System.Exception ex)
+            catch (Exception ex)
             {
                 throw new McpException(McpErrorKind.SaveFailed, ex.Message);
             }

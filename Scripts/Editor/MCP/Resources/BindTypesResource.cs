@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using TeamODD.ODDB.Runtime.Entities;
 
 namespace TeamODD.ODDB.Editors.MCP.Resources
@@ -23,7 +24,7 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
                 .ToArray();
         }
 
-        private static Type[] SafeGetTypes(System.Reflection.Assembly a)
+        private static Type[] SafeGetTypes(Assembly a)
         {
             try { return a.GetTypes(); }
             catch { return new Type[0]; }
