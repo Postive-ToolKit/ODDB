@@ -41,22 +41,33 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 _table.OnRowChanged -= RefreshRows;
                 _table.OnFieldsChanged -= CreateColumns;
+                _editorUseCase.OnViewChanged -= OnExternalViewChanged;
             }
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not Table table)
                 return;
             this.Unbind();
             _table = table;
-            
+
             _tableDataDTO = ScriptableObject.CreateInstance<TableDataDTO>();
             _tableDataDTO.Rows = _table.Rows;
             var so = new SerializedObject(_tableDataDTO);
             this.Bind(so);
             CreateColumns();
-            
+
             RefreshRows();
             _table.OnRowChanged += RefreshRows;
             _table.OnFieldsChanged += CreateColumns;
+            // External (MCP) cell mutations don't fire OnRowChanged; subscribe
+            // to the use case's view-changed signal so the bound SerializedObject
+            // re-pulls the latest cell values.
+            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+        }
+
+        private void OnExternalViewChanged(string viewId)
+        {
+            if (_table == null || viewId != _table.ID) return;
+            RefreshRows();
         }
 
         private void RefreshRows()
