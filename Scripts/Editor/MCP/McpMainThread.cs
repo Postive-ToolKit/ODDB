@@ -38,12 +38,18 @@ namespace TeamODD.ODDB.Editors.MCP
                         finally { done.Set(); }
                     });
                 }
+                // Nudge the editor so EditorApplication.update fires even when
+                // the editor window is unfocused. Delegate concat is atomic, so
+                // this is safe to call from a background thread.
+                try { EditorApplication.delayCall += NoOp; } catch { }
                 if (!done.Wait(10_000))
                     throw new TimeoutException("main thread did not respond within 10s");
             }
             if (err != null) throw err;
             return result;
         }
+
+        private static void NoOp() { }
 
         public static void Run(Action action) => Run<object>(() => { action(); return null; });
 

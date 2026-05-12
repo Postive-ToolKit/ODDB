@@ -78,6 +78,24 @@ namespace TeamODD.ODDB.Editors
             _toolRegistry = new McpToolRegistry();
             _resourceRegistry = new McpResourceRegistry();
 
+            // Tools
+            _toolRegistry.Register(new MCP.Tools.Data.AddRowTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Data.RemoveRowTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Data.SetCellTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.AddViewTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.AddTableTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.RemoveViewTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.RemoveTableTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.AddFieldTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.RemoveFieldTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.MoveFieldTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.SetViewNameTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.SetViewBindTypeTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.Schema.SetViewParentTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.System.GenerateCodeTool(UseCase));
+            _toolRegistry.Register(new MCP.Tools.System.SaveDatabaseTool(UseCase));
+
+            // Resources
             _resourceRegistry.Register(new MCP.Resources.DatabaseResource(UseCase));
             _resourceRegistry.Register(new MCP.Resources.ViewsResource(UseCase));
             _resourceRegistry.Register(new MCP.Resources.ViewDetailResource(UseCase));

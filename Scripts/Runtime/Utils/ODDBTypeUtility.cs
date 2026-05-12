@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Utils.Converters
 {
-    internal static class ODDBTypeUtility
+    public static class ODDBTypeUtility
     {
         private static readonly Dictionary<string, Type> _typeCache = new();
         private static bool _isFullIndexed = false;
