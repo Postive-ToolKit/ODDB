@@ -1,4 +1,5 @@
 using System.IO;
+using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.CodeGen.UI;
 using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Editors.UI.Menus;
@@ -34,9 +35,10 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void CreateGUI()
         {
-            _editorUseCase = new ODDBEditorUseCase();
-            ODDBEditorDI.RegisterSelfAndInterfaces(_editorUseCase);
-            ODDBEditorDI.RegisterSelfAndInterfaces(_editorUseCase.DataBase);
+            // Use case + DI are now owned by ODDBEditorRuntime so the MCP server
+            // and the window share the same instance. Accessing the property here
+            // triggers lazy creation and DI registration if this is the first use.
+            _editorUseCase = ODDBEditorRuntime.UseCase;
             CreateLayout();
             
             _tableTreeView.OnViewSelected += _editorView.SetView;
@@ -177,8 +179,9 @@ namespace TeamODD.ODDB.Editors.Window
                 var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
                 _editorUseCase.SaveDatabase(fullPath);
             }
-            _editorUseCase?.Dispose();
-            ODDBEditorDI.DisposeAll();
+            // The use case and DI registrations live in ODDBEditorRuntime now;
+            // do NOT dispose them here — the MCP server and other editor
+            // subsystems still need them after the window closes.
         }
     }
 }
