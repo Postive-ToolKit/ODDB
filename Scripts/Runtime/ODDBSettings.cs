@@ -78,6 +78,11 @@ namespace TeamODD.ODDB.Runtime.Settings
         public bool DisableAutoInitialization => _disableAutoInitialization;
         public string GeneratedCodePath => _generatedCodePath;
 
+        public bool EnableMCPServer => _enableMCPServer;
+        public int MCPServerPort => _mcpServerPort;
+        public string MCPServerHost => _mcpServerHost;
+        public bool MCPServerVerbose => _mcpServerVerbose;
+
         
         [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
@@ -100,6 +105,16 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Tooltip("Output folder for generated POCO classes (Assets-relative). Leave empty to disable code generation.")]
         [PathSelector(true)]
         [SerializeField] private string _generatedCodePath = string.Empty;
+        [Space(10)]
+        [Header("MCP Server")]
+        [Tooltip("Enable the in-Editor MCP server that exposes ODDB to AI clients via HTTP.")]
+        [SerializeField] private bool _enableMCPServer = true;
+        [Tooltip("TCP port for the MCP HTTP server. Falls back to +1..+9 if busy.")]
+        [SerializeField] private int _mcpServerPort = 9123;
+        [Tooltip("Bind host. 127.0.0.1 keeps the server loopback-only.")]
+        [SerializeField] private string _mcpServerHost = "127.0.0.1";
+        [Tooltip("Log every MCP call to the Unity console.")]
+        [SerializeField] private bool _mcpServerVerbose = false;
         [Space(10)]
         [Header("Google Sheets Settings")]
         [SerializeField] private bool _disableGoogleSheetExport = false;
