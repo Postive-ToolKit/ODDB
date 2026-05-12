@@ -58,6 +58,8 @@ namespace TeamODD.ODDB.Editors
 
         private static void BootServer()
         {
+            McpMainThread.EnsurePump();
+
             var settings = ODDBSettings.Setting;
             if (settings == null || !settings.EnableMCPServer)
             {
@@ -69,7 +71,8 @@ namespace TeamODD.ODDB.Editors
             _toolRegistry = new McpToolRegistry();
             _resourceRegistry = new McpResourceRegistry();
 
-            // Concrete tool and resource registrations are added in later tasks.
+            _resourceRegistry.Register(new MCP.Resources.DatabaseResource(UseCase));
+            // Additional resources and tools are added in subsequent registrations below.
 
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
@@ -100,7 +103,8 @@ namespace TeamODD.ODDB.Editors
                     return McpResponse.Failure(id, McpError.MethodNotFound($"tool:{name}"));
                 try
                 {
-                    var result = tool.Execute(args);
+                    // Tool handlers touch Unity APIs that must run on the main thread.
+                    var result = McpMainThread.Run(() => tool.Execute(args));
                     return McpResponse.Success(id, new
                     {
                         content = new[] { new { type = "text", text = JsonConvert.SerializeObject(result) } },
@@ -122,7 +126,8 @@ namespace TeamODD.ODDB.Editors
                     return McpResponse.Failure(id, McpError.Of(McpErrorKind.NotFound, $"resource not found: {uri}"));
                 try
                 {
-                    var payload = res.Read(uri);
+                    // Resource handlers may read Unity assets that require main thread.
+                    var payload = McpMainThread.Run(() => res.Read(uri));
                     return McpResponse.Success(id, new
                     {
                         contents = new[] { new { uri, mimeType = res.MimeType ?? "application/json", text = JsonConvert.SerializeObject(payload) } },
