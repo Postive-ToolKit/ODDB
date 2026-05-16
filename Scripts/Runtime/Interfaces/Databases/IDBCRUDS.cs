@@ -13,5 +13,6 @@ namespace TeamODD.ODDB.Runtime.Interfaces
         void Delete(ODDBID id);
         void Delete(int index);
         void Swap(int first, int second);
+        void Move(int oldIndex, int newIndex);
     }
 }

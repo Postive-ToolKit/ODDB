@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Plugins.ODDB.Scripts.Editor.Utils.Elements
+namespace TeamODD.ODDB.Editors.Utils.Elements
 {
     public class ODDBButton : Button
     {

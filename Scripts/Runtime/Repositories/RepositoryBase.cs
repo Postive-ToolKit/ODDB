@@ -92,6 +92,19 @@ namespace TeamODD.ODDB.Runtime
             OnDataChanged?.Invoke(secondItem.ID);
         }
 
+        public void Move(int oldIndex, int newIndex)
+        {
+            if (oldIndex < 0 || oldIndex >= _list.Count || newIndex < 0 || newIndex >= _list.Count)
+                return;
+            if (oldIndex == newIndex)
+                return;
+
+            var item = _list[oldIndex];
+            _list.RemoveAt(oldIndex);
+            _list.Insert(newIndex, item);
+            OnDataChanged?.Invoke(item.ID);
+        }
+
         public IReadOnlyList<T> GetAll()
         {
             return _list.AsReadOnly();

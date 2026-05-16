@@ -23,6 +23,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly Dictionary<string, int> _indexMapping = new Dictionary<string, int>();
         private readonly Dictionary<string, Action> _itemActions = new Dictionary<string, Action>();
+        private readonly List<IView> _flatViews = new();
         private readonly List<Type> _viewTypes = new();
         private IView _view;
 
@@ -43,6 +44,8 @@ namespace TeamODD.ODDB.Editors.UI
             makeItem = MakeItem;
             bindItem = CreateVisualElement;
             selectionChanged += OnSelectionChanged;
+            reorderable = true;
+            itemIndexChanged += OnItemIndexChanged;
 
             showAlternatingRowBackgrounds = AlternatingRowBackground.All;
             showBorder = true;
@@ -183,6 +186,7 @@ namespace TeamODD.ODDB.Editors.UI
             
             _itemActions.Clear();
             _indexMapping.Clear();
+            _flatViews.Clear();
             _itemIds = 0;
             var results = new List<TreeViewItemData<IView>>();
             foreach (var view in targets)
@@ -196,16 +200,18 @@ namespace TeamODD.ODDB.Editors.UI
         
         private TreeViewItemData<IView> TraverseContainer(ViewContainer container)
         {
+            var itemId = _itemIds;
+            _indexMapping[container.View.ID] = itemId;
+            _flatViews.Add(container.View);
+            _itemIds++;
+
             var children = new List<TreeViewItemData<IView>>();
             foreach (var child in container.Children)
             {
                 var childItem = TraverseContainer(child);
                 children.Add(childItem);
             }
-            var item = new TreeViewItemData<IView>(_itemIds,container.View, children);
-            _indexMapping[container.View.ID] = _itemIds;
-            _itemIds++;
-            return item;
+            return new TreeViewItemData<IView>(itemId, container.View, children);
         }
 
         private void Update()
@@ -304,6 +310,61 @@ namespace TeamODD.ODDB.Editors.UI
                 }
             }
             _view = null;
+        }
+
+        private void OnItemIndexChanged(int oldIndex, int newIndex)
+        {
+            if (oldIndex < 0 || oldIndex >= _flatViews.Count || newIndex < 0 || newIndex >= _flatViews.Count)
+            {
+                ScheduleRebuild();
+                return;
+            }
+
+            var moved = _flatViews[oldIndex];
+            var destination = _flatViews[newIndex];
+            if (moved == null || destination == null)
+            {
+                ScheduleRebuild();
+                return;
+            }
+
+            if (moved.GetType() != destination.GetType())
+            {
+                ScheduleRebuild();
+                return;
+            }
+
+            if (!HasSameParent(moved, destination))
+            {
+                ScheduleRebuild();
+                return;
+            }
+
+            var oldSiblingIndex = CountPreviousSiblings(oldIndex, moved);
+            var newSiblingIndex = CountPreviousSiblings(newIndex, moved);
+            _editorUseCase.MoveViewItem(moved.ID, oldSiblingIndex, newSiblingIndex);
+            ScheduleRebuild();
+        }
+
+        private static bool HasSameParent(IView first, IView second)
+        {
+            var firstParentId = first.ParentView?.ID.ToString();
+            var secondParentId = second.ParentView?.ID.ToString();
+            return string.Equals(firstParentId, secondParentId);
+        }
+
+        private int CountPreviousSiblings(int beforeFlatIndex, IView moved)
+        {
+            var count = 0;
+            for (var i = 0; i < beforeFlatIndex && i < _flatViews.Count; i++)
+            {
+                var candidate = _flatViews[i];
+                if (candidate == null)
+                    continue;
+                if (candidate.GetType() == moved.GetType() && HasSameParent(candidate, moved))
+                    count++;
+            }
+            return count;
         }
         
         private void UpdateView(string viewId)

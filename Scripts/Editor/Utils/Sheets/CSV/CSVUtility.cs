@@ -6,7 +6,7 @@ using TeamODD.ODDB.Editors;
 using UnityEditor;
 using UnityEngine;
 using TeamODD.ODDB.Editors.Utils.Sheets;
-namespace Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV
+namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
 {
     public class CSVUtility
     {

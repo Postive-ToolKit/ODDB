@@ -1,5 +1,5 @@
 ﻿using System;
-using Plugins.ODDB.Scripts.Editor.Utils.Elements;
+using TeamODD.ODDB.Editors.Utils.Elements;
 using TeamODD.ODDB.Editors.DTO;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
