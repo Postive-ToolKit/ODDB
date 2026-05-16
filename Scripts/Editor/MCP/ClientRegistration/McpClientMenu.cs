@@ -11,18 +11,19 @@ namespace TeamODD.ODDB.Editors.MCP.ClientRegistration
     public static class McpClientMenu
     {
         private const string KEY = "oddb";
-        private const string MENU_ROOT = "ODDB/MCP/";
+        private const string MENU_REGISTER = "ODDB/MCP/Register/";
+        private const string MENU_UNREGISTER = "ODDB/MCP/Unregister/";
 
-        [MenuItem(MENU_ROOT + "Register with Claude Code")]
+        [MenuItem(MENU_REGISTER + "Claude Code")]
         public static void RegisterClaude() => Register(new ClaudeCodeClient());
 
-        [MenuItem(MENU_ROOT + "Unregister from Claude Code")]
-        public static void UnregisterClaude() => Unregister(new ClaudeCodeClient());
-
-        [MenuItem(MENU_ROOT + "Register with Gemini")]
+        [MenuItem(MENU_REGISTER + "Gemini CLI")]
         public static void RegisterGemini() => Register(new GeminiClient());
 
-        [MenuItem(MENU_ROOT + "Unregister from Gemini")]
+        [MenuItem(MENU_UNREGISTER + "Claude Code")]
+        public static void UnregisterClaude() => Unregister(new ClaudeCodeClient());
+
+        [MenuItem(MENU_UNREGISTER + "Gemini CLI")]
         public static void UnregisterGemini() => Unregister(new GeminiClient());
 
         private static void Register(IMcpClient client)
