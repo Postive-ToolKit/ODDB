@@ -29,6 +29,45 @@ namespace TeamODD.ODDB.Editors
         private static McpToolRegistry _toolRegistry;
         private static McpResourceRegistry _resourceRegistry;
 
+        private const string ServerInstructions =
+@"This server controls a Unity ODDB database — a hierarchical view/table store
+with row data and code-bound entities.
+
+When the user asks to EXPLORE or VIEW data, read resources; do not call tools:
+  - Start at oddb://views to list every view and table ({id, name, type, parentId, bindType}).
+  - For a specific view's fields, read oddb://views/{id}/schema (or the full
+    detail at oddb://views/{id}).
+  - For row data, read oddb://tables/{id}/rows. Each cell exposes a raw `value`
+    string and a `deserialized` field; prefer `deserialized` when presenting
+    values to the user.
+  - oddb://bind-types and oddb://data-types describe the available C# bind
+    classes and field types respectively.
+  - oddb://database returns DB metadata and the active MCP port.
+  - oddb://commands/history shows recent undo/redo entries.
+
+When the user asks to MODIFY anything, use tools (names start with `oddb_`):
+  data:    oddb_add_row, oddb_remove_row, oddb_set_cell
+  schema:  oddb_add_view / oddb_add_table / oddb_remove_view / oddb_remove_table
+           oddb_add_field / oddb_remove_field / oddb_move_field
+           oddb_set_view_name / oddb_set_view_bind_type / oddb_set_view_parent
+  system:  oddb_generate_code, oddb_save_database
+
+All writes route through ODDB's CommandProcessor so each tool call is undoable
+via the Editor's Ctrl+Z. After mutations the in-editor table view refreshes
+automatically.
+
+Code generation: oddb_generate_code writes C# classes from the current schema,
+then Unity compiles asynchronously. The MCP response returns before the
+compile finishes; ask the user to wait for the Editor console to settle
+before using newly generated types.
+
+Workflow shortcuts you can offer the user:
+  - 'Show me the data in <table>' → read oddb://views, find the matching id,
+    then read oddb://tables/{id}/rows and render the cells.
+  - 'Create a new <name> table' → call oddb_add_table with optional name,
+    parentViewId, and bindType in one shot.
+  - 'Fill in N rows of <table>' → loop oddb_add_row + oddb_set_cell per cell.";
+
         public static IODDBEditorUseCase UseCase
         {
             get
@@ -113,6 +152,7 @@ namespace TeamODD.ODDB.Editors
                 protocolVersion = "2024-11-05",
                 serverInfo = new { name = "ODDB", version = "1.8.0" },
                 capabilities = new { tools = new { }, resources = new { } },
+                instructions = ServerInstructions,
             }));
 
             _dispatcher.Register("ping", (id, p) => McpResponse.Success(id, new { }));
