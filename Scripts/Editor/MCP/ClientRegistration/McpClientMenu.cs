@@ -1,0 +1,77 @@
+using System;
+using UnityEditor;
+
+namespace TeamODD.ODDB.Editors.MCP.ClientRegistration
+{
+    /// <summary>
+    /// Unity menu entries that auto-write the ODDB MCP server URL into the
+    /// supported client config files (Claude Code, Gemini CLI). The key is
+    /// fixed as "oddb"; existing entries with the same key are overwritten.
+    /// </summary>
+    public static class McpClientMenu
+    {
+        private const string KEY = "oddb";
+        private const string MENU_ROOT = "ODDB/MCP/";
+
+        [MenuItem(MENU_ROOT + "Register with Claude Code")]
+        public static void RegisterClaude() => Register(new ClaudeCodeClient());
+
+        [MenuItem(MENU_ROOT + "Unregister from Claude Code")]
+        public static void UnregisterClaude() => Unregister(new ClaudeCodeClient());
+
+        [MenuItem(MENU_ROOT + "Register with Gemini")]
+        public static void RegisterGemini() => Register(new GeminiClient());
+
+        [MenuItem(MENU_ROOT + "Unregister from Gemini")]
+        public static void UnregisterGemini() => Unregister(new GeminiClient());
+
+        private static void Register(IMcpClient client)
+        {
+            var port = ODDBEditorRuntime.McpPort;
+            if (!port.HasValue)
+            {
+                EditorUtility.DisplayDialog(
+                    "ODDB MCP",
+                    $"MCP server is not running. Enable it in ODDBSettings, then try again.",
+                    "OK");
+                return;
+            }
+
+            var url = $"http://127.0.0.1:{port.Value}";
+            try
+            {
+                client.Register(KEY, url);
+                EditorUtility.DisplayDialog(
+                    "ODDB MCP",
+                    $"Registered '{KEY}' → {url}\nin {client.ConfigPath}\n\nRestart {client.DisplayName} to pick up the new server.",
+                    "OK");
+            }
+            catch (Exception ex)
+            {
+                EditorUtility.DisplayDialog(
+                    "ODDB MCP",
+                    $"Failed to write {client.ConfigPath}:\n{ex.Message}",
+                    "OK");
+            }
+        }
+
+        private static void Unregister(IMcpClient client)
+        {
+            try
+            {
+                client.Unregister(KEY);
+                EditorUtility.DisplayDialog(
+                    "ODDB MCP",
+                    $"Removed '{KEY}' from {client.ConfigPath}\n\nRestart {client.DisplayName} to clear the entry.",
+                    "OK");
+            }
+            catch (Exception ex)
+            {
+                EditorUtility.DisplayDialog(
+                    "ODDB MCP",
+                    $"Failed to write {client.ConfigPath}:\n{ex.Message}",
+                    "OK");
+            }
+        }
+    }
+}
