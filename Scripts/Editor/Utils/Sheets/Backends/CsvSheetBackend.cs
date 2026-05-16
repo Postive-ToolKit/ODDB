@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Plugins.ODDB.Scripts.Editor.Utils.Sheets.CSV;
+using TeamODD.ODDB.Editors.Utils.Sheets.CSV;
 using TeamODD.ODDB.Editors.UI.Progress;
 using UnityEditor;
 

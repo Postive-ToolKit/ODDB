@@ -2,7 +2,7 @@
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
-namespace Plugins.ODDB.Scripts.Runtime.Data.Repositories
+namespace TeamODD.ODDB.Runtime
 {
     public class Repository<T> : RepositoryBase<T> where T : IHasODDBID, new()
     {
