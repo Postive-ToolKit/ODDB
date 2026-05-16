@@ -253,6 +253,26 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.Execute(command);
         }
 
+        public void MoveViewItem(string viewId, int oldSiblingIndex, int newSiblingIndex)
+        {
+            if (!ViewSiblingOrderResolver.TryResolveMove(
+                    _database,
+                    viewId,
+                    oldSiblingIndex,
+                    newSiblingIndex,
+                    out var repository,
+                    out var oldRepositoryIndex,
+                    out var newRepositoryIndex))
+                return;
+
+            var command = new MoveViewItemCommand(
+                repository,
+                oldRepositoryIndex,
+                newRepositoryIndex,
+                id => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
         public Type GetViewBindType(string id)
         {
             var view = GetViewByKey(id);
