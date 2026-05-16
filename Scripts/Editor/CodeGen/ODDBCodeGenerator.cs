@@ -8,6 +8,7 @@ using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.CodeGen
@@ -117,6 +118,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
             // 8. Refresh — Unity compiles, then PendingBindAssigner runs on reload.
             AssetDatabase.Refresh();
+            CompilationPipeline.RequestScriptCompilation();
             _ = ODDBResultWindow.ShowAsync(
                 "ODDB CodeGen",
                 $"{written.Count} class(es) written to {OutputPathResolver.ToAssetsRelative(outputFolder)}.\n" +
