@@ -111,7 +111,7 @@ namespace TeamODD.ODDB.Editors
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
                 protocolVersion = "2024-11-05",
-                serverInfo = new { name = "ODDB", version = "1.7.1" },
+                serverInfo = new { name = "ODDB", version = "1.8.0" },
                 capabilities = new { tools = new { }, resources = new { } },
             }));
 
