@@ -3,6 +3,7 @@ using System.IO;
 using UnityEngine;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Types;
 using Object = UnityEngine.Object;
 
 #if UNITY_EDITOR
@@ -10,6 +11,7 @@ using UnityEditor;
 #endif
 namespace TeamODD.ODDB.Runtime.Serializers
 {
+    [ODDBType("resource", targetType: typeof(UnityEngine.Object), folder: "Unity Assets")]
     public class ResourceSerializer : IDataSerializer
     {
         public string Serialize(object data, string param)

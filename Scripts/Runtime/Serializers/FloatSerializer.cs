@@ -1,5 +1,8 @@
-﻿namespace TeamODD.ODDB.Runtime.Serializers
+﻿using TeamODD.ODDB.Runtime.Types;
+
+namespace TeamODD.ODDB.Runtime.Serializers
 {
+    [ODDBType("float", targetType: typeof(float), folder: "Primitives")]
     public class FloatSerializer : IDataSerializer
     {
         public string Serialize(object data, string param)

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using TeamODD.ODDB.Runtime.Types;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Runtime.Serializers
@@ -7,6 +8,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
     /// Serializer for Enum types.
     /// Store as int and deserialize back to Enum.
     /// </summary>
+    [ODDBType("enum", targetType: typeof(System.Enum), folder: "Primitives", requiresParam: true)]
     public class EnumSerializer : IDataSerializer
     {
         public string Serialize(object data, string param)

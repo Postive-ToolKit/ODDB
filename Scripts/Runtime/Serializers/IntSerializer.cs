@@ -1,8 +1,11 @@
-﻿namespace TeamODD.ODDB.Runtime.Serializers
+﻿using TeamODD.ODDB.Runtime.Types;
+
+namespace TeamODD.ODDB.Runtime.Serializers
 {
     /// <summary>
     /// Serializer for integer data type.
     /// </summary>
+    [ODDBType("int", targetType: typeof(int), folder: "Primitives")]
     public class IntSerializer : IDataSerializer
     {
         public string Serialize(object data, string param)
