@@ -7,6 +7,7 @@ using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Settings;
+using TeamODD.ODDB.Runtime.Types;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Editors.CodeGen
@@ -50,6 +51,21 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
         public Resolved Resolve(FieldType fieldType, IODatabaseView referencedViewLookup)
         {
+            // v2.0 — try TypeRegistry first for primitives whose TargetType is a concrete usable type.
+            // Special-cased branches below (View/Custom/Enum/Resource/Addressable) need extra context
+            // the registry can't supply standalone (param-based lookups, batch view lookup, etc).
+            var descriptor = TypeRegistry.GetDescriptor(fieldType.TypeKey);
+            if (descriptor != null && descriptor.TargetType != null && !descriptor.RequiresParam
+                && !IsSpecialCased(fieldType))
+            {
+                var t = descriptor.TargetType;
+                // Emit C# keyword for primitives to keep generated source idiomatic.
+                var keyword = CSharpKeywordFor(t);
+                if (keyword != null)
+                    return Resolved.Success(keyword, null);
+                return Resolved.Success(t.Name, t.Namespace);
+            }
+
             switch (fieldType.Type)
             {
                 case ODDBDataType.Int:    return Resolved.Success("int",    null);
@@ -76,6 +92,37 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 default:
                     return Resolved.Failure($"unsupported data type {fieldType.Type}");
             }
+        }
+
+        private static bool IsSpecialCased(FieldType ft)
+        {
+            // These branches require Param-based resolution or batch context.
+            switch (ft.Type)
+            {
+                case ODDBDataType.Enum:
+                case ODDBDataType.Resources:
+                case ODDBDataType.View:
+                case ODDBDataType.Custom:
+#if ADDRESSABLE_EXIST
+                case ODDBDataType.Addressable:
+#endif
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static string CSharpKeywordFor(Type t)
+        {
+            if (t == typeof(int))    return "int";
+            if (t == typeof(float))  return "float";
+            if (t == typeof(bool))   return "bool";
+            if (t == typeof(string)) return "string";
+            if (t == typeof(long))   return "long";
+            if (t == typeof(double)) return "double";
+            if (t == typeof(byte))   return "byte";
+            if (t == typeof(short))  return "short";
+            return null;
         }
 
         private static Resolved ResolveEnum(string param)
