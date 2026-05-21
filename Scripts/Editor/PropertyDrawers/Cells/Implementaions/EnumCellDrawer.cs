@@ -15,11 +15,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// <summary>
     /// Property drawer for Enum data type.
     /// </summary>
-    [CellDrawer(ODDBDataType.Enum)]
+    [CellDrawer("enum")]
     public class EnumCellDrawer : IODDBCellDrawer
     {
         private static readonly IDataSerializer _serializer = ODDBDataType.Enum.GetDataSerializer();
-        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;

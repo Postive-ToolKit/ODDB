@@ -12,11 +12,11 @@ using Object = UnityEngine.Object;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
-    [CellDrawer(ODDBDataType.Resources)]
+    [CellDrawer("resource")]
     public class ResourceCellDrawer : IODDBCellDrawer
     {
         private static readonly IDataSerializer _serializer = ODDBDataType.Resources.GetDataSerializer();
-        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var referenceDataType = ODDBReferenceDataType.Object;

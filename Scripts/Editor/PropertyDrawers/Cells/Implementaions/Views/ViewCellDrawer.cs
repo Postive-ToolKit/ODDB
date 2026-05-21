@@ -18,16 +18,16 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
     /// <summary>
     /// Property drawer for ODDBCell with string data type
     /// </summary>
-    [CellDrawer(ODDBDataType.View)]
+    [CellDrawer("view")]
     public class ViewCellDrawer : StringSerializer, IODDBCellDrawer
     {
         private const string NOT_FOUND_TEXT = "No Entity Selected";
         private static IODDBEditorUseCase _useCase;
         private static IDataSerializer _serializer;
-        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             if (_serializer == null)
-                _serializer = dataType.GetDataSerializer();
+                _serializer = ODDBDataType.View.GetDataSerializer();
             if (_useCase == null)
                 _useCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             

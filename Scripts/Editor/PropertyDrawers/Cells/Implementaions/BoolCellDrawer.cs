@@ -11,11 +11,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// <summary>
     /// Property drawer for boolean fields in the ODDB system.
     /// </summary>
-    [CellDrawer(ODDBDataType.Bool)]
+    [CellDrawer("bool")]
     public class BoolCellDrawer : IODDBCellDrawer
     {
         private static readonly IDataSerializer _serializer = ODDBDataType.Bool.GetDataSerializer();
-        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;

@@ -13,11 +13,11 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// <summary>
     /// Property drawer for float data type.
     /// </summary>
-    [CellDrawer(ODDBDataType.Float)]
+    [CellDrawer("float")]
     public class FloatCellDrawer : IODDBCellDrawer
     {
         private static readonly IDataSerializer _serializer = ODDBDataType.Float.GetDataSerializer();
-        public VisualElement CreatePropertyGUI(SerializedProperty property, ODDBDataType dataType, string param)
+        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
             var serializedData = targetField.stringValue;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -9,36 +9,42 @@ using TeamODD.ODDB.Runtime.Enums;
 namespace TeamODD.ODDB.Editors.Attributes
 {
     /// <summary>
-    /// Attribute to specify a custom field drawer for a field in ODDB
+    /// Attribute to specify a custom field drawer for a field in ODDB.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
     public class CellDrawerAttribute : Attribute
     {
-        public ODDBDataType TargetType { get; set; } = ODDBDataType.String;
-        
-        public CellDrawerAttribute(ODDBDataType targetType)
+        public string TypeKey { get; }
+
+        public CellDrawerAttribute(string typeKey)
         {
-            TargetType = targetType;
+            TypeKey = typeKey;
+        }
+
+        [Obsolete("Use string typeKey overload")]
+        public CellDrawerAttribute(ODDBDataType type)
+        {
+            TypeKey = type.ToWireKey();
         }
     }
-    
+
     public static class ODDBCellDrawerAttributeExtensions
     {
         private static readonly Dictionary<ODDBDataType, IODDBCellDrawer> _cache = new();
         private static readonly Dictionary<string, IODDBCellDrawer> _customCache = new();
-        
+
         public static IODDBCellDrawer GetCellDrawer(this ODDBDataType dataType, string param = "")
         {
             if (dataType == ODDBDataType.Custom)
             {
                 if (string.IsNullOrEmpty(param))
                     return new StringCellDrawer();
-                
+
                 if (_customCache.Count == 0)
                     InitCustomCellDrawers();
-                
-                return _customCache.TryGetValue(param, out var customDrawer) 
-                    ? customDrawer 
+
+                return _customCache.TryGetValue(param, out var customDrawer)
+                    ? customDrawer
                     : new StringCellDrawer();
             }
 
@@ -60,11 +66,28 @@ namespace TeamODD.ODDB.Editors.Attributes
                     .FirstOrDefault() as CellDrawerAttribute;
                 if (attr == null)
                     continue;
-                if(_cache.ContainsKey(attr.TargetType))
+                // Map string TypeKey back to ODDBDataType for legacy lookup.
+                if (!TryMapKeyToEnum(attr.TypeKey, out var dataType))
+                    continue;
+                if (_cache.ContainsKey(dataType))
                     continue;
                 if (Activator.CreateInstance(drawerType) is IODDBCellDrawer instance)
-                    _cache[attr.TargetType] = instance;
+                    _cache[dataType] = instance;
             }
+        }
+
+        private static bool TryMapKeyToEnum(string typeKey, out ODDBDataType dataType)
+        {
+            foreach (ODDBDataType value in Enum.GetValues(typeof(ODDBDataType)))
+            {
+                if (value.ToWireKey() == typeKey)
+                {
+                    dataType = value;
+                    return true;
+                }
+            }
+            dataType = default;
+            return false;
         }
 
         private static void InitCustomCellDrawers()
