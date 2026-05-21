@@ -52,17 +52,13 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.MaxHistoryCount = ODDBSettings.Setting.MaxHistoryCount;
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
             _dataService = new ODDBDataService();
-            if(ODDBSettings.Setting.IsInitialized == false) 
+            if (ODDBSettings.Setting.IsInitialized == false)
             {
-                var pathSelector = new ODDBPathUtility();
-                var pickedPath = pathSelector.GetPath(ODDBSettings.BASE_PATH,ODDBSettings.BASE_PATH);
-                if (!string.IsNullOrEmpty(pickedPath))
-                    ODDBSettings.Setting.Path = pickedPath;
-                else
-                {
-                    ODDBSettings.Setting.Path = ODDBSettings.BASE_PATH;
-                    Debug.LogWarning("Path selection was canceled. Using default path: " + ODDBSettings.BASE_PATH);
-                }
+                // Silently default to BASE_PATH instead of opening a folder
+                // picker — the previous behaviour popped a modal dialog on every
+                // domain reload because IsInitialized was not serialized.
+                // Path can still be changed via the settings inspector.
+                ODDBSettings.Setting.Path = ODDBSettings.BASE_PATH;
             }
             
             var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);

@@ -34,7 +34,10 @@ namespace TeamODD.ODDB.Runtime.Settings
             }
         }
         public static readonly string BASE_PATH = Application.dataPath + "/Resources";
-        public bool IsInitialized => _isInitialized;
+        // Derived from _dbPath presence — survives domain reload because _dbPath is serialized.
+        // The previous _isInitialized field lacked [SerializeField] and reset to false on every
+        // domain reload, which made the editor pop a path-picker dialog on every script compile.
+        public bool IsInitialized => !string.IsNullOrEmpty(_dbPath);
         
         public bool UseDebugLog => _useDebugLog;
         
@@ -58,7 +61,6 @@ namespace TeamODD.ODDB.Runtime.Settings
                 {
                     _pathFromResources = _dbPath.StartsWith("/") ? _dbPath.Substring(1) : _dbPath;
                 }
-                _isInitialized = true;
             }
         }
         public string FullDBPath => Path + "/" + DBName;
@@ -84,7 +86,6 @@ namespace TeamODD.ODDB.Runtime.Settings
         public bool MCPServerVerbose => _mcpServerVerbose;
 
         
-        [HideInInspector] private bool _isInitialized = false;
         [SerializeField] private bool _useDebugLog = false;
         [PathSelector(true)]
         [SerializeField] private string _dbPath;
