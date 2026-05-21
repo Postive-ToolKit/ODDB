@@ -12,7 +12,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// Type-centric selector for custom data types.
     /// Lists all Types registered with CustomDataTypeAttribute.
     /// </summary>
-    [UseSubSelector(ODDBDataType.Custom)]
+    [UseSubSelector("custom")]
     public class CustomParamSelector : IFieldParamSelector
     {
         private Dictionary<string, string> _options;

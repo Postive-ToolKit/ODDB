@@ -9,7 +9,7 @@ namespace TeamODD.ODDB.Runtime.Params
     /// <summary>
     /// Sub selector creator for Data Type
     /// </summary>
-    [UseSubSelector(ODDBDataType.Enum)]
+    [UseSubSelector("enum")]
     public class EnumParamSelector : IFieldParamSelector
     {
         public Dictionary<string, string> GetOptions()

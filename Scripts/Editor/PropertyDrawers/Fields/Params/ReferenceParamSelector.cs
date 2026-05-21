@@ -10,9 +10,9 @@ namespace TeamODD.ODDB.Runtime.Params
     /// Sub selector creator for Data Type
     /// </summary>
     #if ADDRESSABLE_EXIST
-    [UseSubSelector(ODDBDataType.Resources, ODDBDataType.Addressable)]
+    [UseSubSelector("resource", "addressable")]
     #else
-    [UseSubSelector(ODDBDataType.Resources)]
+    [UseSubSelector("resource")]
     #endif
     public class ReferenceParamSelector : IFieldParamSelector
     {

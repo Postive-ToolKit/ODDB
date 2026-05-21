@@ -1,49 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
+using System.Linq;
 using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Types;
 using UnityEditor.IMGUI.Controls;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
 {
     public class FieldTypeDropDown : AdvancedDropdown
     {
-        private static List<ODDBDataType> CachedEnums
-        {
-            get
-            {
-                if (_cachedEnums != null) 
-                    return _cachedEnums;
-                _cachedEnums = new List<ODDBDataType>((ODDBDataType[])Enum.GetValues(typeof(ODDBDataType)));
-                return _cachedEnums;
-            }
-        }
-        private static List<ODDBDataType> _cachedEnums;
-        public event Action<ODDBDataType, string, string> OnSelectionChanged;
-        
+        // (typeKey, param, displayName)
+        public event Action<string, string, string> OnSelectionChanged;
+
         public FieldTypeDropDown(AdvancedDropdownState state) : base(state)
         {
-            
         }
 
         protected override AdvancedDropdownItem BuildRoot()
         {
-            var root = new AdvancedDropdownItem("FieldTypes");
-            
-            var advSelections = new Dictionary<ODDBDataType,AdvancedDropdownItem>();
-            
-            foreach (var e in CachedEnums)
+            var root = new AdvancedDropdownItem("Field Type");
+
+            var byFolder = TypeRegistry.All
+                .GroupBy(t => string.IsNullOrEmpty(t.Folder) ? "Other" : t.Folder)
+                .OrderBy(g => g.Key);
+
+            foreach (var group in byFolder)
             {
-                if (e.GetDataTypeOption().IsHideInSelector)
-                    continue;
-                advSelections.Add(e, new FieldTypeDropDownItem(e.ToString(), e));
-                root.AddChild(advSelections[e]);
-                
-                var enumSelections = e.GetTypeSubSelector();
-                if (enumSelections == null)
-                    continue;
-                foreach (var (realValue, selectionValue) in enumSelections.GetOptions())
-                    advSelections[e].AddChild(new FieldTypeDropDownItem(selectionValue, e, realValue));
+                var folderItem = new AdvancedDropdownItem(group.Key);
+                foreach (var rt in group.OrderBy(t => t.Key))
+                {
+                    var selector = rt.RequiresParam
+                        ? UseSubSelectorAttributeExtensions.FindParamSelector(rt.Key)
+                        : null;
+
+                    if (selector != null)
+                    {
+                        var subItem = new AdvancedDropdownItem(rt.Key);
+                        foreach (var opt in selector.GetOptions())
+                            subItem.AddChild(new FieldTypeDropDownItem(rt.Key, opt.Key, opt.Value));
+                        folderItem.AddChild(subItem);
+                        continue;
+                    }
+
+                    folderItem.AddChild(new FieldTypeDropDownItem(rt.Key, string.Empty, rt.Key));
+                }
+                root.AddChild(folderItem);
             }
             return root;
         }
@@ -52,7 +52,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         {
             if (item is not FieldTypeDropDownItem fieldItem)
                 return;
-            OnSelectionChanged?.Invoke(fieldItem.Type, fieldItem.Param, fieldItem.name);
+            OnSelectionChanged?.Invoke(fieldItem.TypeKey, fieldItem.Param, fieldItem.name);
         }
     }
 }

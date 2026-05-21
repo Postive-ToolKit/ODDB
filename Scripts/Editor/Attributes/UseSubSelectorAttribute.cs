@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Runtime.Enums;
@@ -12,30 +12,65 @@ namespace TeamODD.ODDB.Runtime.Attributes
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public class UseSubSelectorAttribute : Attribute
     {
-        public ODDBDataType[] TargetTypes { get; set; }
-        
+        public string[] TypeKeys { get; }
+
+        // v2.0 — preferred string-key constructor.
+        public UseSubSelectorAttribute(params string[] typeKeys)
+        {
+            TypeKeys = typeKeys ?? Array.Empty<string>();
+        }
+
+        [Obsolete("Use string typeKey overload. Enum overload will be removed in T13.")]
         public UseSubSelectorAttribute(params ODDBDataType[] targetTypes)
         {
-            TargetTypes = targetTypes;
+            TypeKeys = (targetTypes ?? Array.Empty<ODDBDataType>())
+                .Select(t => t.ToWireKey())
+                .ToArray();
+        }
+
+        // Back-compat shim for legacy callers that expected ODDBDataType[].
+        [Obsolete("Use TypeKeys (string). Will be removed in T13.")]
+        public ODDBDataType[] TargetTypes
+        {
+            get
+            {
+                var list = new List<ODDBDataType>();
+                foreach (var key in TypeKeys)
+                {
+                    if (Enum.TryParse<ODDBDataType>(key, true, out var parsed))
+                        list.Add(parsed);
+                }
+                return list.ToArray();
+            }
         }
     }
-    
+
     public static class UseSubSelectorAttributeExtensions
     {
-        private static readonly Dictionary<ODDBDataType, IFieldParamSelector> _cache = new();
-        
+        private static Dictionary<string, IFieldParamSelector> _cache;
+
         public static IFieldParamSelector GetTypeSubSelector(this ODDBDataType dataType)
         {
-            if (_cache.Count == 0)
+            return FindParamSelector(dataType.ToWireKey());
+        }
+
+        public static IFieldParamSelector FindParamSelector(string typeKey)
+        {
+            if (_cache == null)
                 InitSubSelector();
-            return _cache.TryGetValue(dataType, out var drawer) ? drawer : null;
+            return _cache.TryGetValue(typeKey ?? string.Empty, out var sel) ? sel : null;
         }
 
         private static void InitSubSelector()
         {
+            _cache = new Dictionary<string, IFieldParamSelector>();
             var drawerTypes = AppDomain.CurrentDomain
                 .GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+                .SelectMany(assembly =>
+                {
+                    try { return assembly.GetTypes(); }
+                    catch { return Array.Empty<Type>(); }
+                })
                 .Where(type => typeof(IFieldParamSelector).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract);
             foreach (var drawerType in drawerTypes)
             {
@@ -46,11 +81,13 @@ namespace TeamODD.ODDB.Runtime.Attributes
                     continue;
                 if (Activator.CreateInstance(drawerType) is not IFieldParamSelector instance)
                     continue;
-                foreach (var targetType in attr.TargetTypes)
+                foreach (var typeKey in attr.TypeKeys)
                 {
-                    if(_cache.ContainsKey(targetType))
+                    if (string.IsNullOrEmpty(typeKey))
                         continue;
-                    _cache[targetType] = instance;
+                    if (_cache.ContainsKey(typeKey))
+                        continue;
+                    _cache[typeKey] = instance;
                 }
             }
         }

@@ -11,7 +11,7 @@ namespace TeamODD.ODDB.Runtime.Params
     /// <summary>
     /// Sub selector creator for Data Type
     /// </summary>
-    [UseSubSelector(ODDBDataType.View)]
+    [UseSubSelector("view")]
     public class ViewParamSelector : IFieldParamSelector
     {
         public Dictionary<string, string> GetOptions()
