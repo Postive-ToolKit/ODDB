@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using TeamODD.ODDB.Runtime.Enums;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
@@ -8,27 +7,30 @@ namespace TeamODD.ODDB.Runtime
     [Serializable]
     public class FieldType
     {
-        public const string TYPE_FIELD = nameof(Type);
         public const string PARAM_FIELD = nameof(Param);
         public const string TYPE_KEY_FIELD = nameof(_typeKey);
 
-        public ODDBDataType Type = ODDBDataType.String;
         public string Param = string.Empty;
 
-        // v2.0 — preferred string key. Derived from Type enum when blank.
-        [SerializeField] private string _typeKey = string.Empty;
+        [SerializeField] private string _typeKey = "string";
         public string TypeKey
         {
-            get => string.IsNullOrEmpty(_typeKey) ? Type.ToWireKey() : _typeKey;
-            set => _typeKey = value;
+            get => _typeKey ?? string.Empty;
+            set => _typeKey = value ?? string.Empty;
         }
 
         public FieldType() {}
 
+        public FieldType(string typeKey, string param = "")
+        {
+            _typeKey = typeKey ?? string.Empty;
+            Param = param ?? string.Empty;
+        }
+
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.Append(Type.ToString());
+            sb.Append(TypeKey);
             if (!string.IsNullOrEmpty(Param))
             {
                 sb.Append(" - ");
@@ -37,14 +39,9 @@ namespace TeamODD.ODDB.Runtime
             return sb.ToString();
         }
 
-        public static implicit operator ODDBDataType(FieldType fieldType)
+        public static implicit operator FieldType(string typeKey)
         {
-            return fieldType.Type;
-        }
-
-        public static implicit operator FieldType(ODDBDataType dataType)
-        {
-            return new FieldType { Type = dataType };
+            return new FieldType(typeKey);
         }
     }
 }

@@ -9,8 +9,8 @@ namespace TeamODD.ODDB.Editors.MCP.Serialization
         public static JObject Field(Field f) => new JObject
         {
             ["name"] = f.Name,
-            ["type"] = f.Type.Type.ToString(),
-            ["param"] = f.Type.Param,
+            ["type"] = f.Type?.TypeKey ?? string.Empty,
+            ["param"] = f.Type?.Param ?? string.Empty,
         };
 
         public static JArray Fields(IEnumerable<Field> fs)

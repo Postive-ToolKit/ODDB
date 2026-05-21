@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
 
@@ -52,7 +51,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var cell = row.GetData(i);
                 if (cell == null) continue;
 
-                if (meta.Type == ODDBDataType.View)
+                if (meta.Type != null && meta.Type.TypeKey == "view")
                 {
                     RegisterAsLazyLoad(field, cell.SerializedData);
                     continue;

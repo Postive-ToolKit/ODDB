@@ -1,38 +1,38 @@
-﻿using System.Text;
-using TeamODD.ODDB.Editors.Utils;
+using System.Text;
 using TeamODD.ODDB.Editors.Window;
-using TeamODD.ODDB.Runtime.Enums;
 
 namespace TeamODD.ODDB.Editors.Utils
 {
     public static class EditorDataTypeExtensions
     {
-        public static string GetName(this ODDBDataType dataType, string param)
+        /// <summary>
+        /// Format a field type for display, e.g. "int", "enum - Rarity", "view - Heroes (a1b2c3)".
+        /// </summary>
+        public static string GetDisplayName(string typeKey, string param)
         {
             var sb = new StringBuilder();
-            sb.Append(dataType.ToString());
-            switch (dataType)
+            sb.Append(typeKey ?? string.Empty);
+
+            switch (typeKey)
             {
-                #if ADDRESSABLE_EXIST
-                case ODDBDataType.Addressable: 
-                #endif
-                case ODDBDataType.Resources: 
-                case ODDBDataType.Enum:
-                case ODDBDataType.Custom:
-                    sb.Append(" - ").Append(param);
+                case "addressable":
+                case "resource":
+                case "enum":
+                case "custom":
+                    if (!string.IsNullOrEmpty(param))
+                        sb.Append(" - ").Append(param);
                     return sb.ToString();
-                case ODDBDataType.View:
+                case "view":
                     var useCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
                     var view = useCase?.GetViewByKey(param);
                     if (view != null)
                         sb.Append(" - ").Append(ODDBEditorDisplayUtility.FormatNameWithId(view.Name, view.ID));
-                    else if (string.IsNullOrEmpty(param) == false)
+                    else if (!string.IsNullOrEmpty(param))
                         sb.Append(" - ").Append(param);
                     return sb.ToString();
                 default:
                     return sb.ToString();
             }
         }
-
     }
 }

@@ -88,7 +88,7 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 var columnIndex = i; // Capture the current index for the closure
                 var meta = _table.TotalFields[i];
-                var columnName = $"{meta.Name}[{meta.Type.Type.GetName(meta.Type.Param)}]";
+                var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param)}]";
                 var column = new Column()
                 {
                     title = columnName,
@@ -157,7 +157,7 @@ namespace TeamODD.ODDB.Editors.UI
             container.Add(label);
 
             var type = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
-            type.text = meta.Type.Type.GetName(meta.Type.Param);
+            type.text = EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param);
             container.Add(type);
             
             var bindField = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };

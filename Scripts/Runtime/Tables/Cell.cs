@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 using Newtonsoft.Json;
-using TeamODD.ODDB.Runtime.Attributes;
+using TeamODD.ODDB.Runtime.Serializers;
 using TeamODD.ODDB.Runtime.Types;
 using UnityEngine;
 
@@ -26,7 +26,7 @@ namespace TeamODD.ODDB.Runtime
             get => _fieldType;
             set => _fieldType = value;
         }
-        
+
         [JsonIgnore]
         [SerializeField] private FieldType _fieldType;
 
@@ -37,29 +37,37 @@ namespace TeamODD.ODDB.Runtime
         {
             _serializedData = string.Empty;
         }
-        
+
         [JsonConstructor]
         public Cell(string serializedData)
         {
             _serializedData = serializedData;
         }
-        
+
         public Cell(FieldType fieldType)
         {
             FieldType = fieldType;
         }
-        
+
         public Cell(string serializedData, FieldType fieldType)
         {
             _serializedData = serializedData;
             FieldType = fieldType;
         }
-        
+
+        private IDataSerializer ResolveSerializer()
+        {
+            var key = FieldType?.TypeKey ?? string.Empty;
+            var serializer = TypeRegistry.Get(key);
+            if (serializer != null)
+                return serializer;
+            // Last-resort fallback so a missing/unknown type key never crashes a round-trip.
+            return new StringSerializer();
+        }
+
         /// <summary>
         /// Sets the data for the cell by serializing the provided object.
         /// </summary>
-        /// <param name="data"> The data to be serialized and stored in the cell.</param>
-        /// <param name="direct"> If true, the data is directly assigned as a string without serialization.</param>
         public void SetData(object data, bool direct = false)
         {
             if (direct)
@@ -67,20 +75,17 @@ namespace TeamODD.ODDB.Runtime
                 _serializedData = data as string;
                 return;
             }
-            var serializer = TypeRegistry.Get(FieldType.TypeKey)
-                             ?? FieldType.Type.GetDataSerializer(FieldType.Param);
-            _serializedData = serializer.Serialize(data, FieldType.Param);
+            var serializer = ResolveSerializer();
+            _serializedData = serializer.Serialize(data, FieldType?.Param ?? string.Empty);
         }
 
         /// <summary>
         /// Gets the data from the cell by deserializing the stored string.
         /// </summary>
-        /// <returns> The deserialized object stored in the cell.</returns>
         public object GetData()
         {
-            var serializer = TypeRegistry.Get(FieldType.TypeKey)
-                             ?? FieldType.Type.GetDataSerializer(FieldType.Param);
-            return serializer.Deserialize(_serializedData, FieldType.Param);
+            var serializer = ResolveSerializer();
+            return serializer.Deserialize(_serializedData, FieldType?.Param ?? string.Empty);
         }
     }
 }

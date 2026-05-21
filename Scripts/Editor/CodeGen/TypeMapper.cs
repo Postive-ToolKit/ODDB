@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Types;
@@ -51,65 +50,37 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
         public Resolved Resolve(FieldType fieldType, IODatabaseView referencedViewLookup)
         {
-            // v2.0 — try TypeRegistry first for primitives whose TargetType is a concrete usable type.
-            // Special-cased branches below (View/Custom/Enum/Resource/Addressable) need extra context
-            // the registry can't supply standalone (param-based lookups, batch view lookup, etc).
-            var descriptor = TypeRegistry.GetDescriptor(fieldType.TypeKey);
-            if (descriptor != null && descriptor.TargetType != null && !descriptor.RequiresParam
-                && !IsSpecialCased(fieldType))
+            var key = fieldType?.TypeKey ?? string.Empty;
+
+            // Special-cased keys need extra context the registry can't supply standalone.
+            switch (key)
+            {
+                case "enum":
+                    return ResolveEnum(fieldType.Param);
+                case "resource":
+                    return ResolveType(fieldType.Param, "Resource");
+                case "view":
+                    return ResolveViewReference(fieldType.Param, referencedViewLookup);
+                case "custom":
+                    return ResolveCustom(fieldType.Param);
+#if ADDRESSABLE_EXIST
+                case "addressable":
+                    return ResolveAddressable(fieldType.Param);
+#endif
+            }
+
+            // Generic path — look up in TypeRegistry.
+            var descriptor = TypeRegistry.GetDescriptor(key);
+            if (descriptor != null && descriptor.TargetType != null && !descriptor.RequiresParam)
             {
                 var t = descriptor.TargetType;
-                // Emit C# keyword for primitives to keep generated source idiomatic.
                 var keyword = CSharpKeywordFor(t);
                 if (keyword != null)
                     return Resolved.Success(keyword, null);
                 return Resolved.Success(t.Name, t.Namespace);
             }
 
-            switch (fieldType.Type)
-            {
-                case ODDBDataType.Int:    return Resolved.Success("int",    null);
-                case ODDBDataType.Float:  return Resolved.Success("float",  null);
-                case ODDBDataType.Bool:   return Resolved.Success("bool",   null);
-                case ODDBDataType.String: return Resolved.Success("string", null);
-
-                case ODDBDataType.Enum:
-                    return ResolveEnum(fieldType.Param);
-
-                case ODDBDataType.Resources:
-                    return ResolveType(fieldType.Param, "Resource");
-
-                case ODDBDataType.View:
-                    return ResolveViewReference(fieldType.Param, referencedViewLookup);
-
-                case ODDBDataType.Custom:
-                    return ResolveCustom(fieldType.Param);
-
-#if ADDRESSABLE_EXIST
-                case ODDBDataType.Addressable:
-                    return ResolveAddressable(fieldType.Param);
-#endif
-                default:
-                    return Resolved.Failure($"unsupported data type {fieldType.Type}");
-            }
-        }
-
-        private static bool IsSpecialCased(FieldType ft)
-        {
-            // These branches require Param-based resolution or batch context.
-            switch (ft.Type)
-            {
-                case ODDBDataType.Enum:
-                case ODDBDataType.Resources:
-                case ODDBDataType.View:
-                case ODDBDataType.Custom:
-#if ADDRESSABLE_EXIST
-                case ODDBDataType.Addressable:
-#endif
-                    return true;
-                default:
-                    return false;
-            }
+            return Resolved.Failure($"unsupported data type '{key}'");
         }
 
         private static string CSharpKeywordFor(Type t)
@@ -147,7 +118,6 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
             if (type == null)
             {
-                // Fallback: scan by simple name across all loaded types
                 type = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(SafeGetTypes)
                     .FirstOrDefault(t => t.FullName == typeName || t.Name == typeName);
@@ -181,11 +151,9 @@ namespace TeamODD.ODDB.Editors.CodeGen
             if (string.IsNullOrEmpty(viewId))
                 return Resolved.Failure("view reference has empty Param (no target view)");
 
-            // Same-batch view: use its generated class name directly.
             if (_batchClassNames.TryGetValue(viewId, out var className))
                 return Resolved.Success(className, "ODDB.Generated");
 
-            // Already-bound view (BindType non-null): use its real type.
             var view = lookup?.Find(viewId);
             if (view == null)
                 return Resolved.Failure($"view reference target '{viewId}' not found in database");

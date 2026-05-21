@@ -1,8 +1,7 @@
-﻿using TeamODD.ODDB.Editors.Attributes;
+using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
+using TeamODD.ODDB.Runtime.Types;
 using UnityEditor;
 using UnityEngine.UIElements;
 
@@ -14,7 +13,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer("bool")]
     public class BoolCellDrawer : IODDBCellDrawer
     {
-        private static readonly IDataSerializer _serializer = ODDBDataType.Bool.GetDataSerializer();
+        private static readonly IDataSerializer _serializer = TypeRegistry.Get("bool") ?? new BoolSerializer();
         public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);

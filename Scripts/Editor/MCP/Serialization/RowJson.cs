@@ -34,7 +34,7 @@ namespace TeamODD.ODDB.Editors.MCP.Serialization
                 ["deserialized"] = deserialized == null ? null : JToken.FromObject(deserialized),
                 ["fieldType"] = new JObject
                 {
-                    ["type"] = cell.FieldType.Type.ToString(),
+                    ["type"] = cell.FieldType?.TypeKey ?? string.Empty,
                     ["param"] = cell.FieldType.Param,
                 },
             };

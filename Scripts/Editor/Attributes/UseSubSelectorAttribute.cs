@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Params.Interfaces;
 
 namespace TeamODD.ODDB.Runtime.Attributes
@@ -14,45 +13,15 @@ namespace TeamODD.ODDB.Runtime.Attributes
     {
         public string[] TypeKeys { get; }
 
-        // v2.0 — preferred string-key constructor.
         public UseSubSelectorAttribute(params string[] typeKeys)
         {
             TypeKeys = typeKeys ?? Array.Empty<string>();
-        }
-
-        [Obsolete("Use string typeKey overload. Enum overload will be removed in T13.")]
-        public UseSubSelectorAttribute(params ODDBDataType[] targetTypes)
-        {
-            TypeKeys = (targetTypes ?? Array.Empty<ODDBDataType>())
-                .Select(t => t.ToWireKey())
-                .ToArray();
-        }
-
-        // Back-compat shim for legacy callers that expected ODDBDataType[].
-        [Obsolete("Use TypeKeys (string). Will be removed in T13.")]
-        public ODDBDataType[] TargetTypes
-        {
-            get
-            {
-                var list = new List<ODDBDataType>();
-                foreach (var key in TypeKeys)
-                {
-                    if (Enum.TryParse<ODDBDataType>(key, true, out var parsed))
-                        list.Add(parsed);
-                }
-                return list.ToArray();
-            }
         }
     }
 
     public static class UseSubSelectorAttributeExtensions
     {
         private static Dictionary<string, IFieldParamSelector> _cache;
-
-        public static IFieldParamSelector GetTypeSubSelector(this ODDBDataType dataType)
-        {
-            return FindParamSelector(dataType.ToWireKey());
-        }
 
         public static IFieldParamSelector FindParamSelector(string typeKey)
         {

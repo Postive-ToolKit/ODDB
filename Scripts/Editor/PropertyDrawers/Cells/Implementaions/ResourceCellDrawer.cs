@@ -1,12 +1,12 @@
-﻿﻿using System;
- using TeamODD.ODDB.Editors.Attributes;
-using TeamODD.ODDB.Runtime.Attributes;
+using System;
+using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
+using TeamODD.ODDB.Runtime.Types;
 using UnityEditor;
 using UnityEditor.UIElements;
-using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
@@ -15,7 +15,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer("resource")]
     public class ResourceCellDrawer : IODDBCellDrawer
     {
-        private static readonly IDataSerializer _serializer = ODDBDataType.Resources.GetDataSerializer();
+        private static readonly IDataSerializer _serializer = TypeRegistry.Get("resource") ?? new ResourceSerializer();
         public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
@@ -35,7 +35,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             objectField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = _serializer.Serialize(evt.newValue, param) ;
+                var newSerializedData = _serializer.Serialize(evt.newValue, param);
                 targetField.stringValue = newSerializedData;
                 property.serializedObject.ApplyModifiedProperties();
             });

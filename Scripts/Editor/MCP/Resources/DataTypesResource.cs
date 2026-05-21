@@ -1,6 +1,5 @@
-using System;
 using System.Linq;
-using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Types;
 
 namespace TeamODD.ODDB.Editors.MCP.Resources
 {
@@ -14,12 +13,16 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
 
         public object Read(string uri)
         {
-            var values = Enum.GetValues(typeof(ODDBDataType)).Cast<ODDBDataType>();
-            return values.Select(v => new
-            {
-                name = v.ToString(),
-                requiresParam = v == ODDBDataType.Enum || v == ODDBDataType.View || v == ODDBDataType.Custom,
-            }).ToArray();
+            return TypeRegistry.All
+                .OrderBy(t => t.Folder)
+                .ThenBy(t => t.Key)
+                .Select(t => new
+                {
+                    name = t.Key,
+                    folder = t.Folder,
+                    requiresParam = t.RequiresParam,
+                })
+                .ToArray();
         }
     }
 }

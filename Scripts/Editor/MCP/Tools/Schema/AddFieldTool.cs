@@ -1,8 +1,7 @@
-using System;
 using Newtonsoft.Json.Linq;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Types;
 
 namespace TeamODD.ODDB.Editors.MCP.Tools.Schema
 {
@@ -20,7 +19,7 @@ namespace TeamODD.ODDB.Editors.MCP.Tools.Schema
             {
                 ["viewId"] = new JObject { ["type"] = "string" },
                 ["fieldName"] = new JObject { ["type"] = "string" },
-                ["fieldType"] = new JObject { ["type"] = "string", ["description"] = "ODDBDataType enum name (Int/Float/Bool/String/Enum/Resources/View/Custom)" },
+                ["fieldType"] = new JObject { ["type"] = "string", ["description"] = "ODDB type key (e.g. int/float/bool/string/enum/resource/view/custom)" },
                 ["param"] = new JObject { ["type"] = "string" },
             },
             ["required"] = new JArray("viewId", "fieldName", "fieldType"),
@@ -36,10 +35,12 @@ namespace TeamODD.ODDB.Editors.MCP.Tools.Schema
                 throw new McpException(McpErrorKind.InvalidArg, "viewId, fieldName, fieldType required");
             if (_useCase.GetViewByKey(viewId) == null)
                 throw new McpException(McpErrorKind.NotFound, $"view not found: {viewId}");
-            if (!Enum.TryParse<ODDBDataType>(typeStr, ignoreCase: true, out var dt))
+
+            var typeKey = typeStr.ToLowerInvariant();
+            if (TypeRegistry.GetDescriptor(typeKey) == null)
                 throw new McpException(McpErrorKind.InvalidArg, $"unknown fieldType: {typeStr}");
 
-            var field = new Field(fieldName, new FieldType { Type = dt, Param = param });
+            var field = new Field(fieldName, new FieldType(typeKey, param));
             _useCase.AddField(viewId, field);
             return new { success = true, affectedViewId = viewId };
         }

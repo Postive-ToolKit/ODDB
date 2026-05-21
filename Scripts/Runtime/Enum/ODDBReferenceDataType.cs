@@ -7,7 +7,7 @@ namespace TeamODD.ODDB.Runtime.Enums
 {
     /// <summary>
     /// Enum representing different types of reference data in ODDB.
-    /// Add Data Type Binding to Link ODDBReferenceDataType with ODDBDataType.
+    /// Used as the Param value of "resource"/"addressable" fields.
     /// </summary>
     public enum ODDBReferenceDataType
     {

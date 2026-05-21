@@ -1,13 +1,11 @@
-﻿using System;
+using System;
 using System.Linq;
 using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Attributes;
-using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Serializers;
+using TeamODD.ODDB.Runtime.Types;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
@@ -18,7 +16,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer("enum")]
     public class EnumCellDrawer : IODDBCellDrawer
     {
-        private static readonly IDataSerializer _serializer = ODDBDataType.Enum.GetDataSerializer();
+        private static readonly IDataSerializer _serializer = TypeRegistry.Get("enum") ?? new EnumSerializer();
         public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
         {
             var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
@@ -34,7 +32,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     property.serializedObject.ApplyModifiedProperties();
                 }
             }
-            
+
             var field = new EnumField()
             {
                 value = value
