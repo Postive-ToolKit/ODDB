@@ -1,141 +1,101 @@
 using System;
-using TeamODD.ODDB.Runtime.Attributes;
+using System.Reflection;
 using UnityEngine;
-
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace TeamODD.ODDB.Runtime.Settings
 {
+    /// <summary>
+    /// DEPRECATED — Phase 4 transitional shim. Routes legacy ODDBSettings.Setting.*
+    /// accesses to the new split (ODDBRuntimeSettings + ODDBEditorSettings).
+    /// Consumers will be migrated in T20, then this shim is deleted.
+    ///
+    /// Kept as a ScriptableObject (non-static) so existing code that does
+    /// Resources.Load&lt;ODDBSettings&gt;(...) or uses it as a method
+    /// parameter/return type still compiles.
+    /// </summary>
+    [Obsolete("Use ODDBRuntimeSettings.Setting or ODDBEditorSettings.Setting directly.")]
     public class ODDBSettings : ScriptableObject
     {
         public static ODDBSettings Setting
         {
             get
             {
-                var settingFiles = Resources.Load<ODDBSettings>("ODDBSettings");
-                if (settingFiles == null)
-                {
-                    settingFiles = CreateInstance<ODDBSettings>();
-                    settingFiles.name = "ODDBSettings";
-                    // find resources folder
-                    #if UNITY_EDITOR
-                    if (!AssetDatabase.IsValidFolder("Assets/Resources")) {
-                        AssetDatabase.CreateFolder("Assets", "Resources");
-                    }
-                    AssetDatabase.CreateAsset(settingFiles, "Assets/Resources/ODDBSettings.asset");
-                    settingFiles.Path = Application.dataPath + "/Resources";
-                    AssetDatabase.SaveAssets();
-                    #endif
-                }
-
-                return settingFiles;
+                if (_setting == null)
+                    _setting = CreateInstance<ODDBSettings>();
+                return _setting;
             }
         }
-        public static readonly string BASE_PATH = Application.dataPath + "/Resources";
-        // Derived from _dbPath presence — survives domain reload because _dbPath is serialized.
-        // The previous _isInitialized field lacked [SerializeField] and reset to false on every
-        // domain reload, which made the editor pop a path-picker dialog on every script compile.
-        public bool IsInitialized => !string.IsNullOrEmpty(_dbPath);
-        
-        public bool UseDebugLog => _useDebugLog;
-        
-        public string Path {
-            get => (Application.dataPath + DBPath).Replace("\\", "/");
-            set{
-                string newVal = value.Replace("\\", "/");
-                string dataPath = Application.dataPath.Replace("\\", "/");
-                _dbPath = newVal.Replace(dataPath, "");
-                
-                string resourcesTag = "/Resources";
-                int index = _dbPath.LastIndexOf(resourcesTag, StringComparison.OrdinalIgnoreCase);
-                if (index != -1)
-                {
-                    var resPath = _dbPath.Substring(index + resourcesTag.Length);
-                    if (resPath.StartsWith("/"))
-                        resPath = resPath.Substring(1);
-                    _pathFromResources = resPath;
-                }
-                else
-                {
-                    _pathFromResources = _dbPath.StartsWith("/") ? _dbPath.Substring(1) : _dbPath;
-                }
-            }
-        }
-        public string FullDBPath => Path + "/" + DBName;
-        public string DBPath => _dbPath;
-        public string PathFromResources => _pathFromResources;
-        public string DBName => _dbName;
-        public int MaxHistoryCount => _maxHistoryCount;
-        
-        public string GoogleSheetAPIURL => _googleSheetAPIURL;
-        public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
-        public bool DisableGoogleSheetExport => _disableGoogleSheetExport;
-        
-#if ADDRESSABLE_EXIST
-        public bool UseAddressableAutoLoad => _useAddressableAutoLoad;
-#endif
-        public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
-        public bool DisableAutoInitialization => _disableAutoInitialization;
-        public string GeneratedCodePath => _generatedCodePath;
+        private static ODDBSettings _setting;
 
-        public bool EnableMCPServer => _enableMCPServer;
-        public int MCPServerPort => _mcpServerPort;
-        public string MCPServerHost => _mcpServerHost;
-        public bool MCPServerVerbose => _mcpServerVerbose;
+        public static string BASE_PATH => ODDBRuntimeSettings.BASE_PATH;
 
-        
-        [SerializeField] private bool _useDebugLog = false;
-        [PathSelector(true)]
-        [SerializeField] private string _dbPath;
-        [SerializeField] private string _pathFromResources;
-        [SerializeField] private string _dbName = "ODDB.bytes";
-        [Space(10)]
-        [Header("Editor Settings")]
-        [Tooltip("The maximum number of history items to keep in the undo stack.")]
-        [SerializeField, Min(1)] private int _maxHistoryCount = 50;
-        [Space(10)]
-        [Header("Utility")]
-        [Tooltip("Use the first column of the row as the row name when show dropdown selector in the editor.")]
-        [SerializeField] private bool _useFirstColumnAsRowName = false;
-        [Tooltip("If true, disables automatic initialization at startup. Use ODDBPort.InitializeAsync() for manual async initialization.")]
-        [SerializeField] private bool _disableAutoInitialization = false;
-        [Space(10)]
-        [Header("Code Generation")]
-        [Tooltip("Output folder for generated POCO classes (Assets-relative). Leave empty to disable code generation.")]
-        [PathSelector(true)]
-        [SerializeField] private string _generatedCodePath = string.Empty;
-        [Space(10)]
-        [Header("MCP Server")]
-        [Tooltip("Enable the in-Editor MCP server that exposes ODDB to AI clients via HTTP.")]
-        [SerializeField] private bool _enableMCPServer = true;
-        [Tooltip("TCP port for the MCP HTTP server. Falls back to +1..+9 if busy.")]
-        [SerializeField] private int _mcpServerPort = 9123;
-        [Tooltip("Bind host. 127.0.0.1 keeps the server loopback-only.")]
-        [SerializeField] private string _mcpServerHost = "127.0.0.1";
-        [Tooltip("Log every MCP call to the Unity console.")]
-        [SerializeField] private bool _mcpServerVerbose = false;
-        [Space(10)]
-        [Header("Google Sheets Settings")]
-        [SerializeField] private bool _disableGoogleSheetExport = false;
-        [TextArea]
-        [Tooltip("The ID of the Google Sheets document to sync with.")]
-        [SerializeField] private string _googleSheetAPIURL = string.Empty;
-        [Tooltip("API Key for Google Sheets (read-only operations).")]
-        [SerializeField] private string _googleSheetAPISecretKey = string.Empty;
-        #if ADDRESSABLE_EXIST
-        [Space(10)]
-        [Header("Resource Settings")]
-        [Tooltip("If false, Database will return address of Addressable Asset - Not the asset itself.")]
-        [SerializeField] private bool _useAddressableAutoLoad = false;
-        #endif
-        private void OnValidate()
+        // Runtime delegations
+        public bool IsInitialized => ODDBRuntimeSettings.Setting.IsInitialized;
+        public bool UseDebugLog => ODDBRuntimeSettings.Setting.UseDebugLog;
+        public string Path
         {
-            if(!string.IsNullOrEmpty(_dbPath))
-            {
-                Path = _dbPath;
-            }
+            get => ODDBRuntimeSettings.Setting.Path;
+            set => ODDBRuntimeSettings.Setting.Path = value;
         }
+        public string FullDBPath => ODDBRuntimeSettings.Setting.FullDBPath;
+        public string DBPath => ODDBRuntimeSettings.Setting.DBPath;
+        public string PathFromResources => ODDBRuntimeSettings.Setting.PathFromResources;
+        public string DBName => ODDBRuntimeSettings.Setting.DBName;
+        public bool DisableAutoInitialization => ODDBRuntimeSettings.Setting.DisableAutoInitialization;
+#if ADDRESSABLE_EXIST
+        public bool UseAddressableAutoLoad => ODDBRuntimeSettings.Setting.UseAddressableAutoLoad;
+#endif
+
+        // Editor-only delegations. Reflected through ODDBEditorSettings (lives in
+        // editor asm) so the Runtime asmdef does not need to reference Editor.
+        // Returns defaults outside the Editor.
+        public int MaxHistoryCount => GetEditorInt(nameof(MaxHistoryCount), 50);
+        public bool UseFirstColumnAsRowName => GetEditorBool(nameof(UseFirstColumnAsRowName), false);
+        public string GeneratedCodePath => GetEditorString(nameof(GeneratedCodePath), string.Empty);
+        public bool DisableGoogleSheetExport => GetEditorBool(nameof(DisableGoogleSheetExport), false);
+        public string GoogleSheetAPIURL => GetEditorString(nameof(GoogleSheetAPIURL), string.Empty);
+        public string GoogleSheetAPISecretKey => GetEditorString(nameof(GoogleSheetAPISecretKey), string.Empty);
+        public bool EnableMCPServer => GetEditorBool(nameof(EnableMCPServer), true);
+        public int MCPServerPort => GetEditorInt(nameof(MCPServerPort), 9123);
+        public string MCPServerHost => GetEditorString(nameof(MCPServerHost), "127.0.0.1");
+        public bool MCPServerVerbose => GetEditorBool(nameof(MCPServerVerbose), false);
+
+        private static object GetEditorSettingInstance()
+        {
+#if UNITY_EDITOR
+            var type = Type.GetType("TeamODD.ODDB.Editors.Settings.ODDBEditorSettings, TeamODD.ODDB.Editor")
+                       ?? Type.GetType("TeamODD.ODDB.Editors.Settings.ODDBEditorSettings, ODDB.Editor")
+                       ?? FindTypeAcrossAssemblies("TeamODD.ODDB.Editors.Settings.ODDBEditorSettings");
+            if (type == null) return null;
+            var prop = type.GetProperty("Setting", BindingFlags.Public | BindingFlags.Static);
+            return prop?.GetValue(null);
+#else
+            return null;
+#endif
+        }
+
+        private static Type FindTypeAcrossAssemblies(string fullName)
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var t = asm.GetType(fullName);
+                if (t != null) return t;
+            }
+            return null;
+        }
+
+        private static T GetEditorValue<T>(string propName, T fallback)
+        {
+            var instance = GetEditorSettingInstance();
+            if (instance == null) return fallback;
+            var prop = instance.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null) return fallback;
+            var v = prop.GetValue(instance);
+            return v is T tv ? tv : fallback;
+        }
+
+        private static int GetEditorInt(string p, int d) => GetEditorValue(p, d);
+        private static bool GetEditorBool(string p, bool d) => GetEditorValue(p, d);
+        private static string GetEditorString(string p, string d) => GetEditorValue(p, d);
     }
 }
