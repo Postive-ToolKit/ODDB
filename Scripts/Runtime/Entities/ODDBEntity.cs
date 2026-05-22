@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
 
@@ -62,7 +63,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 {
                     if (ODDBSettings.Setting.UseDebugLog)
                     {
-                        Debug.LogWarning($"[Import Warning][{entityType.Name}] Field '{field.Name}' got 'null' from meta '{meta.Name}'");
+                        ODDB.Logger.Warn($"[Import Warning][{entityType.Name}] Field '{field.Name}' got 'null' from meta '{meta.Name}'");
                     }
                     continue;
                 }
@@ -78,7 +79,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 {
                     if (ODDBSettings.Setting.UseDebugLog)
                     {
-                        Debug.LogError($"[Import Error][{entityType.Name}] Failed to set '{field.Name}' (Expected {field.FieldType}, Got {value.GetType()})");
+                        ODDB.Logger.Error($"[Import Error][{entityType.Name}] Failed to set '{field.Name}' (Expected {field.FieldType}, Got {value.GetType()})");
                     }
                 }
             }

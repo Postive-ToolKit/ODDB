@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
@@ -28,7 +29,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             {
                 if (!type.IsSubclassOf(typeof(ODDBEntity)))
                 {
-                    Debug.LogError($"[ODDBImporter] '{bindType}' is not a subclass of ODDBEntity.");
+                    ODDB.Logger.Error($"[ODDBImporter] '{bindType}' is not a subclass of ODDBEntity.");
                     type = null;
                     return false;
                 }
@@ -40,7 +41,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             if (!_isFullIndexed)
             {
                 if (ODDBSettings.Setting.UseDebugLog) 
-                    Debug.Log("[ODDBImporter] Performing one-time full assembly scan to index ODDBEntities...");
+                    ODDB.Logger.Info("[ODDBImporter] Performing one-time full assembly scan to index ODDBEntities...");
                 
                 PerformFullIndex();
                 _isFullIndexed = true;
@@ -50,7 +51,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                     return type != null;
             }
 
-            Debug.LogError($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
+            ODDB.Logger.Error($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
             return false;
         }
 

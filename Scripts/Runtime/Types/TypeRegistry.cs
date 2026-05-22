@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Runtime.Types
                     catch { continue; }
                     var reg = new RegisteredType(attr.Key, attr.TargetType, attr.Folder, attr.RequiresParam, inst);
                     if (_byKey.ContainsKey(attr.Key))
-                        UnityEngine.Debug.LogWarning($"[ODDB] duplicate ODDBType key '{attr.Key}', last registration wins ({t.FullName})");
+                        TeamODD.ODDB.Runtime.ODDB.Logger.Warn($"duplicate ODDBType key '{attr.Key}', last registration wins ({t.FullName})");
                     _byKey[attr.Key] = reg;
                     _all.Add(reg);
                 }

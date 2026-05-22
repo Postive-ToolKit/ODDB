@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using Newtonsoft.Json;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.DTO;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -50,7 +51,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             }
             catch (Exception e)
             {
-                Debug.LogError("ODDBConverter.ImportDTO failed to deserialize database DTO - use default database DTO. Error: " + e);
+                ODDB.Logger.Error("ODDBConverter.ImportDTO failed to deserialize database DTO - use default database DTO. Error: " + e);
             }
             return databaseDto;
         }

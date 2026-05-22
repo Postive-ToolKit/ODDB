@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Settings;
@@ -25,7 +26,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
         public virtual string Serialize(object data, string param)
         {
             #if UNITY_EDITOR
-            Debug.LogWarning($"{nameof(AddressableSerializer)}.{nameof(Serialize)} runtime serialization is not supported.");
+            ODDB.Logger.Warn($"{nameof(AddressableSerializer)}.{nameof(Serialize)} runtime serialization is not supported.");
             #endif
             return string.Empty;
         }
@@ -61,7 +62,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
             }
             catch (Exception e)
             {
-                Debug.LogWarning("Failed to load addressable asset: " + serializedData + " | Error: " + e.Message);
+                ODDB.Logger.Warn("Failed to load addressable asset: " + serializedData + " | Error: " + e.Message);
                 return null;
             }
         }
@@ -77,7 +78,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
             
             if (genericMethod == null)
             {
-                Debug.LogError($"Failed to find {LOAD_ASSET_ASYNC_METHOD} method");
+                ODDB.Logger.Error($"Failed to find {LOAD_ASSET_ASYNC_METHOD} method");
                 return null;
             }
             

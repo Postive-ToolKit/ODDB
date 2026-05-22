@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TeamODD.ODDB.Runtime;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime.Infrastructure
@@ -32,11 +33,11 @@ namespace TeamODD.ODDB.Runtime.Infrastructure
                 }
                 catch (Exception e)
                 {
-                    Debug.LogException(e);
+                    ODDB.Logger.Error(e.ToString());
                 }
             }
 #if ODDB_DEBUG_RELOAD
-            Debug.Log($"[DomainReloadHub] TriggerClearAll invoked (count={_caches.Count})");
+            ODDB.Logger.Info($"[DomainReloadHub] TriggerClearAll invoked (count={_caches.Count})");
 #endif
         }
 

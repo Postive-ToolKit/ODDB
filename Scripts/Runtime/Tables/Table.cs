@@ -154,7 +154,7 @@ namespace TeamODD.ODDB.Runtime
                 var id = new ODDBID(rowData[0]);
                 if (_rows.ContainsKey(id))
                 {
-                    Debug.LogWarning($"Duplicate row ID found: {id}. Skipping this row.");
+                    ODDB.Logger.Warn($"Duplicate row ID found: {id}. Skipping this row.");
                     continue;
                 }
                 var data = new string[rowData.Length - 1];

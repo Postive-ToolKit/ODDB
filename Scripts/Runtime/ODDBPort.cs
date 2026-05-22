@@ -66,18 +66,18 @@ namespace TeamODD.ODDB.Runtime
 
             if (!TryConvertData(databaseAsset.bytes, out _database))
             {
-                Debug.LogError("Failed to convert database data.");
+                ODDB.Logger.Error("Failed to convert database data.");
                 return;
             }
 
-            Debug.Log("ODDB system initialized successfully.");
+            ODDB.Logger.Info("ODDB system initialized successfully.");
             try
             {
                 PortData();
             }
             catch (InvalidOperationException e)
             {
-                Debug.LogError($"Error during data porting: {e.Message}");
+                ODDB.Logger.Error($"Error during data porting: {e.Message}");
                 throw;
             }
         }
@@ -108,7 +108,7 @@ namespace TeamODD.ODDB.Runtime
             _settings = LoadSettings();
             if (_settings == null)
             {
-                Debug.LogError("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
+                ODDB.Logger.Error("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
                 return;
             }
             progress?.Report(0.1f);
@@ -116,7 +116,7 @@ namespace TeamODD.ODDB.Runtime
             var databaseAsset = await LoadDatabaseAssetAsync(_settings, cancellationToken);
             if (databaseAsset == null)
             {
-                Debug.LogError("Database asset not found.");
+                ODDB.Logger.Error("Database asset not found.");
                 return;
             }
             progress?.Report(0.25f);
@@ -135,7 +135,7 @@ namespace TeamODD.ODDB.Runtime
 
             if (database == null)
             {
-                Debug.LogError("Failed to convert database data.");
+                ODDB.Logger.Error("Failed to convert database data.");
                 return;
             }
             _database = database;
@@ -144,14 +144,14 @@ namespace TeamODD.ODDB.Runtime
             cancellationToken.ThrowIfCancellationRequested();
 
             // Entity creation must run on the main thread (Unity/Reflection restrictions)
-            Debug.Log("ODDB system initialized successfully.");
+            ODDB.Logger.Info("ODDB system initialized successfully.");
             try
             {
                 PortData();
             }
             catch (InvalidOperationException e)
             {
-                Debug.LogError($"Error during data porting: {e.Message}");
+                ODDB.Logger.Error($"Error during data porting: {e.Message}");
                 throw;
             }
             progress?.Report(1.0f);
@@ -165,7 +165,7 @@ namespace TeamODD.ODDB.Runtime
                 var targetType = view.BindType;
                 if (targetType == null)
                 {
-                    Debug.LogWarning(
+                    ODDB.Logger.Warn(
                         $"BindType is null for table {view.Name} with key {view.ID}, table will be excluded.");
                     continue;
                 }
@@ -183,7 +183,7 @@ namespace TeamODD.ODDB.Runtime
                     var entity = Activator.CreateInstance(targetType) as ODDBEntity;
                     if (entity == null)
                     {
-                        Debug.LogError($"Failed to create instance of {targetType}");
+                        ODDB.Logger.Error($"Failed to create instance of {targetType}");
                         continue;
                     }
 
@@ -214,7 +214,7 @@ namespace TeamODD.ODDB.Runtime
         {
             var settings = Resources.Load<ODDBSettings>(nameof(ODDBSettings));
             if (settings == null)
-                Debug.LogError("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
+                ODDB.Logger.Error("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
             return settings;
         }
 
@@ -224,7 +224,7 @@ namespace TeamODD.ODDB.Runtime
             var filePath = Path.ChangeExtension(fullPath, null);
             var asset = Resources.Load<TextAsset>(filePath);
             if (asset == null)
-                Debug.LogError($"Database asset not found at path: {filePath}");
+                ODDB.Logger.Error($"Database asset not found at path: {filePath}");
             return asset;
         }
 
@@ -242,7 +242,7 @@ namespace TeamODD.ODDB.Runtime
 
             var asset = request.asset as TextAsset;
             if (asset == null)
-                Debug.LogError($"Database asset not found at path: {filePath}");
+                ODDB.Logger.Error($"Database asset not found at path: {filePath}");
             return asset;
         }
 
@@ -257,7 +257,7 @@ namespace TeamODD.ODDB.Runtime
         {
             if (callback == null)
             {
-                Debug.LogError("Cannot register a null callback.");
+                ODDB.Logger.Error("Cannot register a null callback.");
                 return;
             }
 
@@ -304,7 +304,7 @@ namespace TeamODD.ODDB.Runtime
 
             if (_entityCache.TryGetValue(id, out var entity) == false)
             {
-                Debug.LogError($"No entities of ID {id} found.");
+                ODDB.Logger.Error($"No entities of ID {id} found.");
                 return false;
             }
 
@@ -314,7 +314,7 @@ namespace TeamODD.ODDB.Runtime
                 return true;
             }
 
-            Debug.LogError(
+            ODDB.Logger.Error(
                 $"Entity with ID {id} does not implement interface {typeof(T)}. Found type: {entity.GetType()}");
             return false;
         }

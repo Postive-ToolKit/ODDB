@@ -106,7 +106,7 @@ namespace TeamODD.ODDB.Runtime
 
             if (scopedIndex < 0 || scopedIndex > _fields.Count)
             {
-                Debug.LogError($"Index {index} is out of range for insertion in this view.");
+                ODDB.Logger.Error($"Index {index} is out of range for insertion in this view.");
                 return;
             }
 
@@ -119,7 +119,7 @@ namespace TeamODD.ODDB.Runtime
         public void RemoveField(int index)
         {
             if (!IsScopedField(index)) {
-                Debug.LogError($"Index {index} is out of range for this view.");
+                ODDB.Logger.Error($"Index {index} is out of range for this view.");
                 return;
             }
             _fields.RemoveAt(ConvertToScopedIndex(index));
@@ -131,7 +131,7 @@ namespace TeamODD.ODDB.Runtime
         {
             if (!IsScopedField(oldIndex) || !IsScopedField(newIndex))
             {
-                Debug.LogError($"Index {oldIndex} or {newIndex} is out of range for this view.");
+                ODDB.Logger.Error($"Index {oldIndex} or {newIndex} is out of range for this view.");
                 return;
             }
             var scopedOldIndex = ConvertToScopedIndex(oldIndex);
