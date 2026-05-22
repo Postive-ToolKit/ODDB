@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Commands;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Utils.Sheets;
@@ -49,19 +50,19 @@ namespace TeamODD.ODDB.Editors.Window
 
         public ODDBEditorUseCase() 
         {
-            _commandProcessor.MaxHistoryCount = ODDBSettings.Setting.MaxHistoryCount;
+            _commandProcessor.MaxHistoryCount = ODDBEditorSettings.Setting.MaxHistoryCount;
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
             _dataService = new ODDBDataService();
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 // Silently default to BASE_PATH instead of opening a folder
                 // picker — the previous behaviour popped a modal dialog on every
                 // domain reload because IsInitialized was not serialized.
                 // Path can still be changed via the settings inspector.
-                ODDBSettings.Setting.Path = ODDBSettings.BASE_PATH;
+                ODDBRuntimeSettings.Setting.Path = ODDBRuntimeSettings.BASE_PATH;
             }
-            
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+
+            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             
             if (File.Exists(fullPath) == false)
             {
@@ -566,7 +567,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void PersistDatabase()
         {
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             _dataService.SaveDatabase(_database, fullPath);
         }
 
@@ -581,8 +582,8 @@ namespace TeamODD.ODDB.Editors.Window
 
         private string CreatePreImportBackup()
         {
-            if (_database == null || ODDBSettings.Setting == null) return null;
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            if (_database == null || ODDBRuntimeSettings.Setting == null) return null;
+            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             if (!File.Exists(fullPath)) return null;
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");

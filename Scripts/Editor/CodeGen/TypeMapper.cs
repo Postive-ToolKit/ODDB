@@ -130,7 +130,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
 #if ADDRESSABLE_EXIST
         private static Resolved ResolveAddressable(string param)
         {
-            if (ODDBSettings.Setting.UseAddressableAutoLoad)
+            if (ODDBRuntimeSettings.Setting.UseAddressableAutoLoad)
                 return ResolveType(param, "Addressable");
             return Resolved.Success("string", null);
         }

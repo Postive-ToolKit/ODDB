@@ -1,4 +1,5 @@
 using System.Linq;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Settings;
@@ -10,7 +11,7 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
         private readonly IODDBEditorUseCase _useCase;
         // Settings are cached at construction (which happens on the main thread
         // during BootServer). Background-thread reads must not call
-        // ODDBSettings.Setting since it invokes Resources.Load.
+        // *.Setting since it invokes Resources.Load / AssetDatabase.
         private readonly string _dbPath;
         private readonly bool _enableMcp;
         private readonly string _mcpHost;
@@ -18,10 +19,11 @@ namespace TeamODD.ODDB.Editors.MCP.Resources
         public DatabaseResource(IODDBEditorUseCase useCase)
         {
             _useCase = useCase;
-            var s = ODDBSettings.Setting;
-            _dbPath = s?.FullDBPath;
-            _enableMcp = s?.EnableMCPServer ?? false;
-            _mcpHost = s?.MCPServerHost;
+            var runtime = ODDBRuntimeSettings.Setting;
+            var editor = ODDBEditorSettings.Setting;
+            _dbPath = runtime?.FullDBPath;
+            _enableMcp = editor?.EnableMCPServer ?? false;
+            _mcpHost = editor?.MCPServerHost;
         }
 
         public string UriOrTemplate => "oddb://database";

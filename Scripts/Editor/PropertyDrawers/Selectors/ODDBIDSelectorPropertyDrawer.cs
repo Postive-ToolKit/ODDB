@@ -29,7 +29,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         
         protected override void DrawPropertyLayout(GUIContent label)
         {
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 CallNextDrawer(label);
                 return;
@@ -96,7 +96,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
                 return base.CreatePropertyGUI(property);
             
             if (property.propertyType != SerializedPropertyType.String)

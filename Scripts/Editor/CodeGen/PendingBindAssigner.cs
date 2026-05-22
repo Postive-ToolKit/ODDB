@@ -24,7 +24,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
         private static void OnLoad()
         {
             // Defer until after the editor finishes its own initialization pass
-            // so that ODDBSettings is loadable.
+            // so that the runtime settings asset is loadable.
             EditorApplication.delayCall += DrainQueue;
         }
 
@@ -36,7 +36,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
             if (entries.Count == 0)
                 return;
 
-            var settings = ODDBSettings.Setting;
+            var settings = ODDBRuntimeSettings.Setting;
             if (settings == null)
                 return;
             var dbPath = Path.Combine(settings.Path, settings.DBName);

@@ -33,7 +33,7 @@ namespace TeamODD.ODDB.Editors.MCP.ClientRegistration
             {
                 EditorUtility.DisplayDialog(
                     "ODDB MCP",
-                    $"MCP server is not running. Enable it in ODDBSettings, then try again.",
+                    $"MCP server is not running. Enable it in ODDBEditorSettings, then try again.",
                     "OK");
                 return;
             }

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using TeamODD.ODDB.Runtime.Settings;
+using TeamODD.ODDB.Editors.Settings;
 using UnityEditor;
 using UnityEngine;
 
@@ -24,11 +24,11 @@ namespace TeamODD.ODDB.Editors.CodeGen.UI
 
         public static void OpenGeneratedFolder()
         {
-            var rel = ODDBSettings.Setting != null ? ODDBSettings.Setting.GeneratedCodePath : null;
+            var rel = ODDBEditorSettings.Setting != null ? ODDBEditorSettings.Setting.GeneratedCodePath : null;
             if (string.IsNullOrEmpty(rel))
             {
                 EditorUtility.DisplayDialog("ODDB CodeGen",
-                    "Set ODDBSettings.GeneratedCodePath first.", "OK");
+                    "Set ODDBEditorSettings.GeneratedCodePath first.", "OK");
                 return;
             }
             string assetsRel = rel.Replace('\\', '/').TrimStart('/');

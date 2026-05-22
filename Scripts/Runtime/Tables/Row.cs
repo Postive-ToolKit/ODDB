@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
 
@@ -86,11 +85,14 @@ namespace TeamODD.ODDB.Runtime
                 _cells[i].FieldType = totalFields[i].Type;
         }
 
+        /// <summary>
+        /// Runtime row name — always the ID. Editor display preference
+        /// (UseFirstColumnAsRowName) is applied by the Editor layer via
+        /// RowDisplayName.For(row) — see Scripts/Editor/Utils/RowDisplayName.cs.
+        /// </summary>
         public string GetName()
         {
-            if (ODDBSettings.Setting.UseFirstColumnAsRowName == false)
-                return ID.ToString();
-            return _cells[0]?.GetData()?.ToString() ?? ID;
+            return ID.ToString();
         }
     }
 }

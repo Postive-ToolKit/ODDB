@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEngine;
@@ -89,34 +90,34 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
         private static void ThrowIfSettingsNotReady()
         {
-            if (ODDBSettings.Setting == null || !ODDBSettings.Setting.IsInitialized)
-                throw new InvalidOperationException("ODDBSettings is not initialized.");
-            if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
+            if (ODDBRuntimeSettings.Setting == null || !ODDBRuntimeSettings.Setting.IsInitialized)
+                throw new InvalidOperationException("ODDBRuntimeSettings is not initialized.");
+            if (string.IsNullOrEmpty(ODDBEditorSettings.Setting.GoogleSheetAPIURL))
                 throw new InvalidOperationException(
-                    "GoogleSheetAPIURL is not configured in ODDBSettings.");
+                    "GoogleSheetAPIURL is not configured in ODDBEditorSettings.");
         }
 
         private static string BuildApiUrl()
         {
-            return $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
+            return $"{ODDBEditorSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBEditorSettings.Setting.GoogleSheetAPISecretKey}";
         }
 
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Import from Google Sheets")]
         public static async void LoadFromGoogleSheet()
         {
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 Debug.LogError("ODDB Settings is not initialized. Please set up ODDB before loading from Google Sheets.");
                 return;
             }
-            
-            if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
+
+            if (string.IsNullOrEmpty(ODDBEditorSettings.Setting.GoogleSheetAPIURL))
             {
                 Debug.LogError("Google Sheets API URL is not set in ODDB Settings.");
                 return;
             }
-            
-            var url = $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
+
+            var url = $"{ODDBEditorSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBEditorSettings.Setting.GoogleSheetAPISecretKey}";
             
             try
             {
@@ -178,25 +179,25 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Export to Google Sheets")]
         public static async void SaveToGoogleSheet()
         {
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 Debug.LogError("ODDB Settings is not initialized. Please set up ODDB before saving to Google Sheets.");
                 return;
             }
-            
-            if (ODDBSettings.Setting.DisableGoogleSheetExport)
+
+            if (ODDBEditorSettings.Setting.DisableGoogleSheetExport)
             {
                 Debug.LogError("Google Sheets export is disabled in ODDB Settings.");
                 return;
             }
-            
-            if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
+
+            if (string.IsNullOrEmpty(ODDBEditorSettings.Setting.GoogleSheetAPIURL))
             {
                 Debug.LogError("Google Sheets API URL is not set in ODDB Settings.");
                 return;
             }
-            
-            var url = $"{ODDBSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBSettings.Setting.GoogleSheetAPISecretKey}";
+
+            var url = $"{ODDBEditorSettings.Setting.GoogleSheetAPIURL}?secretKey={ODDBEditorSettings.Setting.GoogleSheetAPISecretKey}";
             
             try
             {
@@ -261,7 +262,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         [MenuItem(GoogleSheetConfig.MENU_ROOT + "Create App Script")]
         public static void CreateGoogleSheetsAppScript()
         {
-            if (ODDBSettings.Setting.IsInitialized == false)
+            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 Debug.LogError("ODDB Settings is not initialized. Please set up ODDB before creating Google Sheets App Script.");
                 return;
@@ -274,7 +275,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 return;
             }
             // replace
-            var scriptContent = scriptPreset.text.Replace(GoogleSheetConfig.SECRET_REPLACE_TAG, ODDBSettings.Setting.GoogleSheetAPISecretKey);
+            var scriptContent = scriptPreset.text.Replace(GoogleSheetConfig.SECRET_REPLACE_TAG, ODDBEditorSettings.Setting.GoogleSheetAPISecretKey);
             // save to clipboard
             EditorGUIUtility.systemCopyBuffer = scriptContent;
             var sb = new StringBuilder();

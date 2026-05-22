@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
@@ -49,7 +50,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
             // 2. Load DB
             var dataService = new ODDBDataService();
-            var dbPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            var dbPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             if (!dataService.LoadDatabase(dbPath, out var database) || database == null)
             {
                 _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", $"Failed to load database at {dbPath}", isError: true);
@@ -186,7 +187,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
         private static void FocusSettingsAsset()
         {
-            var settings = ODDBSettings.Setting;
+            var settings = ODDBEditorSettings.Setting;
             if (settings != null)
             {
                 Selection.activeObject = settings;

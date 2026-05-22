@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.UI.Progress;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets;
 using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
@@ -16,20 +17,20 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
         public Task<BackendContext> PrepareAsync(ExportScope scope, BackendIntent intent)
         {
-            if (ODDBSettings.Setting == null || !ODDBSettings.Setting.IsInitialized)
+            if (ODDBRuntimeSettings.Setting == null || !ODDBRuntimeSettings.Setting.IsInitialized)
             {
                 EditorUtility.DisplayDialog(
                     "Google Sheets",
-                    "ODDBSettings is not initialized. Open ODDB Editor once before using Google Sheets backend.",
+                    "ODDBRuntimeSettings is not initialized. Open ODDB Editor once before using Google Sheets backend.",
                     "OK");
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
-            if (string.IsNullOrEmpty(ODDBSettings.Setting.GoogleSheetAPIURL))
+            if (string.IsNullOrEmpty(ODDBEditorSettings.Setting.GoogleSheetAPIURL))
             {
                 EditorUtility.DisplayDialog(
                     "Google Sheets",
-                    "GoogleSheetAPIURL is not configured in ODDBSettings. Configure it before using the Google Sheets backend.",
+                    "GoogleSheetAPIURL is not configured in ODDBEditorSettings. Configure it before using the Google Sheets backend.",
                     "OK");
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }

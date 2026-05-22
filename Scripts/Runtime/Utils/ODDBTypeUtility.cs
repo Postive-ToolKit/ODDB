@@ -40,7 +40,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             // If still not found and we haven't done a full scan yet, do it now.
             if (!_isFullIndexed)
             {
-                if (ODDBSettings.Setting.UseDebugLog) 
+                if (ODDBRuntimeSettings.Setting.UseDebugLog) 
                     ODDB.Logger.Info("[ODDBImporter] Performing one-time full assembly scan to index ODDBEntities...");
                 
                 PerformFullIndex();

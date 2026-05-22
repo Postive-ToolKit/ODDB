@@ -104,7 +104,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
         /// </summary>
         private static ODDatabase LoadDatabaseFromFile()
         {
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             var dataService = new ODDBDataService();
             if (dataService.LoadDatabase(fullPath, out var database) == false)
             {
@@ -116,7 +116,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
 
         private void SaveDatabaseToFile(ODDatabase database)
         {
-            var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             var dataService = new ODDBDataService();
             if (dataService.SaveDatabase(database, fullPath) == false)
             {

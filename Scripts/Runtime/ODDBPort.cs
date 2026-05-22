@@ -21,7 +21,7 @@ namespace TeamODD.ODDB.Runtime
             new Dictionary<Type, Dictionary<string, ODDBEntity>>();
 
         private static readonly List<Action> _onDataPortedCallbacks = new List<Action>();
-        private static ODDBSettings _settings;
+        private static ODDBRuntimeSettings _settings;
         private static ODDatabase _database;
         private static bool _isInitialized = false;
 
@@ -108,7 +108,6 @@ namespace TeamODD.ODDB.Runtime
             _settings = LoadSettings();
             if (_settings == null)
             {
-                ODDB.Logger.Error("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
                 return;
             }
             progress?.Report(0.1f);
@@ -210,15 +209,15 @@ namespace TeamODD.ODDB.Runtime
             #endif
         }
 
-        private static ODDBSettings LoadSettings()
+        private static ODDBRuntimeSettings LoadSettings()
         {
-            var settings = Resources.Load<ODDBSettings>(nameof(ODDBSettings));
+            var settings = Resources.Load<ODDBRuntimeSettings>(nameof(ODDBRuntimeSettings));
             if (settings == null)
-                ODDB.Logger.Error("ODDBSettings not found in Resources. Please create an ODDBSettings asset.");
+                ODDB.Logger.Error("ODDBRuntimeSettings not found in Resources. Please create an ODDBRuntimeSettings asset.");
             return settings;
         }
 
-        private static TextAsset LoadDatabaseAsset(ODDBSettings settings)
+        private static TextAsset LoadDatabaseAsset(ODDBRuntimeSettings settings)
         {
             var fullPath = Path.Combine(settings.PathFromResources, settings.DBName);
             var filePath = Path.ChangeExtension(fullPath, null);
@@ -228,7 +227,7 @@ namespace TeamODD.ODDB.Runtime
             return asset;
         }
 
-        private static async Task<TextAsset> LoadDatabaseAssetAsync(ODDBSettings settings, CancellationToken cancellationToken)
+        private static async Task<TextAsset> LoadDatabaseAssetAsync(ODDBRuntimeSettings settings, CancellationToken cancellationToken)
         {
             var fullPath = Path.Combine(settings.PathFromResources, settings.DBName);
             var filePath = Path.ChangeExtension(fullPath, null);

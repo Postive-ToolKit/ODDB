@@ -36,7 +36,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
             var useCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
             if (useCase.TryGetRow(param, formalRowId, out Row row))
             {
-                title = ViewIdDropDownItem.FormatDisplayName(row.GetName(), row.ID.ToString());
+                title = ViewIdDropDownItem.FormatDisplayName(RowDisplayName.For(row), row.ID.ToString());
             }
             else
             {

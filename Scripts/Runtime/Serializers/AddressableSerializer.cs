@@ -37,7 +37,7 @@ namespace TeamODD.ODDB.Runtime.Serializers
             if (string.IsNullOrEmpty(serializedData))
                 return null;
 
-            if (ODDBSettings.Setting.UseAddressableAutoLoad == false)
+            if (ODDBRuntimeSettings.Setting.UseAddressableAutoLoad == false)
                 return serializedData;
             
             var oddbRefDataType = ODDBReferenceDataType.Object;

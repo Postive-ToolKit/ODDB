@@ -1,4 +1,4 @@
-using TeamODD.ODDB.Runtime.Settings;
+using TeamODD.ODDB.Editors.Settings;
 using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.MCP
@@ -10,7 +10,7 @@ namespace TeamODD.ODDB.Editors.MCP
             // Avoid touching the singleton until it's safe (Settings.Setting may
             // create assets on first access during Editor boot).
             bool verbose = false;
-            try { verbose = ODDBSettings.Setting != null && ODDBSettings.Setting.MCPServerVerbose; }
+            try { verbose = ODDBEditorSettings.Setting != null && ODDBEditorSettings.Setting.MCPServerVerbose; }
             catch { }
             if (!verbose) return;
             Debug.Log($"[ODDB-MCP] {msg}");

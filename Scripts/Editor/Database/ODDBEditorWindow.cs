@@ -51,7 +51,7 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     if (evt.keyCode == KeyCode.S)
                     {
-                        var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+                        var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
                         _editorUseCase.SaveDatabase(fullPath);
                     }
                     else if (evt.keyCode == KeyCode.Z)
@@ -176,7 +176,7 @@ namespace TeamODD.ODDB.Editors.Window
             var result = EditorUtility.DisplayDialog("Save Changes", "Do you want to save changes?", "Yes", "No");
             if (result)
             {
-                var fullPath = Path.Combine(ODDBSettings.Setting.Path, ODDBSettings.Setting.DBName);
+                var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
                 _editorUseCase.SaveDatabase(fullPath);
             }
             // The use case and DI registrations live in ODDBEditorRuntime now;

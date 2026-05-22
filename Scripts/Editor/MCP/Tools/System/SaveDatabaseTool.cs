@@ -19,7 +19,7 @@ namespace TeamODD.ODDB.Editors.MCP.Tools.System
         {
             try
             {
-                var s = ODDBSettings.Setting;
+                var s = ODDBRuntimeSettings.Setting;
                 var fullPath = Path.Combine(s.Path, s.DBName);
                 _useCase.SaveDatabase(fullPath);
                 return new { success = true, path = fullPath };

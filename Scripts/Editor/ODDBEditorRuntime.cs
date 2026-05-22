@@ -8,8 +8,8 @@ using TeamODD.ODDB.Editors.MCP.Tools.Schema;
 using TeamODD.ODDB.Editors.MCP.Tools.System;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 
 namespace TeamODD.ODDB.Editors
@@ -102,7 +102,7 @@ Workflow shortcuts you can offer the user:
         {
             McpMainThread.EnsurePump();
 
-            var settings = ODDBSettings.Setting;
+            var settings = ODDBEditorSettings.Setting;
             if (settings == null || !settings.EnableMCPServer)
             {
                 McpLog.Lifecycle("server disabled via settings");

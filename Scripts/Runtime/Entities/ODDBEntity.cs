@@ -61,7 +61,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 var value = cell.GetData();
                 if (value == null)
                 {
-                    if (ODDBSettings.Setting.UseDebugLog)
+                    if (ODDBRuntimeSettings.Setting.UseDebugLog)
                     {
                         ODDB.Logger.Warn($"[Import Warning][{entityType.Name}] Field '{field.Name}' got 'null' from meta '{meta.Name}'");
                     }
@@ -77,7 +77,7 @@ namespace TeamODD.ODDB.Runtime.Entities
                 }
                 catch (Exception)
                 {
-                    if (ODDBSettings.Setting.UseDebugLog)
+                    if (ODDBRuntimeSettings.Setting.UseDebugLog)
                     {
                         ODDB.Logger.Error($"[Import Error][{entityType.Name}] Failed to set '{field.Name}' (Expected {field.FieldType}, Got {value.GetType()})");
                     }

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using TeamODD.ODDB.Runtime.Settings;
+using TeamODD.ODDB.Editors.Settings;
 using UnityEditor;
 using UnityEngine;
 
@@ -17,11 +17,11 @@ namespace TeamODD.ODDB.Editors.CodeGen
         public static bool TryGetValidOutputFolder(out string absoluteFolder, out string failureReason)
         {
             absoluteFolder = null;
-            var settings = ODDBSettings.Setting;
+            var settings = ODDBEditorSettings.Setting;
             var rel = settings != null ? settings.GeneratedCodePath : null;
             if (string.IsNullOrEmpty(rel))
             {
-                failureReason = "ODDBSettings.GeneratedCodePath is empty. Set it before generating.";
+                failureReason = "ODDBEditorSettings.GeneratedCodePath is empty. Set it before generating.";
                 return false;
             }
             // Settings stores Assets-relative-ish path; canonicalize.
