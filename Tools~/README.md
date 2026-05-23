@@ -1,3 +1,18 @@
+# ODDB tools
+
+## `build.sh` — rebuild ODDB.Core dll
+
+Run after any change under `src/ODDB.Core/` to refresh `Plugins/ODDB.Core.dll`:
+
+```sh
+./Tools~/build.sh           # Release (default)
+./Tools~/build.sh Debug     # Debug build
+```
+
+Requires `dotnet` on PATH. Unity picks up the new dll on next focus.
+
+---
+
 # ODDB v1 → v2 migration
 
 `ODDB-Migrate-v1-to-v2.csx` rewrites a v1.x ODDB `.bytes` database to the v2.0 schema in place. It converts the old integer `Type` field on every `FieldType` into the new string `_typeKey`, and leaves the original file backed up as `<file>.v1.bak`.
