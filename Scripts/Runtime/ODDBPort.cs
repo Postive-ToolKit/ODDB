@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
@@ -12,34 +11,35 @@ using UnityEngine;
 
 namespace TeamODD.ODDB.Runtime
 {
+    /// <summary>
+    /// Static facade over a single global <see cref="ODDatabase"/> instance.
+    /// All caching/business logic lives on the instance — this class only delegates
+    /// and owns the global slot + Resources-based asset loading for runtime builds.
+    /// </summary>
     public static class ODDBPort
     {
+        private static ODDatabase _instance;
+        private static bool _isInitialized;
+
+        /// <summary>
+        /// The global <see cref="ODDatabase"/> instance backing this facade.
+        /// May be null until <see cref="Initialize()"/> has run.
+        /// </summary>
+        public static ODDatabase Instance => _instance;
+
         public static bool IsInitialized => _isInitialized;
-        private static readonly Dictionary<string, ODDBEntity> _entityCache = new();
-
-        private static readonly Dictionary<Type, Dictionary<string, ODDBEntity>> _entityTypeCache =
-            new Dictionary<Type, Dictionary<string, ODDBEntity>>();
-
-        private static readonly List<Action> _onDataPortedCallbacks = new List<Action>();
-        private static ODDBRuntimeSettings _settings;
-        private static ODDatabase _database;
-        private static bool _isInitialized = false;
 
         #region Initialization
 
         /// <summary>
         /// Initialize the ODDB system, with an option to force re-initialization.
-        /// For Editor Initialization.
         /// </summary>
-        /// <param name="isForce"> If true, forces re-initialization even if already initialized. </param>
         public static void Initialize(bool isForce)
         {
             if (isForce)
             {
                 _isInitialized = false;
-                _entityCache.Clear();
-                _entityTypeCache.Clear();
-                _onDataPortedCallbacks.Clear();
+                _instance = null;
             }
 
             Initialize();
@@ -51,29 +51,34 @@ namespace TeamODD.ODDB.Runtime
             if (_isInitialized)
                 return;
 
-            _settings = LoadSettings();
-            if (_settings == null)
+            var settings = LoadSettings();
+            if (settings == null)
                 return;
 
-            if (_settings.DisableAutoInitialization)
+            if (settings.DisableAutoInitialization)
                 return;
 
             _isInitialized = true;
 
-            var databaseAsset = LoadDatabaseAsset(_settings);
+            var databaseAsset = LoadDatabaseAsset(settings);
             if (databaseAsset == null)
+            {
+                _instance = new ODDatabase();
                 return;
+            }
 
-            if (!TryConvertData(databaseAsset.bytes, out _database))
+            if (!TryConvertData(databaseAsset.bytes, out _instance))
             {
                 ODDB.Logger.Error("Failed to convert database data.");
+                _instance = new ODDatabase();
                 return;
             }
 
             ODDB.Logger.Info("ODDB system initialized successfully.");
             try
             {
-                PortData();
+                _instance.PortData();
+                TrimRuntimeMemory();
             }
             catch (InvalidOperationException e)
             {
@@ -84,11 +89,7 @@ namespace TeamODD.ODDB.Runtime
 
         /// <summary>
         /// Initializes the ODDB system asynchronously, allowing non-blocking database loading.
-        /// Use this when you want to avoid startup hitches with large databases.
         /// </summary>
-        /// <param name="isForce">If true, forces re-initialization even if already initialized.</param>
-        /// <param name="cancellationToken">Token to cancel the async operation.</param>
-        /// <param name="progress">Reports initialization progress (0.0 to 1.0).</param>
         public static async Task InitializeAsync(bool isForce = false, CancellationToken cancellationToken = default, IProgress<float> progress = null)
         {
             if (_isInitialized && !isForce)
@@ -97,32 +98,28 @@ namespace TeamODD.ODDB.Runtime
             if (isForce)
             {
                 _isInitialized = false;
-                _entityCache.Clear();
-                _entityTypeCache.Clear();
-                _onDataPortedCallbacks.Clear();
+                _instance = null;
             }
 
             _isInitialized = true;
             cancellationToken.ThrowIfCancellationRequested();
 
-            _settings = LoadSettings();
-            if (_settings == null)
-            {
+            var settings = LoadSettings();
+            if (settings == null)
                 return;
-            }
             progress?.Report(0.1f);
 
-            var databaseAsset = await LoadDatabaseAssetAsync(_settings, cancellationToken);
+            var databaseAsset = await LoadDatabaseAssetAsync(settings, cancellationToken);
             if (databaseAsset == null)
             {
                 ODDB.Logger.Error("Database asset not found.");
+                _instance = new ODDatabase();
                 return;
             }
             progress?.Report(0.25f);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Decompression + deserialization can run on a background thread
             var binary = databaseAsset.bytes;
             var database = await Task.Run(() =>
             {
@@ -135,18 +132,19 @@ namespace TeamODD.ODDB.Runtime
             if (database == null)
             {
                 ODDB.Logger.Error("Failed to convert database data.");
+                _instance = new ODDatabase();
                 return;
             }
-            _database = database;
+            _instance = database;
             progress?.Report(0.75f);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Entity creation must run on the main thread (Unity/Reflection restrictions)
             ODDB.Logger.Info("ODDB system initialized successfully.");
             try
             {
-                PortData();
+                _instance.PortData();
+                TrimRuntimeMemory();
             }
             catch (InvalidOperationException e)
             {
@@ -156,56 +154,13 @@ namespace TeamODD.ODDB.Runtime
             progress?.Report(1.0f);
         }
 
-        private static void PortData()
+        private static void TrimRuntimeMemory()
         {
-            var tables = _database.Tables;
-            foreach (var view in tables.GetAll())
-            {
-                var targetType = view.BindType;
-                if (targetType == null)
-                {
-                    ODDB.Logger.Warn(
-                        $"BindType is null for table {view.Name} with key {view.ID}, table will be excluded.");
-                    continue;
-                }
-
-                if (view is not Table table)
-                    return;
-
-                if (!_entityTypeCache.ContainsKey(targetType))
-                {
-                    _entityTypeCache[targetType] = new Dictionary<string, ODDBEntity>();
-                }
-
-                foreach (var row in table.Rows)
-                {
-                    var entity = Activator.CreateInstance(targetType) as ODDBEntity;
-                    if (entity == null)
-                    {
-                        ODDB.Logger.Error($"Failed to create instance of {targetType}");
-                        continue;
-                    }
-
-                    entity.Import(table.TotalFields, row);
-                    _entityCache[row.ID] = entity;
-                    _entityTypeCache[targetType][row.ID] = entity;
-                }
-            }
-
-            foreach (var callback in _onDataPortedCallbacks)
-            {
-                callback?.Invoke();
-            }
-
-            // Memory Trimming: After porting data to entities, 
-            // the raw row/cell data in _database is no longer needed at runtime.
+            // After porting data to entities, the raw row/cell data is no longer needed at runtime.
+            // We keep table structures for field metadata, but individual cells are cleared.
             #if !UNITY_EDITOR
-            if (_database != null)
-            {
-                _database.ClearTableData();
-                // We keep the _database and table structures for field metadata, 
-                // but individual cells are cleared.
-            }
+            if (_instance != null)
+                _instance.ClearTableData();
             #endif
         }
 
@@ -252,105 +207,50 @@ namespace TeamODD.ODDB.Runtime
             return database != null;
         }
 
-        public static void RegisterOnDataPortedCallback(Action callback)
+        private static ODDatabase EnsureInstance()
         {
-            if (callback == null)
-            {
-                ODDB.Logger.Error("Cannot register a null callback.");
-                return;
-            }
-
-            _onDataPortedCallbacks.Add(callback);
-        }
-
-        /// <summary>
-        /// Enumerates the IDs of entities currently live in the runtime entity cache.
-        /// Used by ODDBID's domain-reload rebuild so the collision-avoidance set can be
-        /// repopulated from still-loaded entities rather than cleared outright.
-        /// </summary>
-        public static IEnumerable<string> GetLiveEntityIds()
-        {
-            return _entityCache.Keys;
+            if (_instance == null)
+                Initialize();
+            return _instance;
         }
 
         #endregion
 
-        /// <summary>
-        /// Get entity of type T by ID
-        /// </summary>
-        /// <param name="id"> The ID of the entity </param>
-        /// <typeparam name="T"> The type of the entity to retrieve </typeparam>
-        /// <returns> The entity of type T with the specified ID, or default if not found </returns>
-        public static T GetEntity<T>(string id)
-        {
-            if (TryGetEntity<T>(id, out var entity))
-                return entity;
-            return default;
-        }
+        #region Delegated API
+
+        public static void RegisterOnDataPortedCallback(Action callback) =>
+            EnsureInstance()?.RegisterOnDataPorted(callback);
 
         /// <summary>
-        /// Try to get entity of type T by string value
+        /// Enumerates the IDs of entities currently live in the runtime entity cache.
         /// </summary>
-        /// <param name="id"> The ID of the entity </param>
-        /// <param name="result"> The output entity if found </param>
-        /// <typeparam name="T"> The type of the entity to retrieve </typeparam>
-        /// <returns></returns>
+        public static IEnumerable<string> GetLiveEntityIds() =>
+            _instance != null ? _instance.GetLiveEntityIds() : Enumerable.Empty<string>();
+
+        /// <summary>Get entity of type T by ID.</summary>
+        public static T GetEntity<T>(string id) =>
+            EnsureInstance() is { } db ? db.GetEntity<T>(id) : default;
+
+        /// <summary>Try to get entity of type T by ID.</summary>
         public static bool TryGetEntity<T>(string id, out T result)
         {
-            result = default;
-            if (string.IsNullOrEmpty(id))
-                return false;
-
-            if (_entityCache.TryGetValue(id, out var entity) == false)
+            var db = EnsureInstance();
+            if (db == null)
             {
-                ODDB.Logger.Error($"No entities of ID {id} found.");
+                result = default;
                 return false;
             }
-
-            if (entity is T typedEntity)
-            {
-                result = typedEntity;
-                return true;
-            }
-
-            ODDB.Logger.Error(
-                $"Entity with ID {id} does not implement interface {typeof(T)}. Found type: {entity.GetType()}");
-            return false;
-        }
-        
-        /// <summary>
-        /// Get all entities of type T
-        /// </summary>
-        /// <typeparam name="T"> The type of entities to retrieve </typeparam>
-        /// <returns> All entities of type T </returns>
-        public static IEnumerable<T> GetEntities<T>()
-        {
-            var type = typeof(T);
-            var entities = GetEntities(type);
-            return entities.OfType<T>();
+            return db.TryGetEntity(id, out result);
         }
 
-        /// <summary>
-        /// Get all entities that implement the specified interface type
-        /// </summary>
-        /// <param name="type"> The interface type </param>
-        /// <returns> All entities that implement the specified interface type </returns>
-        public static IEnumerable<ODDBEntity> GetEntities(Type type)
-        {
-            if (type == null)
-                return Enumerable.Empty<ODDBEntity>();
+        /// <summary>Get all entities of type T.</summary>
+        public static IEnumerable<T> GetEntities<T>() =>
+            EnsureInstance() is { } db ? db.GetEntities<T>() : Enumerable.Empty<T>();
 
-            var newDict = new Dictionary<string, ODDBEntity>();
-            foreach (var kvp in _entityTypeCache.ToList())
-            {
-                if (type.IsAssignableFrom(kvp.Key) == false)
-                    continue;
-                foreach (var entity in kvp.Value.Values)
-                    newDict[entity.ID] = entity;
-            }
+        /// <summary>Get all entities that implement the specified type.</summary>
+        public static IEnumerable<ODDBEntity> GetEntities(Type type) =>
+            EnsureInstance() is { } db ? db.GetEntities(type) : Enumerable.Empty<ODDBEntity>();
 
-            _entityTypeCache[type] = newDict;
-            return newDict.Values;
-        }
+        #endregion
     }
 }
