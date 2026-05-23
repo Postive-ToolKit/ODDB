@@ -36,6 +36,18 @@ namespace TeamODD.ODDB.Runtime.Entities
             
         public string ID { get; private set; }
 
+        private ODDatabase _owner;
+
+        /// <summary>
+        /// Imports this entity from a row, recording the owning database so that lazy
+        /// view-typed field resolution can look up referenced entities on the same instance.
+        /// </summary>
+        public void Import(ODDatabase owner, List<Field> tableMetas, Row row)
+        {
+            _owner = owner;
+            Import(tableMetas, row);
+        }
+
         public void Import(List<Field> tableMetas, Row row)
         {
             var entityType = GetType();
@@ -87,10 +99,22 @@ namespace TeamODD.ODDB.Runtime.Entities
 
         private void RegisterAsLazyLoad(FieldInfo field, string rawValue)
         {
-            ODDBPort.RegisterOnDataPortedCallback(() =>
+            if (_owner == null)
+            {
+                if (ODDBRuntimeSettings.Setting.UseDebugLog)
+                {
+                    ODDB.Logger.Warn(
+                        $"[Import Warning][{GetType().Name}] View-typed field '{field.Name}' cannot be resolved: no owning ODDatabase. " +
+                        $"Use Import(ODDatabase, fields, row) instead of Import(fields, row).");
+                }
+                return;
+            }
+
+            var owner = _owner;
+            owner.RegisterOnDataPorted(() =>
             {
                 var targetId = rawValue;
-                var targetEntity = ODDBPort.GetEntity<ODDBEntity>(targetId);
+                var targetEntity = owner.GetEntity<ODDBEntity>(targetId);
                 if (targetEntity == null)
                     return;
 

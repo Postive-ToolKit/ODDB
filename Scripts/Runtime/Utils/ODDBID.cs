@@ -17,12 +17,10 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         {
             public void Clear()
             {
+                // Reset the in-memory uniqueness tracker on domain reload. Live IDs
+                // from loaded databases are re-added lazily when each ODDBID is
+                // deserialized (its ID setter calls _currentCreatedId.Add).
                 _currentCreatedId.Clear();
-                foreach (var liveId in ODDBPort.GetLiveEntityIds())
-                {
-                    if (!string.IsNullOrEmpty(liveId))
-                        _currentCreatedId.Add(liveId);
-                }
             }
         }
 

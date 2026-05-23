@@ -35,8 +35,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 return;
             }
             
-            if (ODDBPort.IsInitialized == false)
-                ODDBPort.Initialize();
+            // Editor runtime database is materialized on first access via ODDBEditorRuntime.UseCase;
+            // ODDBSelectorService handles PortData lazily through its Refresh path.
             
             // Initialize rich text button style
             if (_richButtonStyle == null)
@@ -102,8 +102,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             if (property.propertyType != SerializedPropertyType.String)
                 return base.CreatePropertyGUI(property);
             
-            if (ODDBPort.IsInitialized == false)
-                ODDBPort.Initialize();
+            // Editor runtime database is materialized on first access via ODDBEditorRuntime.UseCase;
+            // ODDBSelectorService handles PortData lazily through its Refresh path.
             
             var attr = (ODDBIDSelectorAttribute)attribute;
             var stringValue = property.stringValue;

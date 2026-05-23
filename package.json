@@ -17,5 +17,12 @@
       "email": "postive12@gmail.com",
       "url": "https://postiveground.com"
     }
+  ],
+  "samples": [
+    {
+      "displayName": "Global Singleton (legacy ODDBPort style)",
+      "description": "Auto-loaded global DB instance, similar to v1.x ODDBPort.",
+      "path": "Samples~/GlobalSingleton"
+    }
   ]
 }

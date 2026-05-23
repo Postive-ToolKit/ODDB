@@ -227,7 +227,7 @@ namespace TeamODD.ODDB.Runtime
                         continue;
                     }
 
-                    entity.Import(table.TotalFields, row);
+                    entity.Import(this, table.TotalFields, row);
                     _entityCache[row.ID] = entity;
                     _entityTypeCache[targetType][row.ID] = entity;
                 }
