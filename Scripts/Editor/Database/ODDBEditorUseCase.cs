@@ -30,20 +30,18 @@ namespace TeamODD.ODDB.Editors.Window
     public class ODDBEditorUseCase : IODDBEditorUseCase
     {
         public IODDatabase DataBase => _database;
-        public ODDBDataService Service => _dataService;
-        
+
         /// <summary>
         /// Triggered when a specific view data is changed or removed.
         /// </summary>
         public event Action<string> OnViewChanged;
-        
+
         /// <summary>
         /// Triggered when the undo/redo history changes.
         /// </summary>
         public event Action OnHistoryChanged;
-        
+
         private ODDatabase _database;
-        private readonly ODDBDataService _dataService;
         private readonly CommandProcessor _commandProcessor = new();
         private string _selectedTableId;
         private const int PreImportBackupKeep = 3;
@@ -52,7 +50,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             _commandProcessor.MaxHistoryCount = ODDBEditorSettings.Setting.MaxHistoryCount;
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
-            _dataService = new ODDBDataService();
+
             if (ODDBRuntimeSettings.Setting.IsInitialized == false)
             {
                 // Silently default to BASE_PATH instead of opening a folder
@@ -63,23 +61,20 @@ namespace TeamODD.ODDB.Editors.Window
             }
 
             var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
-            
-            if (File.Exists(fullPath) == false)
+            var fileExisted = File.Exists(fullPath);
+
+            _database = ODDatabase.Load(fullPath);
+
+            // ODDatabase.Load returns an empty new instance when the file is
+            // missing. Persist it once so the Editor has a backing file from
+            // the first session onward.
+            if (!fileExisted)
             {
                 Debug.Log($"Creating new database file: {fullPath}");
-                _database = new ODDatabase();
-                if (_dataService.SaveDatabase(_database, fullPath))
-                    AssetDatabase.Refresh();
+                _database.Save(fullPath);
+                AssetDatabase.Refresh();
             }
-            else
-            {
-                if (!_dataService.LoadDatabase(fullPath, out _database))
-                {
-                    Debug.LogError("Failed to load database");
-                    return;
-                }
-            }
-            
+
             _database.OnDataChanged += OnDataChanged;
             _database.OnDataRemoved += OnDataChanged;
         }
@@ -391,10 +386,7 @@ namespace TeamODD.ODDB.Editors.Window
             return row != null;
         }
 
-        public void SaveDatabase(string fullPath)
-        {
-            _dataService.SaveDatabase(_database, fullPath);
-        }
+        public void SaveDatabase(string fullPath) => _database.Save(fullPath);
 
         public void Undo() => _commandProcessor.Undo();
         public void Redo() => _commandProcessor.Redo();
@@ -568,7 +560,7 @@ namespace TeamODD.ODDB.Editors.Window
         private void PersistDatabase()
         {
             var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
-            _dataService.SaveDatabase(_database, fullPath);
+            _database.Save(fullPath);
         }
 
         private void NotifyAffectedViews(IReadOnlyList<SheetInfo> sheets)
