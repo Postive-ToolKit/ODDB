@@ -35,7 +35,14 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     if (!typeof(IODDBCellDrawer).IsAssignableFrom(t)) continue;
                     var attr = (CellDrawerAttribute)Attribute.GetCustomAttribute(t, typeof(CellDrawerAttribute));
                     if (attr == null) continue;
-                    _byKey[attr.TypeKey] = (IODDBCellDrawer)Activator.CreateInstance(t);
+                    try
+                    {
+                        _byKey[attr.TypeKey] = (IODDBCellDrawer)Activator.CreateInstance(t);
+                    }
+                    catch (Exception ex)
+                    {
+                        UnityEngine.Debug.LogError($"[ODDB] Failed to instantiate cell drawer '{t.FullName}' for key '{attr.TypeKey}': {ex.Message}");
+                    }
                 }
             }
         }
