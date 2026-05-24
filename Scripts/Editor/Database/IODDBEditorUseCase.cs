@@ -32,6 +32,7 @@ namespace TeamODD.ODDB.Editors.Window
         public void AddField(string viewId, Field field);
         public void RemoveField(string viewId, int index);
         public void MoveField(string viewId, int oldIndex, int newIndex);
+        public void SetFieldType(string viewId, int fieldIndex, string typeKey, string param);
         public void MoveViewItem(string viewId, int oldSiblingIndex, int newSiblingIndex);
 
         /// <summary>

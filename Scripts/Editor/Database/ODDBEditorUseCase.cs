@@ -262,6 +262,15 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.Execute(command);
         }
 
+        public void SetFieldType(string viewId, int fieldIndex, string typeKey, string param)
+        {
+            var view = GetViewByKey(viewId);
+            if (view == null) return;
+
+            var command = new SetFieldTypeCommand(view, fieldIndex, typeKey, param, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
         public void MoveViewItem(string viewId, int oldSiblingIndex, int newSiblingIndex)
         {
             if (!ViewSiblingOrderResolver.TryResolveMove(

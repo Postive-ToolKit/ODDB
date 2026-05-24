@@ -131,6 +131,7 @@ Workflow shortcuts you can offer the user:
             _toolRegistry.Register(new AddFieldTool(UseCase));
             _toolRegistry.Register(new RemoveFieldTool(UseCase));
             _toolRegistry.Register(new MoveFieldTool(UseCase));
+            _toolRegistry.Register(new SetFieldTypeTool(UseCase));
             _toolRegistry.Register(new SetViewNameTool(UseCase));
             _toolRegistry.Register(new SetViewBindTypeTool(UseCase));
             _toolRegistry.Register(new SetViewParentTool(UseCase));
@@ -150,7 +151,7 @@ Workflow shortcuts you can offer the user:
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
                 protocolVersion = "2024-11-05",
-                serverInfo = new { name = "ODDB", version = "2.0.4" },
+                serverInfo = new { name = "ODDB", version = "2.0.5" },
                 capabilities = new { tools = new { }, resources = new { } },
                 instructions = ServerInstructions,
             }));
