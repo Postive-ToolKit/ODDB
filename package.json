@@ -1,6 +1,6 @@
 ﻿{
   "name": "com.team-odd.oddb",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "displayName": "ODDB",
   "description": "ODDB is a simple and easy to use database system for Unity3D.",
   "unity": "2019.4",
@@ -25,7 +25,7 @@
       "path": "Samples~/GlobalSingleton"
     },
     {
-      "displayName": "ODDB v1 → v2 Migration",
+      "displayName": "v1-to-v2-Migration",
       "description": "dotnet-script that rewrites v1.x ODDB .bytes files to the v2.0 schema in place.",
       "path": "Samples~/Migration"
     }
