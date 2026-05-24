@@ -214,16 +214,18 @@ namespace TeamODD.ODDB.Editors.Window
 
         /// <summary>
         /// Routes a single-cell mutation through the command pipeline (undo/redo, history).
-        /// Intended for external callers (e.g. MCP tools); the in-editor UI bypasses this.
+        /// UI passes a pre-serialized string with direct=true; programmatic callers
+        /// (e.g. MCP) pass a typed value with direct=false.
         /// </summary>
-        public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue)
+        public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue, bool direct = false)
         {
             var view = GetViewByKey(tableId);
             if (view is not Table table) return;
 
             var command = new SetCellDataCommand(
                 table, rowId, fieldIndex, newValue,
-                (id) => _database.NotifyDataChanged(new ODDBID(id)));
+                (id) => _database.NotifyDataChanged(new ODDBID(id)),
+                direct);
             _commandProcessor.Execute(command);
         }
 

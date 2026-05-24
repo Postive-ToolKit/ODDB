@@ -1,8 +1,8 @@
+using System;
 using TeamODD.ODDB.Editors.Attributes;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Serializers;
 using TeamODD.ODDB.Runtime.Types;
-using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
@@ -13,12 +13,10 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     [CellDrawer("int")]
     public class IntCellDrawer : IntSerializer, IODDBCellDrawer
     {
-        private static IDataSerializer _serializer = TypeRegistry.Get("int") ?? new IntSerializer();
-        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param)
+        private static readonly IDataSerializer _serializer = TypeRegistry.Get("int") ?? new IntSerializer();
+        public VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit)
         {
-            var targetField = property.FindPropertyRelative(Cell.SERIALIZED_DATA_FIELD);
-            var serializedData = targetField.stringValue;
-            var value = (int)_serializer.Deserialize(serializedData, param);
+            var value = (int)(_serializer.Deserialize(cell.SerializedData, param) ?? 0);
 
             var intField = new IntegerField()
             {
@@ -27,9 +25,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             intField.RegisterValueChangedCallback(evt =>
             {
-                var newSerializedData = _serializer.Serialize(evt.newValue, param);
-                targetField.stringValue = newSerializedData;
-                property.serializedObject.ApplyModifiedProperties();
+                commit(_serializer.Serialize(evt.newValue, param));
             });
 
             return intField;

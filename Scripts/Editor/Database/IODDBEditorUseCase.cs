@@ -36,10 +36,10 @@ namespace TeamODD.ODDB.Editors.Window
 
         /// <summary>
         /// Mutates a single cell through the command pipeline so the change is undoable
-        /// and shows up in history. Intended for external programmatic callers (e.g. MCP);
-        /// the in-editor UI continues to use SerializedProperty directly.
+        /// and shows up in history. UI passes a pre-serialized string with direct=true;
+        /// programmatic callers (e.g. MCP) pass a typed value with direct=false.
         /// </summary>
-        public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue);
+        public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue, bool direct = false);
 
         public Type GetViewBindType(string key);
         public void SetViewBindType(string key, Type type);

@@ -1,4 +1,5 @@
-using UnityEditor;
+using System;
+using TeamODD.ODDB.Runtime;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.PropertyDrawers
@@ -9,12 +10,12 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     public interface IODDBCellDrawer
     {
         /// <summary>
-        /// Creates a custom VisualElement for the property.
+        /// Creates a VisualElement that edits the given cell.
         /// </summary>
-        /// <param name="property"> The serialized property to create the GUI for.</param>
-        /// <param name="typeKey"> The ODDB type key string of the property.</param>
-        /// <param name="param"> Additional parameter for the data type.</param>
-        /// <returns> A VisualElement representing the property.</returns>
-        public VisualElement CreatePropertyGUI(SerializedProperty property, string typeKey, string param);
+        /// <param name="cell">The cell model to render.</param>
+        /// <param name="typeKey">ODDB type key string of the cell.</param>
+        /// <param name="param">Extra parameter for the data type.</param>
+        /// <param name="commit">Invoked with a new serialized data string when the user edits the value.</param>
+        VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit);
     }
 }

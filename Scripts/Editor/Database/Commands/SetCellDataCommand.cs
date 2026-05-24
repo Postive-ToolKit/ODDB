@@ -14,6 +14,7 @@ namespace TeamODD.ODDB.Editors.Commands
         private readonly string _rowId;
         private readonly int _fieldIndex;
         private readonly object _newValue;
+        private readonly bool _direct;
         private readonly Action<string> _notifyChanged;
 
         private string _oldSerializedData;
@@ -26,12 +27,14 @@ namespace TeamODD.ODDB.Editors.Commands
             string rowId,
             int fieldIndex,
             object newValue,
-            Action<string> notifyChanged)
+            Action<string> notifyChanged,
+            bool direct = false)
         {
             _table = table;
             _rowId = rowId;
             _fieldIndex = fieldIndex;
             _newValue = newValue;
+            _direct = direct;
             _notifyChanged = notifyChanged;
         }
 
@@ -45,7 +48,7 @@ namespace TeamODD.ODDB.Editors.Commands
                 _oldSerializedData = cell.SerializedData;
                 _captured = true;
             }
-            cell.SetData(_newValue);
+            cell.SetData(_newValue, _direct);
             _notifyChanged?.Invoke(_table.ID);
         }
 

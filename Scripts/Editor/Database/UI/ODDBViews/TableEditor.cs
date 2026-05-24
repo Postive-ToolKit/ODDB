@@ -1,18 +1,16 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using TeamODD.ODDB.Editors.PropertyDrawers;
 using TeamODD.ODDB.Editors.Utils.Elements;
-using TeamODD.ODDB.Editors.DTO;
-using UnityEditor;
-using UnityEngine;
-using UnityEngine.UIElements;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
-using UnityEditor.UIElements;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Editors.UI
 {
@@ -20,8 +18,8 @@ namespace TeamODD.ODDB.Editors.UI
     {
         private const float DELETE_COLUMN_WIDTH = 30f;
         private readonly IODDBEditorUseCase _editorUseCase;
-        private TableDataDTO _tableDataDTO;
         private Table _table;
+
         public TableEditor()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
@@ -31,10 +29,9 @@ namespace TeamODD.ODDB.Editors.UI
             showBorder = true;
             style.flexGrow = 1;
             style.height = Length.Percent(100);
-            bindingPath = "Rows";
             CreateColumns();
         }
-        
+
         public override void SetView(string viewKey)
         {
             if (_table != null)
@@ -46,21 +43,16 @@ namespace TeamODD.ODDB.Editors.UI
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not Table table)
                 return;
-            this.Unbind();
             _table = table;
 
-            _tableDataDTO = ScriptableObject.CreateInstance<TableDataDTO>();
-            _tableDataDTO.Rows = _table.Rows;
-            var so = new SerializedObject(_tableDataDTO);
-            this.Bind(so);
+            itemsSource = _table.Rows;
             CreateColumns();
-
             RefreshRows();
+
             _table.OnRowChanged += RefreshRows;
             _table.OnFieldsChanged += CreateColumns;
             // External (MCP) cell mutations don't fire OnRowChanged; subscribe
-            // to the use case's view-changed signal so the bound SerializedObject
-            // re-pulls the latest cell values.
+            // to the use case's view-changed signal so the table refreshes.
             _editorUseCase.OnViewChanged += OnExternalViewChanged;
         }
 
@@ -74,37 +66,93 @@ namespace TeamODD.ODDB.Editors.UI
         {
             if (_table == null)
                 return;
-            _tableDataDTO.Rows = _table.Rows;
+            itemsSource = _table.Rows;
             RefreshItems();
         }
 
         private void CreateColumns()
         {
-            if (_table == null) 
+            if (_table == null)
                 return;
             columns.Clear();
-            columns.Add(new Column() {bindingPath = Row.ID_FIELD, title = "ID", maxWidth = 80, width = 80});
+            columns.Add(CreateIdColumn());
             for (int i = 0; i < _table.TotalFields.Count; i++)
             {
-                var columnIndex = i; // Capture the current index for the closure
-                var meta = _table.TotalFields[i];
-                var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param)}]";
-                var column = new Column()
-                {
-                    title = columnName,
-                    bindingPath = $"{Row.CELLS_FIELD}.Array.data[{columnIndex}]",
-                    stretchable = true,
-                    resizable = true,
-                    minWidth = 80,
-                };
-                column.makeHeader = () => CreateColumnHeader(columnIndex);
-                
-                columns.Add(column);
+                columns.Add(CreateCellColumn(i));
             }
-            
             columns.Add(CreateToolColumn());
         }
-        
+
+        private Column CreateIdColumn()
+        {
+            var column = new Column()
+            {
+                title = "ID",
+                maxWidth = 80,
+                width = 80,
+            };
+            column.makeCell = () => new Label()
+            {
+                style = { unityTextAlign = TextAnchor.MiddleLeft, paddingLeft = 4 }
+            };
+            column.bindCell = (element, index) =>
+            {
+                if (_table == null || index < 0 || index >= _table.Rows.Count) return;
+                var label = (Label)element;
+                label.text = _table.Rows[index].ID.ToString();
+            };
+            return column;
+        }
+
+        private Column CreateCellColumn(int columnIndex)
+        {
+            var meta = _table.TotalFields[columnIndex];
+            var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param)}]";
+            var column = new Column()
+            {
+                title = columnName,
+                stretchable = true,
+                resizable = true,
+                minWidth = 80,
+            };
+            column.makeHeader = () => CreateColumnHeader(columnIndex);
+            column.makeCell = () => new VisualElement()
+            {
+                style = { flexGrow = 1, justifyContent = Justify.Center }
+            };
+            column.bindCell = (element, index) =>
+            {
+                element.Clear();
+                if (_table == null || index < 0 || index >= _table.Rows.Count) return;
+                if (columnIndex >= _table.TotalFields.Count) return;
+
+                var row = _table.Rows[index];
+                var cell = row.GetData(columnIndex);
+                if (cell == null) return;
+
+                var fieldType = _table.TotalFields[columnIndex].Type;
+                var typeKey = fieldType?.TypeKey ?? string.Empty;
+                var param = fieldType?.Param ?? string.Empty;
+
+                var drawer = CellDrawerRegistry.Get(typeKey);
+                if (drawer == null)
+                {
+                    element.Add(new Label($"<no drawer for '{typeKey}'>"));
+                    return;
+                }
+
+                var capturedRowId = row.ID.ToString();
+                var capturedColumn = columnIndex;
+                var gui = drawer.CreatePropertyGUI(cell, typeKey, param, newSerialized =>
+                {
+                    if (_table == null) return;
+                    _editorUseCase.SetCellData(_table.ID, capturedRowId, capturedColumn, newSerialized, direct: true);
+                });
+                element.Add(gui);
+            };
+            return column;
+        }
+
         private Column CreateToolColumn()
         {
             var toolColumn = new Column()
@@ -117,8 +165,7 @@ namespace TeamODD.ODDB.Editors.UI
                 stretchable = false,
                 resizable = false
             };
-            
-            // row will work like delete row button
+
             toolColumn.makeCell = () => new ODDBButton() { text = "-", };
 
             toolColumn.bindCell = (element, index) =>
@@ -138,13 +185,13 @@ namespace TeamODD.ODDB.Editors.UI
 
             return toolColumn;
         }
-        
+
         private VisualElement CreateColumnHeader(int columnIndex)
         {
             if (_table == null || columnIndex < 0 || columnIndex >= _table.TotalFields.Count)
                 return new Label("Invalid Column");
             var meta = _table.TotalFields[columnIndex];
-            
+
             var container = new VisualElement()
             {
                 style =
@@ -159,7 +206,7 @@ namespace TeamODD.ODDB.Editors.UI
             var type = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
             type.text = EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param);
             container.Add(type);
-            
+
             var bindField = new Label() { style = { unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleCenter, flexGrow = 1, }, };
             bindField.text = GetBindTypeFieldName(columnIndex);
             container.Add(bindField);
@@ -174,14 +221,13 @@ namespace TeamODD.ODDB.Editors.UI
             var bindType = _table.BindType;
             var allFields = new List<FieldInfo>();
 
-            // Traverse the inheritance chain to collect all instance fields
             var currentType = bindType;
             while (currentType != null && currentType != typeof(object))
             {
                 var fields = currentType
                     .GetFields(ODDBEntity.FieldFlags)
                     .Where(f => f.IsDefined(typeof(CompilerGeneratedAttribute), false) == false);
-                
+
                 allFields.InsertRange(0, fields);
                 currentType = currentType.BaseType;
             }
@@ -190,13 +236,11 @@ namespace TeamODD.ODDB.Editors.UI
                 return string.Empty;
 
             var field = allFields[columnIndex];
-            
-            // Check for InspectorNameAttribute first
+
             var inspectorAttr = field.GetCustomAttribute<InspectorNameAttribute>();
             if (inspectorAttr != null && !string.IsNullOrEmpty(inspectorAttr.displayName))
                 return inspectorAttr.displayName;
 
-            // Use Unity's NicifyVariableName
             return ObjectNames.NicifyVariableName(field.Name);
         }
     }
