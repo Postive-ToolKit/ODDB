@@ -226,9 +226,8 @@ namespace TeamODD.ODDB.Editors.UI
         
         private void CreateBackgroundContextMenu(ContextClickEvent evt)
         {
-            if (evt.target != this)
-                return;
-
+            // Item containers stop propagation, so this only fires when the
+            // user right-clicks empty space within the tree view.
             if (_database == null)
                 return;
 
