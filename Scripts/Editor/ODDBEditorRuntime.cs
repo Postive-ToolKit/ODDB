@@ -74,9 +74,19 @@ Workflow shortcuts you can offer the user:
             {
                 if (_useCase == null)
                 {
-                    _useCase = new ODDBEditorUseCase();
-                    ODDBEditorDI.RegisterSelfAndInterfaces(_useCase);
-                    ODDBEditorDI.RegisterSelfAndInterfaces(_useCase.DataBase);
+                    try
+                    {
+                        var instance = new ODDBEditorUseCase();
+                        ODDBEditorDI.RegisterSelfAndInterfaces(instance);
+                        ODDBEditorDI.RegisterSelfAndInterfaces(instance.DataBase);
+                        _useCase = instance;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        McpLog.Warn($"UseCase ctor threw: {ex.Message}");
+                        _useCase = null;
+                        return null;
+                    }
                 }
                 return _useCase;
             }
@@ -94,7 +104,8 @@ Workflow shortcuts you can offer the user:
             // a request arrives, so the on-first-run picker UI (which lives
             // inside ODDBEditorUseCase's ctor) only fires when the user first
             // opens the editor window or an MCP tool is called.
-            BootServer();
+            try { BootServer(); }
+            catch (System.Exception ex) { McpLog.Error($"BootServer crashed: {ex.Message}"); }
             AssemblyReloadEvents.beforeAssemblyReload += StopServer;
         }
 
@@ -120,33 +131,47 @@ Workflow shortcuts you can offer the user:
             _toolRegistry = new McpToolRegistry();
             _resourceRegistry = new McpResourceRegistry();
 
-            // Tools
-            _toolRegistry.Register(new AddRowTool(UseCase));
-            _toolRegistry.Register(new RemoveRowTool(UseCase));
-            _toolRegistry.Register(new SetCellTool(UseCase));
-            _toolRegistry.Register(new AddViewTool(UseCase));
-            _toolRegistry.Register(new AddTableTool(UseCase));
-            _toolRegistry.Register(new RemoveViewTool(UseCase));
-            _toolRegistry.Register(new RemoveTableTool(UseCase));
-            _toolRegistry.Register(new AddFieldTool(UseCase));
-            _toolRegistry.Register(new RemoveFieldTool(UseCase));
-            _toolRegistry.Register(new MoveFieldTool(UseCase));
-            _toolRegistry.Register(new SetFieldTypeTool(UseCase));
-            _toolRegistry.Register(new SetViewNameTool(UseCase));
-            _toolRegistry.Register(new SetViewBindTypeTool(UseCase));
-            _toolRegistry.Register(new SetViewParentTool(UseCase));
-            _toolRegistry.Register(new GenerateCodeTool(UseCase));
-            _toolRegistry.Register(new SaveDatabaseTool(UseCase));
+            if (_useCase == null)
+            {
+                McpLog.Warn("UseCase is null — skipping tool/resource registration. MCP server starts but exposes no endpoints.");
+            }
+            else
+            {
+                try
+                {
+                    // Tools
+                    _toolRegistry.Register(new AddRowTool(UseCase));
+                    _toolRegistry.Register(new RemoveRowTool(UseCase));
+                    _toolRegistry.Register(new SetCellTool(UseCase));
+                    _toolRegistry.Register(new AddViewTool(UseCase));
+                    _toolRegistry.Register(new AddTableTool(UseCase));
+                    _toolRegistry.Register(new RemoveViewTool(UseCase));
+                    _toolRegistry.Register(new RemoveTableTool(UseCase));
+                    _toolRegistry.Register(new AddFieldTool(UseCase));
+                    _toolRegistry.Register(new RemoveFieldTool(UseCase));
+                    _toolRegistry.Register(new MoveFieldTool(UseCase));
+                    _toolRegistry.Register(new SetFieldTypeTool(UseCase));
+                    _toolRegistry.Register(new SetViewNameTool(UseCase));
+                    _toolRegistry.Register(new SetViewBindTypeTool(UseCase));
+                    _toolRegistry.Register(new SetViewParentTool(UseCase));
+                    _toolRegistry.Register(new GenerateCodeTool(UseCase));
+                    _toolRegistry.Register(new SaveDatabaseTool(UseCase));
 
-            // Resources
-            _resourceRegistry.Register(new DatabaseResource(UseCase));
-            _resourceRegistry.Register(new ViewsResource(UseCase));
-            _resourceRegistry.Register(new ViewDetailResource(UseCase));
-            _resourceRegistry.Register(new TableRowsResource(UseCase));
-            _resourceRegistry.Register(new TableInheritedResource(UseCase));
-            _resourceRegistry.Register(new CommandHistoryResource(UseCase));
-            _resourceRegistry.Register(new BindTypesResource());
-            _resourceRegistry.Register(new DataTypesResource());
+                    // Resources
+                    _resourceRegistry.Register(new DatabaseResource(UseCase));
+                    _resourceRegistry.Register(new ViewsResource(UseCase));
+                    _resourceRegistry.Register(new ViewDetailResource(UseCase));
+                    _resourceRegistry.Register(new TableRowsResource(UseCase));
+                    _resourceRegistry.Register(new TableInheritedResource(UseCase));
+                    _resourceRegistry.Register(new CommandHistoryResource(UseCase));
+                    _resourceRegistry.Register(new BindTypesResource());
+                    _resourceRegistry.Register(new DataTypesResource());
+                }
+                catch (System.Exception ex)
+                {
+                    McpLog.Error($"tool/resource registration failed: {ex.Message}");
+                }
+            }
 
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {

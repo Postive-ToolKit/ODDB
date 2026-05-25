@@ -39,6 +39,12 @@ namespace TeamODD.ODDB.Editors.Window
             // and the window share the same instance. Accessing the property here
             // triggers lazy creation and DI registration if this is the first use.
             _editorUseCase = ODDBEditorRuntime.UseCase;
+            if (_editorUseCase == null)
+            {
+                rootVisualElement.Add(new UnityEngine.UIElements.Label(
+                    "ODDB failed to initialize. Check the Console for details."));
+                return;
+            }
             CreateLayout();
             
             _tableTreeView.OnViewSelected += _editorView.SetView;
