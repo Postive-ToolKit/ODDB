@@ -104,6 +104,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
         /// </summary>
         private static ODDatabase LoadDatabaseFromFile()
         {
+            var useCase = TeamODD.ODDB.Editors.ODDBEditorRuntime.UseCase;
+            if (useCase?.DataBase is ODDatabase shared)
+                return shared;
+
             var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             var dataService = new ODDBDataService();
             if (dataService.LoadDatabase(fullPath, out var database) == false)
@@ -116,9 +120,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
 
         private void SaveDatabaseToFile(ODDatabase database)
         {
-            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+            var useCase = TeamODD.ODDB.Editors.ODDBEditorRuntime.UseCase;
+            if (useCase?.DataBase == database)
+            {
+                var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                useCase.SaveDatabase(fullPath);
+                return;
+            }
+
+            var path = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             var dataService = new ODDBDataService();
-            if (dataService.SaveDatabase(database, fullPath) == false)
+            if (dataService.SaveDatabase(database, path) == false)
             {
                 Debug.LogError("Failed to save database");
             }
