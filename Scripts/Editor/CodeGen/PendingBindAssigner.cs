@@ -1,5 +1,6 @@
 using System.IO;
 using System.Reflection;
+using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
@@ -39,15 +40,16 @@ namespace TeamODD.ODDB.Editors.CodeGen
             var settings = ODDBRuntimeSettings.TryLoad();
             if (settings == null)
             {
-                Debug.LogWarning("[ODDB CodeGen] RuntimeSettings asset missing — pending remap drain skipped.");
+                Debug.LogWarning("[ODDB CodeGen] RuntimeSettings missing — pending remap deferred.");
                 return;
             }
             var dbPath = Path.Combine(settings.Path, settings.DBName);
 
-            var dataService = new ODDBDataService();
-            if (!dataService.LoadDatabase(dbPath, out var database) || database == null)
+            var useCase = ODDBEditorRuntime.UseCase;
+            if (useCase == null || useCase.DataBase is not ODDatabase database)
             {
-                Debug.LogWarning($"[ODDB CodeGen] Pending bind drain skipped — failed to load DB at {dbPath}");
+                Debug.LogWarning("[ODDB CodeGen] UseCase not ready — pending remap deferred.");
+                EditorApplication.delayCall += DrainQueue; // retry next reload
                 return;
             }
 
@@ -59,16 +61,16 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 var type = ResolveType(entry.className);
                 if (type == null)
                 {
-                    remaining.Add(entry); // try again on next reload
+                    remaining.Add(entry);
                     continue;
                 }
 
                 var view = database.GetView(new ODDBID(entry.viewId));
                 if (view == null)
-                    continue; // view deleted by user; drop entry silently
+                    continue;
 
                 if (view.BindType == type)
-                    continue; // already correct; drop
+                    continue;
 
                 view.BindType = type;
                 dirty = true;
@@ -76,12 +78,16 @@ namespace TeamODD.ODDB.Editors.CodeGen
 
             if (dirty)
             {
-                if (!dataService.SaveDatabase(database, dbPath))
+                try
                 {
-                    Debug.LogWarning("[ODDB CodeGen] Failed to save database after BindType assignment.");
+                    useCase.SaveDatabase(dbPath);
+                    AssetDatabase.Refresh();
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[ODDB CodeGen] Save failed after BindType assignment: {ex.Message}");
                     return;
                 }
-                AssetDatabase.Refresh();
             }
 
             PendingRemapStore.Save(remaining);
