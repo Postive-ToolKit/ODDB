@@ -179,15 +179,30 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void OnDestroy()
         {
-            var result = EditorUtility.DisplayDialog("Save Changes", "Do you want to save changes?", "Yes", "No");
-            if (result)
+            if (_editorUseCase == null || !_editorUseCase.IsDirty)
+                return;
+
+            var choice = EditorUtility.DisplayDialogComplex(
+                "Save Changes",
+                "You have unsaved ODDB changes. Save before closing?",
+                "Save",      // 0
+                "Discard",   // 1
+                "Cancel");   // 2
+
+            if (choice == 2)
+            {
+                // Reopen the window since OnDestroy can't be canceled.
+                EditorApplication.delayCall += () => GetWindow<ODDBEditorWindow>();
+                return;
+            }
+            if (choice == 0)
             {
                 var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
                 _editorUseCase.SaveDatabase(fullPath);
             }
+            // Discard (choice == 1): do nothing.
             // The use case and DI registrations live in ODDBEditorRuntime now;
-            // do NOT dispose them here — the MCP server and other editor
-            // subsystems still need them after the window closes.
+            // do NOT dispose them here.
         }
     }
 }
