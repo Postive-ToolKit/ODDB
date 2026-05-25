@@ -48,13 +48,23 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 return;
             }
 
-            // 2. Load DB
-            var dataService = new ODDBDataService();
-            var dbPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
-            if (!dataService.LoadDatabase(dbPath, out var database) || database == null)
+            // 2. Load DB — prefer the shared instance owned by the editor runtime so
+            // in-memory edits are picked up. Fall back to disk for CLI/headless paths.
+            ODDatabase database = null;
+            var useCase = TeamODD.ODDB.Editors.ODDBEditorRuntime.UseCase;
+            if (useCase?.DataBase is ODDatabase shared)
             {
-                _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", $"Failed to load database at {dbPath}", isError: true);
-                return;
+                database = shared;
+            }
+            else
+            {
+                var dataService = new ODDBDataService();
+                var fallbackPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                if (!dataService.LoadDatabase(fallbackPath, out database) || database == null)
+                {
+                    _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", $"Failed to load database at {fallbackPath}", isError: true);
+                    return;
+                }
             }
 
             // 3. Collect target views
