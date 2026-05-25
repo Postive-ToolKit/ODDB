@@ -87,6 +87,9 @@ namespace TeamODD.ODDB.Editors.Window
         /// <param name="fullPath"> The full file path where the database should be saved.</param>
         public void SaveDatabase(string fullPath);
         
+        public bool IsDirty { get; }
+        public void MarkSaved();
+
         public void Undo();
         public void Redo();
 

@@ -410,7 +410,14 @@ namespace TeamODD.ODDB.Editors.Window
             return row != null;
         }
 
-        public void SaveDatabase(string fullPath) => _database.Save(fullPath);
+        public void SaveDatabase(string fullPath)
+        {
+            _database.Save(fullPath);
+            _commandProcessor.MarkSaved();
+        }
+
+        public bool IsDirty => _commandProcessor.IsDirty;
+        public void MarkSaved() => _commandProcessor.MarkSaved();
 
         public void Undo() => _commandProcessor.Undo();
         public void Redo() => _commandProcessor.Redo();
