@@ -592,6 +592,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
             _database.Save(fullPath);
+            _commandProcessor.MarkSaved();
         }
 
         private void NotifyAffectedViews(IReadOnlyList<SheetInfo> sheets)
