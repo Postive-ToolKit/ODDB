@@ -108,7 +108,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (useCase?.DataBase is ODDatabase shared)
                 return shared;
 
-            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
             var dataService = new ODDBDataService();
             if (dataService.LoadDatabase(fullPath, out var database) == false)
             {
@@ -123,12 +123,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             var useCase = TeamODD.ODDB.Editors.ODDBEditorRuntime.UseCase;
             if (useCase?.DataBase == database)
             {
-                var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
                 useCase.SaveDatabase(fullPath);
                 return;
             }
 
-            var path = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+            var path = ODDBRuntimeSettings.ResolveDatabasePath();
             var dataService = new ODDBDataService();
             if (dataService.SaveDatabase(database, path) == false)
             {

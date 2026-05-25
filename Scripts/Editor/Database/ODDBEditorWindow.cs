@@ -57,7 +57,7 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     if (evt.keyCode == KeyCode.S)
                     {
-                        var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                        var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
                         _editorUseCase.SaveDatabase(fullPath);
                     }
                     else if (evt.keyCode == KeyCode.Z)
@@ -197,7 +197,7 @@ namespace TeamODD.ODDB.Editors.Window
             }
             if (choice == 0)
             {
-                var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
                 _editorUseCase.SaveDatabase(fullPath);
             }
             // Discard (choice == 1): do nothing.

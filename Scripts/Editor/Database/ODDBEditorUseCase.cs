@@ -53,30 +53,15 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
 
             var runtimeSettings = ODDBRuntimeSettings.TryLoad();
-            if (runtimeSettings != null && runtimeSettings.IsInitialized == false)
-            {
-                // Silently default to BASE_PATH instead of opening a folder picker.
-                runtimeSettings.Path = ODDBRuntimeSettings.BASE_PATH;
-            }
 
-            string fullPath;
-            if (runtimeSettings == null)
-            {
-                // Defer to a safe in-memory default; saves will fail loudly until the
-                // user opens the Editor and the Setting getter creates the asset.
-                fullPath = Path.Combine(ODDBRuntimeSettings.BASE_PATH, "ODDB.bytes");
-            }
-            else
-            {
-                fullPath = Path.Combine(runtimeSettings.Path, runtimeSettings.DBName);
-            }
+            string fullPath = ODDBRuntimeSettings.ResolveDatabasePath(runtimeSettings);
 
             var fileExisted = File.Exists(fullPath);
             _database = ODDatabase.Load(fullPath);
 
             if (!fileExisted)
             {
-                Debug.Log($"Creating new database file: {fullPath}");
+                Debug.LogWarning($"[ODDB] Database not found at {fullPath} — created an empty one. If you have an existing ODDB.bytes elsewhere, set its location in Assets/Resources/ODDBRuntimeSettings.asset (Path field).");
                 try
                 {
                     _database.Save(fullPath);
@@ -91,7 +76,7 @@ namespace TeamODD.ODDB.Editors.Window
             _database.OnDataChanged += OnDataChanged;
             _database.OnDataRemoved += OnDataChanged;
         }
-        
+
         private void OnDataChanged(ODDBID id)
         {
             OnViewChanged?.Invoke(id.ToString());
@@ -590,7 +575,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void PersistDatabase()
         {
-            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
         }
@@ -607,7 +592,7 @@ namespace TeamODD.ODDB.Editors.Window
         private string CreatePreImportBackup()
         {
             if (_database == null || ODDBRuntimeSettings.Setting == null) return null;
-            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
             if (!File.Exists(fullPath)) return null;
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");

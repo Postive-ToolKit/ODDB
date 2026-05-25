@@ -59,7 +59,7 @@ namespace TeamODD.ODDB.Editors.CodeGen
             else
             {
                 var dataService = new ODDBDataService();
-                var fallbackPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
+                var fallbackPath = ODDBRuntimeSettings.ResolveDatabasePath();
                 if (!dataService.LoadDatabase(fallbackPath, out database) || database == null)
                 {
                     _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", $"Failed to load database at {fallbackPath}", isError: true);

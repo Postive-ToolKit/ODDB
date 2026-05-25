@@ -20,6 +20,20 @@ namespace TeamODD.ODDB.Runtime.Settings
             return Resources.Load<ODDBRuntimeSettings>("ODDBRuntimeSettings");
         }
 
+        /// <summary>
+        /// Resolve the on-disk database path without mutating the global Settings asset.
+        /// Falls back to BASE_PATH + default filename when settings are missing or uninitialized.
+        /// </summary>
+        public static string ResolveDatabasePath() => ResolveDatabasePath(TryLoad());
+
+        public static string ResolveDatabasePath(ODDBRuntimeSettings settings)
+        {
+            var dbName = string.IsNullOrEmpty(settings?.DBName) ? "ODDB.bytes" : settings.DBName;
+            if (settings != null && settings.IsInitialized)
+                return System.IO.Path.Combine(settings.Path, dbName);
+            return System.IO.Path.Combine(BASE_PATH, dbName);
+        }
+
         public static ODDBRuntimeSettings Setting
         {
             get
