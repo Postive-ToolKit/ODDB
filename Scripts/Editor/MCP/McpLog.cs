@@ -10,7 +10,11 @@ namespace TeamODD.ODDB.Editors.MCP
             // Avoid touching the singleton until it's safe (Settings.Setting may
             // create assets on first access during Editor boot).
             bool verbose = false;
-            try { verbose = ODDBEditorSettings.Setting != null && ODDBEditorSettings.Setting.MCPServerVerbose; }
+            try
+            {
+                var s = ODDBEditorSettings.TryLoad();
+                verbose = s != null && s.MCPServerVerbose;
+            }
             catch { }
             if (!verbose) return;
             Debug.Log($"[ODDB-MCP] {msg}");
