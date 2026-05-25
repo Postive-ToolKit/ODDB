@@ -78,7 +78,12 @@ namespace TeamODD.ODDB.Editors.UI
             columns.Add(CreateIdColumn());
             for (int i = 0; i < _table.TotalFields.Count; i++)
             {
-                columns.Add(CreateCellColumn(i));
+                try { columns.Add(CreateCellColumn(i)); }
+                catch (System.Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"[ODDB] Failed to build column {i} for table {_table.Name}: {ex.Message}");
+                    columns.Add(new Column { title = $"<broken {i}>", width = 80 });
+                }
             }
             columns.Add(CreateToolColumn());
         }
@@ -107,6 +112,7 @@ namespace TeamODD.ODDB.Editors.UI
         private Column CreateCellColumn(int columnIndex)
         {
             var meta = _table.TotalFields[columnIndex];
+            if (meta.Type == null) meta.Type = new FieldType();
             var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param)}]";
             var column = new Column()
             {
@@ -191,6 +197,7 @@ namespace TeamODD.ODDB.Editors.UI
             if (_table == null || columnIndex < 0 || columnIndex >= _table.TotalFields.Count)
                 return new Label("Invalid Column");
             var meta = _table.TotalFields[columnIndex];
+            if (meta.Type == null) meta.Type = new FieldType();
 
             var container = new VisualElement()
             {
