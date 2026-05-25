@@ -53,10 +53,15 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
 
             var runtimeSettings = ODDBRuntimeSettings.TryLoad();
+            var verbose = runtimeSettings != null && runtimeSettings.UseDebugLog;
 
             string fullPath = ODDBRuntimeSettings.ResolveDatabasePath(runtimeSettings);
 
             var fileExisted = File.Exists(fullPath);
+            long fileSize = fileExisted ? new FileInfo(fullPath).Length : 0;
+            if (verbose)
+                Debug.Log($"[ODDB] Load path={fullPath} exists={fileExisted} size={fileSize}B");
+
             _database = ODDatabase.Load(fullPath);
 
             if (!fileExisted)
@@ -72,9 +77,47 @@ namespace TeamODD.ODDB.Editors.Window
                     Debug.LogWarning($"Initial DB save failed: {ex.Message}");
                 }
             }
+            else if (verbose)
+            {
+                DumpLoadDiagnostics(fullPath);
+            }
 
             _database.OnDataChanged += OnDataChanged;
             _database.OnDataRemoved += OnDataChanged;
+        }
+
+        /// <summary>
+        /// Dump per-table/view summary to the console after load. Useful for diagnosing
+        /// migration / corruption issues where the editor opens a non-empty file as empty.
+        /// </summary>
+        public void DumpLoadDiagnostics(string fullPath)
+        {
+            if (_database == null)
+            {
+                Debug.LogError($"[ODDB] Diagnostics: _database is null after Load({fullPath})");
+                return;
+            }
+            var views = _database.Views?.GetAll();
+            var tables = _database.Tables?.GetAll();
+            int viewCount = views == null ? 0 : System.Linq.Enumerable.Count(views);
+            int tableCount = tables == null ? 0 : System.Linq.Enumerable.Count(tables);
+            Debug.Log($"[ODDB] After load: views={viewCount} tables={tableCount} (path={fullPath})");
+
+            if (views != null)
+            {
+                int i = 0;
+                foreach (var v in views)
+                    Debug.Log($"[ODDB]   view[{i++}] id={v?.ID} name={v?.Name} fields={v?.TotalFields?.Count ?? 0} bindType={v?.BindType?.FullName ?? "<null>"}");
+            }
+            if (tables != null)
+            {
+                int i = 0;
+                foreach (var v in tables)
+                {
+                    var t = v as Table;
+                    Debug.Log($"[ODDB]   table[{i++}] id={t?.ID} name={t?.Name} fields={t?.TotalFields?.Count ?? 0} rows={t?.Rows?.Count ?? 0} bindType={t?.BindType?.FullName ?? "<null>"}");
+                }
+            }
         }
 
         private void OnDataChanged(ODDBID id)

@@ -181,7 +181,7 @@ Workflow shortcuts you can offer the user:
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
                 protocolVersion = "2024-11-05",
-                serverInfo = new { name = "ODDB", version = "2.0.8" },
+                serverInfo = new { name = "ODDB", version = "2.0.9" },
                 capabilities = new { tools = new { }, resources = new { } },
                 instructions = ServerInstructions,
             }));
@@ -282,6 +282,25 @@ Workflow shortcuts you can offer the user:
             StopServer();
             _useCase?.Dispose();
             _useCase = null;
+        }
+
+        /// <summary>
+        /// Drop the in-memory database singleton and force the next UseCase access
+        /// to reload from disk. Use after external file changes (git restore, manual
+        /// edits, migration tool) to make the editor pick them up without restarting
+        /// Unity. Triggers OnViewChanged so live windows refresh.
+        /// </summary>
+        public static void ReloadDatabase()
+        {
+            try { _useCase?.Dispose(); }
+            catch (System.Exception ex) { McpLog.Warn($"UseCase dispose threw during reload: {ex.Message}"); }
+            _useCase = null;
+            ODDBEditorDI.DisposeAll();
+
+            // Re-trigger lazy construction immediately so DI is repopulated and
+            // any open windows can re-resolve their dependencies.
+            var _ = UseCase;
+            McpLog.Lifecycle("database reloaded from disk");
         }
     }
 }
