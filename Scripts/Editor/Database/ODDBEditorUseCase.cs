@@ -46,33 +46,46 @@ namespace TeamODD.ODDB.Editors.Window
         private string _selectedTableId;
         private const int PreImportBackupKeep = 3;
 
-        public ODDBEditorUseCase() 
+        public ODDBEditorUseCase()
         {
-            _commandProcessor.MaxHistoryCount = ODDBEditorSettings.Setting.MaxHistoryCount;
+            var editorSettings = ODDBEditorSettings.TryLoad();
+            _commandProcessor.MaxHistoryCount = editorSettings?.MaxHistoryCount ?? 50;
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
 
-            if (ODDBRuntimeSettings.Setting.IsInitialized == false)
+            var runtimeSettings = ODDBRuntimeSettings.TryLoad();
+            if (runtimeSettings != null && runtimeSettings.IsInitialized == false)
             {
-                // Silently default to BASE_PATH instead of opening a folder
-                // picker — the previous behaviour popped a modal dialog on every
-                // domain reload because IsInitialized was not serialized.
-                // Path can still be changed via the settings inspector.
-                ODDBRuntimeSettings.Setting.Path = ODDBRuntimeSettings.BASE_PATH;
+                // Silently default to BASE_PATH instead of opening a folder picker.
+                runtimeSettings.Path = ODDBRuntimeSettings.BASE_PATH;
             }
 
-            var fullPath = Path.Combine(ODDBRuntimeSettings.Setting.Path, ODDBRuntimeSettings.Setting.DBName);
-            var fileExisted = File.Exists(fullPath);
+            string fullPath;
+            if (runtimeSettings == null)
+            {
+                // Defer to a safe in-memory default; saves will fail loudly until the
+                // user opens the Editor and the Setting getter creates the asset.
+                fullPath = Path.Combine(ODDBRuntimeSettings.BASE_PATH, "ODDB.bytes");
+            }
+            else
+            {
+                fullPath = Path.Combine(runtimeSettings.Path, runtimeSettings.DBName);
+            }
 
+            var fileExisted = File.Exists(fullPath);
             _database = ODDatabase.Load(fullPath);
 
-            // ODDatabase.Load returns an empty new instance when the file is
-            // missing. Persist it once so the Editor has a backing file from
-            // the first session onward.
             if (!fileExisted)
             {
                 Debug.Log($"Creating new database file: {fullPath}");
-                _database.Save(fullPath);
-                AssetDatabase.Refresh();
+                try
+                {
+                    _database.Save(fullPath);
+                    AssetDatabase.Refresh();
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"Initial DB save failed: {ex.Message}");
+                }
             }
 
             _database.OnDataChanged += OnDataChanged;
