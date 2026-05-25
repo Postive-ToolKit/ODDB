@@ -21,6 +21,11 @@ namespace TeamODD.ODDB.Editors.Commands
         public int MaxHistoryCount { get; set; } = 50;
 
         /// <summary>
+        /// True when one or more commands have been executed since the last MarkSaved() call.
+        /// </summary>
+        public bool IsDirty { get; private set; }
+
+        /// <summary>
         /// Event triggered when the command history changes (execute, undo, redo, clear).
         /// </summary>
         public event Action OnHistoryChanged;
@@ -43,6 +48,7 @@ namespace TeamODD.ODDB.Editors.Commands
                 _undoStack.RemoveLast(); // Remove oldest
             }
             
+            IsDirty = true;
             OnHistoryChanged?.Invoke();
         }
 
@@ -58,7 +64,8 @@ namespace TeamODD.ODDB.Editors.Commands
             
             command.Undo();
             _redoStack.Push(command);
-            
+
+            IsDirty = true;
             OnHistoryChanged?.Invoke();
             Debug.Log($"[ODDB] Undo: {command.Name}");
         }
@@ -73,7 +80,8 @@ namespace TeamODD.ODDB.Editors.Commands
             var command = _redoStack.Pop();
             command.Execute();
             _undoStack.AddFirst(command);
-            
+
+            IsDirty = true;
             OnHistoryChanged?.Invoke();
             Debug.Log($"[ODDB] Redo: {command.Name}");
         }
@@ -85,8 +93,14 @@ namespace TeamODD.ODDB.Editors.Commands
         {
             _undoStack.Clear();
             _redoStack.Clear();
+            IsDirty = false;
             OnHistoryChanged?.Invoke();
         }
+
+        /// <summary>
+        /// Marks the current state as saved, clearing the dirty flag.
+        /// </summary>
+        public void MarkSaved() => IsDirty = false;
 
         /// <summary>
         /// Jumps to the state AFTER the execution of the target command.
