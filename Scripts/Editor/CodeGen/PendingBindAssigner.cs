@@ -36,9 +36,12 @@ namespace TeamODD.ODDB.Editors.CodeGen
             if (entries.Count == 0)
                 return;
 
-            var settings = ODDBRuntimeSettings.Setting;
+            var settings = ODDBRuntimeSettings.TryLoad();
             if (settings == null)
+            {
+                Debug.LogWarning("[ODDB CodeGen] RuntimeSettings asset missing — pending remap drain skipped.");
                 return;
+            }
             var dbPath = Path.Combine(settings.Path, settings.DBName);
 
             var dataService = new ODDBDataService();

@@ -14,22 +14,26 @@ namespace TeamODD.ODDB.Runtime.Settings
     /// </summary>
     public class ODDBRuntimeSettings : ScriptableObject
     {
+        /// <summary>Pure read; returns null if the asset doesn't exist yet. No side effects.</summary>
+        public static ODDBRuntimeSettings TryLoad()
+        {
+            return Resources.Load<ODDBRuntimeSettings>("ODDBRuntimeSettings");
+        }
+
         public static ODDBRuntimeSettings Setting
         {
             get
             {
-                var s = Resources.Load<ODDBRuntimeSettings>("ODDBRuntimeSettings");
-                if (s == null)
-                {
-                    s = CreateInstance<ODDBRuntimeSettings>();
-                    s.name = "ODDBRuntimeSettings";
+                var s = TryLoad();
+                if (s != null) return s;
+                s = CreateInstance<ODDBRuntimeSettings>();
+                s.name = "ODDBRuntimeSettings";
 #if UNITY_EDITOR
-                    if (!AssetDatabase.IsValidFolder("Assets/Resources"))
-                        AssetDatabase.CreateFolder("Assets", "Resources");
-                    AssetDatabase.CreateAsset(s, "Assets/Resources/ODDBRuntimeSettings.asset");
-                    AssetDatabase.SaveAssets();
+                if (!AssetDatabase.IsValidFolder("Assets/Resources"))
+                    AssetDatabase.CreateFolder("Assets", "Resources");
+                AssetDatabase.CreateAsset(s, "Assets/Resources/ODDBRuntimeSettings.asset");
+                AssetDatabase.SaveAssets();
 #endif
-                }
                 return s;
             }
         }

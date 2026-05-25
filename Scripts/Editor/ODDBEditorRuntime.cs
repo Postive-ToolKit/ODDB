@@ -113,8 +113,13 @@ Workflow shortcuts you can offer the user:
         {
             McpMainThread.EnsurePump();
 
-            var settings = ODDBEditorSettings.Setting;
-            if (settings == null || !settings.EnableMCPServer)
+            var settings = ODDBEditorSettings.TryLoad();
+            if (settings == null)
+            {
+                McpLog.Lifecycle("ODDBEditorSettings.asset not found — deferring boot. Open the ODDB Editor or run from settings inspector to create.");
+                return;
+            }
+            if (!settings.EnableMCPServer)
             {
                 McpLog.Lifecycle("server disabled via settings");
                 return;

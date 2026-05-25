@@ -12,22 +12,31 @@ namespace TeamODD.ODDB.Editors.Settings
     /// </summary>
     public class ODDBEditorSettings : ScriptableObject
     {
+        private const string AssetPath = "Assets/Editor/ODDBEditorSettings.asset";
+
+        /// <summary>Pure read; returns null if the asset doesn't exist yet. No side effects.</summary>
+        public static ODDBEditorSettings TryLoad()
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(AssetPath);
+#else
+            return null;
+#endif
+        }
+
         public static ODDBEditorSettings Setting
         {
             get
             {
 #if UNITY_EDITOR
-                const string path = "Assets/Editor/ODDBEditorSettings.asset";
-                var s = AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(path);
-                if (s == null)
-                {
-                    s = CreateInstance<ODDBEditorSettings>();
-                    s.name = "ODDBEditorSettings";
-                    if (!AssetDatabase.IsValidFolder("Assets/Editor"))
-                        AssetDatabase.CreateFolder("Assets", "Editor");
-                    AssetDatabase.CreateAsset(s, path);
-                    AssetDatabase.SaveAssets();
-                }
+                var s = TryLoad();
+                if (s != null) return s;
+                s = CreateInstance<ODDBEditorSettings>();
+                s.name = "ODDBEditorSettings";
+                if (!AssetDatabase.IsValidFolder("Assets/Editor"))
+                    AssetDatabase.CreateFolder("Assets", "Editor");
+                AssetDatabase.CreateAsset(s, AssetPath);
+                AssetDatabase.SaveAssets();
                 return s;
 #else
                 return null;
