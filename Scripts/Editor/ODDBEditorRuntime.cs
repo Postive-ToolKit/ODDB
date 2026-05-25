@@ -83,7 +83,7 @@ Workflow shortcuts you can offer the user:
                     }
                     catch (System.Exception ex)
                     {
-                        McpLog.Warn($"UseCase ctor threw: {ex.Message}");
+                        McpLog.Warn($"UseCase ctor threw: {ex}");
                         _useCase = null;
                         return null;
                     }
@@ -105,7 +105,7 @@ Workflow shortcuts you can offer the user:
             // inside ODDBEditorUseCase's ctor) only fires when the user first
             // opens the editor window or an MCP tool is called.
             try { BootServer(); }
-            catch (System.Exception ex) { McpLog.Error($"BootServer crashed: {ex.Message}"); }
+            catch (System.Exception ex) { McpLog.Error($"BootServer crashed: {ex}"); }
             AssemblyReloadEvents.beforeAssemblyReload += StopServer;
         }
 
@@ -169,7 +169,7 @@ Workflow shortcuts you can offer the user:
                 }
                 catch (System.Exception ex)
                 {
-                    McpLog.Error($"tool/resource registration failed: {ex.Message}");
+                    McpLog.Error($"tool/resource registration failed: {ex}");
                 }
             }
 
