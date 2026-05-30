@@ -477,6 +477,7 @@ namespace TeamODD.ODDB.Editors.Window
                     $"path={fullPath} callsite=SaveDatabase");
                 return;
             }
+            ODDBBackup.CreatePreSaveBackup(fullPath, PreSaveBackupKeep);
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
         }
@@ -663,6 +664,7 @@ namespace TeamODD.ODDB.Editors.Window
                     $"path={fullPath} callsite=PersistDatabase");
                 return;
             }
+            ODDBBackup.CreatePreSaveBackup(fullPath, PreSaveBackupKeep);
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
         }
@@ -687,28 +689,13 @@ namespace TeamODD.ODDB.Editors.Window
             try
             {
                 File.Copy(fullPath, backupPath, true);
-                RotateBackups(fullPath, PreImportBackupKeep);
+                ODDBBackup.RotateBackups(fullPath, PreImportBackupKeep, ".preimport-*.bak");
                 return backupPath;
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"Pre-import backup failed: {e.Message}");
                 return null;
-            }
-        }
-
-        private static void RotateBackups(string originalFullPath, int keep)
-        {
-            var directory = Path.GetDirectoryName(originalFullPath);
-            if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory)) return;
-            var baseName = Path.GetFileName(originalFullPath);
-            var pattern = $"{baseName}.preimport-*.bak";
-            var backups = Directory.GetFiles(directory, pattern);
-            if (backups.Length <= keep) return;
-            Array.Sort(backups, (a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
-            for (var i = keep; i < backups.Length; i++)
-            {
-                try { File.Delete(backups[i]); } catch { /* best-effort rotation */ }
             }
         }
 
