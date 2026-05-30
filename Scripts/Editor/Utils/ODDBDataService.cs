@@ -1,4 +1,5 @@
 using System.IO;
+using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace TeamODD.ODDB.Editors.Utils
 {
     public class ODDBDataService
     {
+        private const int PreSaveBackupKeep = 3;
+
         public bool LoadDatabase(string path, out ODDatabase database)
         {
             database = null;
@@ -22,6 +25,24 @@ namespace TeamODD.ODDB.Editors.Utils
 
         public bool SaveDatabase(ODDatabase database, string path)
         {
+            // Structural empty-DB-on-existing-file refusal. Closes the leak where
+            // ODDBSheetConverter.SaveDatabaseToFile's non-useCase fallback branch
+            // bypasses the use-case CanSave gate. Principle 3: Save refuses, no warnings.
+            if (database != null && File.Exists(path) &&
+                database.Tables.Count + database.Views.Count == 0)
+            {
+                long fileSize = 0;
+                try { fileSize = new FileInfo(path).Length; } catch { }
+                Debug.LogError(
+                    $"[ODDB][SAVE-REFUSED] reason=empty-db-on-existing-file " +
+                    $"path={path} size={fileSize} callsite=ODDBDataService.SaveDatabase");
+                return false;
+            }
+
+            // Pre-save backup at the DataService layer — closes the ODDBSheetConverter
+            // fallback leak where the editor wrapper's backup is skipped.
+            ODDBBackup.CreatePreSaveBackup(path, PreSaveBackupKeep);
+
             try
             {
                 var converter = new ODDBConverter();
