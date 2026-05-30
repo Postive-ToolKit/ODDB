@@ -45,6 +45,18 @@ namespace TeamODD.ODDB.Editors.Window
         private readonly CommandProcessor _commandProcessor = new();
         private string _selectedTableId;
         private const int PreImportBackupKeep = 3;
+        private const int PreSaveBackupKeep = 3;
+        private ODDBLoadReport _loadReport;
+
+        /// <summary>
+        /// True iff Save is allowed. False when the most recent load surfaced a fatal
+        /// failure via <see cref="ODDatabase.TryLoad"/>. Bootstrap (fresh install) leaves
+        /// <c>_loadReport == null</c> and returns true.
+        /// </summary>
+        public bool CanSave => _loadReport == null || _loadReport.IsSafeToSave;
+
+        /// <summary>Diagnostics: the load report from the most recent ctor load attempt, or null on fresh-install bootstrap.</summary>
+        public ODDBLoadReport LoadReport => _loadReport;
 
         public ODDBEditorUseCase()
         {
@@ -62,10 +74,32 @@ namespace TeamODD.ODDB.Editors.Window
             if (verbose)
                 Debug.Log($"[ODDB] Load path={fullPath} exists={fileExisted} size={fileSize}B");
 
-            _database = ODDatabase.Load(fullPath);
-
-            if (!fileExisted)
+            if (fileExisted)
             {
+                if (ODDatabase.TryLoad(fullPath, out _database, out _loadReport))
+                {
+                    if (verbose) DumpLoadDiagnostics(fullPath);
+                }
+                else
+                {
+                    // TryLoad may have exposed a partial DB for read-only inspection
+                    // (EmptyRestoredOnNonEmptyDto / UnmappedFieldType); fall back to
+                    // CreateEmpty when nothing was exposed.
+                    _database ??= ODDatabase.CreateEmpty();
+                    // Always-on diagnostic log; not gated on UseDebugLog.
+                    Debug.LogError(
+                        $"[ODDB][LOAD-FATAL] stage={_loadReport.FailureStage} reason={_loadReport.FailureReason} " +
+                        $"path={fullPath} size={_loadReport.FileSize} " +
+                        $"dto-tables={_loadReport.DtoTableCount} dto-views={_loadReport.DtoViewCount} " +
+                        $"restored-tables={_loadReport.RestoredTableCount} restored-views={_loadReport.RestoredViewCount} " +
+                        $"unmapped={_loadReport.UnmappedFieldTypeCount} fmt={_loadReport.SourceFormatVersion}");
+                }
+            }
+            else
+            {
+                // Fresh install — explicit intent, no load attempt; CanSave returns true.
+                _database = ODDatabase.CreateEmpty();
+                _loadReport = null;
                 Debug.LogWarning($"[ODDB] Database not found at {fullPath} — created an empty one. If you have an existing ODDB.bytes elsewhere, set its location in Assets/Resources/ODDBRuntimeSettings.asset (Path field).");
                 try
                 {
@@ -76,10 +110,6 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     Debug.LogWarning($"Initial DB save failed: {ex.Message}");
                 }
-            }
-            else if (verbose)
-            {
-                DumpLoadDiagnostics(fullPath);
             }
 
             _database.OnDataChanged += OnDataChanged;
@@ -440,6 +470,13 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void SaveDatabase(string fullPath)
         {
+            if (!CanSave)
+            {
+                Debug.LogError(
+                    $"[ODDB][SAVE-REFUSED] reason={_loadReport?.FailureStage ?? "unknown"} " +
+                    $"path={fullPath} callsite=SaveDatabase");
+                return;
+            }
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
         }
@@ -619,6 +656,13 @@ namespace TeamODD.ODDB.Editors.Window
         private void PersistDatabase()
         {
             var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
+            if (!CanSave)
+            {
+                Debug.LogError(
+                    $"[ODDB][SAVE-REFUSED-PERSIST] reason={_loadReport?.FailureStage ?? "unknown"} " +
+                    $"path={fullPath} callsite=PersistDatabase");
+                return;
+            }
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
         }
