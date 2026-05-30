@@ -179,7 +179,20 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void OnDestroy()
         {
-            if (_editorUseCase == null || !_editorUseCase.IsDirty)
+            if (_editorUseCase == null)
+                return;
+
+            if (_editorUseCase is ODDBEditorUseCase concrete && !concrete.CanSave)
+            {
+                EditorUtility.DisplayDialog(
+                    "ODDB Load Was Fatal",
+                    "The database failed to load cleanly and Save is disabled. " +
+                    "Close anyway? Original file will be preserved.",
+                    "Close");
+                return;
+            }
+
+            if (!_editorUseCase.IsDirty)
                 return;
 
             var choice = EditorUtility.DisplayDialogComplex(
