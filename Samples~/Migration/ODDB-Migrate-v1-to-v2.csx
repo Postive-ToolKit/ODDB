@@ -80,7 +80,11 @@ byte[] Gzip(string s)
 {
     using var ms = new MemoryStream();
     using (var gz = new GZipStream(ms, CompressionLevel.Optimal))
-    using (var writer = new StreamWriter(gz, Encoding.UTF8))
+    // BOM-less UTF-8: `Encoding.UTF8` prepends a BOM via StreamWriter, which
+    // Newtonsoft.Json then rejects on read with "Unexpected character ﻿ at
+    // position 0". Use new UTF8Encoding(false) so output bytes start with
+    // the JSON content itself, no preamble. See v2.0.12 changelog.
+    using (var writer = new StreamWriter(gz, new UTF8Encoding(false)))
         writer.Write(s);
     return ms.ToArray();
 }
