@@ -34,6 +34,15 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
                     if (selector != null)
                     {
+                        // Flatten: skip the typeKey-level menu node and add Param
+                        // options directly under the folder. Used for meta typeKeys
+                        // (e.g. "custom") whose own name adds no information.
+                        if (rt.FlattenMenu)
+                        {
+                            foreach (var opt in selector.GetOptions())
+                                folderItem.AddChild(new FieldTypeDropDownItem(rt.Key, opt.Key, opt.Value));
+                            continue;
+                        }
                         var subItem = new AdvancedDropdownItem(ToDisplayName(rt.Key));
                         foreach (var opt in selector.GetOptions())
                             subItem.AddChild(new FieldTypeDropDownItem(rt.Key, opt.Key, opt.Value));
