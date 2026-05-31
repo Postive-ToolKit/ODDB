@@ -277,7 +277,9 @@ namespace TeamODD.ODDB.Samples.Migration
         private static byte[] GzipNoBom(string s)
         {
             using var ms = new MemoryStream();
-            using (var gz = new GZipStream(ms, CompressionLevel.Optimal))
+            // System.IO.Compression.CompressionLevel — fully qualified because
+            // UnityEngine.CompressionLevel exists and would otherwise be ambiguous.
+            using (var gz = new GZipStream(ms, System.IO.Compression.CompressionLevel.Optimal))
             // new UTF8Encoding(false) → no BOM prepended; matches the BOM fix
             // applied to ODDB-Migrate-v1-to-v2.csx in v2.0.12.
             using (var writer = new StreamWriter(gz, new UTF8Encoding(false)))
