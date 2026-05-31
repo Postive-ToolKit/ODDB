@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace TeamODD.ODDB.Runtime.Serializers
 {
-    [ODDBType("addressable", targetType: typeof(UnityEngine.Object), folder: "Unity Assets")]
+    [ODDBType("addressable", targetType: typeof(UnityEngine.Object), folder: "Unity Assets", requiresParam: true)]
     public class AddressableSerializer : IDataSerializer
     {
         private const string LOAD_ASSET_ASYNC_METHOD = nameof(Addressables.LoadAssetAsync);

@@ -11,7 +11,7 @@ using UnityEditor;
 #endif
 namespace TeamODD.ODDB.Runtime.Serializers
 {
-    [ODDBType("resource", targetType: typeof(UnityEngine.Object), folder: "Unity Assets")]
+    [ODDBType("resource", targetType: typeof(UnityEngine.Object), folder: "Unity Assets", requiresParam: true)]
     public class ResourceSerializer : IDataSerializer
     {
         public string Serialize(object data, string param)
