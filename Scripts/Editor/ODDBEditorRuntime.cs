@@ -181,7 +181,7 @@ Workflow shortcuts you can offer the user:
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
                 protocolVersion = "2024-11-05",
-                serverInfo = new { name = "ODDB", version = "2.0.14" },
+                serverInfo = new { name = "ODDB", version = "2.0.15" },
                 capabilities = new { tools = new { }, resources = new { } },
                 instructions = ServerInstructions,
             }));
