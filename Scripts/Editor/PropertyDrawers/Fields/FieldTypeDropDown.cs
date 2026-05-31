@@ -34,14 +34,14 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
                     if (selector != null)
                     {
-                        var subItem = new AdvancedDropdownItem(rt.Key);
+                        var subItem = new AdvancedDropdownItem(ToDisplayName(rt.Key));
                         foreach (var opt in selector.GetOptions())
                             subItem.AddChild(new FieldTypeDropDownItem(rt.Key, opt.Key, opt.Value));
                         folderItem.AddChild(subItem);
                         continue;
                     }
 
-                    folderItem.AddChild(new FieldTypeDropDownItem(rt.Key, string.Empty, rt.Key));
+                    folderItem.AddChild(new FieldTypeDropDownItem(rt.Key, string.Empty, ToDisplayName(rt.Key)));
                 }
                 root.AddChild(folderItem);
             }
@@ -54,5 +54,12 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 return;
             OnSelectionChanged?.Invoke(fieldItem.TypeKey, fieldItem.Param, fieldItem.name);
         }
+
+        // Convert wire keys ("int", "view", "resource") to PascalCase menu labels.
+        // The wire key remains lowercase on disk for compatibility; only the menu
+        // display label is capitalized. User-defined keys that are already
+        // PascalCase (e.g. "BigDouble") pass through unchanged.
+        private static string ToDisplayName(string key)
+            => string.IsNullOrEmpty(key) ? key : char.ToUpper(key[0]) + key.Substring(1);
     }
 }
