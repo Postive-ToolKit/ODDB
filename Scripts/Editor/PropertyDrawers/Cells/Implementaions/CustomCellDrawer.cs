@@ -32,8 +32,21 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     return delegateDrawer.CreatePropertyGUI(cell, typeKey, param, commit);
             }
 
-            // Fallback: raw string TextField. The column header already shows the
-            // Param (full type name) so we don't duplicate it in the cell body.
+            // Fallback: no per-Param drawer registered. Show a clear "register one"
+            // hint above a raw string editor so the user knows what to do, but can
+            // still inspect / hand-edit the underlying value if needed.
+            var container = new VisualElement();
+            container.style.flexGrow = 1;
+
+            var hint = new Label(string.IsNullOrEmpty(param)
+                ? "No CellDrawer registered for this custom field. Add a class with [CellDrawer(\"<your-key>\")] in your Editor code, then put that key in this field's Param."
+                : $"No CellDrawer for '{param}'. Register one in your Editor code: [CellDrawer(\"{param}\")] public class … : IODDBCellDrawer {{ … }}");
+            hint.style.whiteSpace = WhiteSpace.Normal;
+            hint.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Italic;
+            hint.style.opacity = 0.7f;
+            hint.style.paddingBottom = 2;
+            container.Add(hint);
+
             var value = _serializer.Deserialize(cell.SerializedData, param) as string;
             var textField = new TextField()
             {
@@ -43,7 +56,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             {
                 commit(_serializer.Serialize(evt.newValue, param));
             });
-            return textField;
+            container.Add(textField);
+            return container;
         }
     }
 }
