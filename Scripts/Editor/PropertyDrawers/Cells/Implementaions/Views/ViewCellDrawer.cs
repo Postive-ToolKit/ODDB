@@ -36,10 +36,12 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
             {
                 title = ViewIdDropDownItem.FormatDisplayName(RowDisplayName.For(row), row.ID.ToString());
             }
-            else
-            {
-                commit(string.Empty);
-            }
+            // Stale reference (cell points to a row that no longer exists in the
+            // target view): display NOT_FOUND_TEXT but do NOT auto-clear the cell.
+            // Auto-clearing during GUI creation cascaded into an infinite refresh
+            // loop: commit → NotifyDataChanged → OnViewChanged → RefreshRows
+            // → bindCell → CreatePropertyGUI → commit → … (StackOverflow).
+            // The user can explicitly clear via the dropdown's "None" option.
             var button = new Button();
             button.text = title;
             button.clicked += () =>
