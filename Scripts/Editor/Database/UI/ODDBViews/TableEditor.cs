@@ -96,15 +96,32 @@ namespace TeamODD.ODDB.Editors.UI
                 maxWidth = 80,
                 width = 80,
             };
-            column.makeCell = () => new Label()
+            column.makeCell = () =>
             {
-                style = { unityTextAlign = TextAnchor.MiddleLeft, paddingLeft = 4 }
+                var button = new Button()
+                {
+                    style =
+                    {
+                        flexGrow = 1,
+                        marginTop = 0, marginBottom = 0, marginLeft = 0, marginRight = 0,
+                        alignItems = Align.Center,
+                        justifyContent = Justify.Center,
+                    }
+                };
+                button.tooltip = "Click to copy row ID";
+                return button;
             };
             column.bindCell = (element, index) =>
             {
                 if (_table == null || index < 0 || index >= _table.Rows.Count) return;
-                var label = (Label)element;
-                label.text = _table.Rows[index].ID.ToString();
+                var button = (Button)element;
+                var rowId = _table.Rows[index].ID.ToString();
+                button.text = rowId;
+                button.clickable = new Clickable(() =>
+                {
+                    GUIUtility.systemCopyBuffer = rowId;
+                    UnityEngine.Debug.Log($"[ODDB] Row ID copied: {rowId}");
+                });
             };
             return column;
         }
