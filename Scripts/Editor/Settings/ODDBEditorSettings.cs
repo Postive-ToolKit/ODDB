@@ -1,3 +1,4 @@
+using System;
 using TeamODD.ODDB.Runtime.Attributes;
 using UnityEngine;
 #if UNITY_EDITOR
@@ -7,18 +8,42 @@ using UnityEditor;
 namespace TeamODD.ODDB.Editors.Settings
 {
     /// <summary>
-    /// Editor-only ODDB settings. Stored under Assets/Editor so it never
-    /// ships in player builds. Runtime fields live on ODDBRuntimeSettings.
+    /// Editor-only ODDB settings. Resolved through AssetDatabase by type so
+    /// the settings asset can be moved without breaking lookups.
+    /// Runtime fields live on ODDBRuntimeSettings.
     /// </summary>
     public class ODDBEditorSettings : ScriptableObject
     {
-        private const string AssetPath = "Assets/Editor/ODDBEditorSettings.asset";
+        private const string DefaultFolderPath = "Assets/Settings";
+        private const string DefaultAssetPath = DefaultFolderPath + "/ODDBEditorSettings.asset";
+        private const string LegacyAssetPath = "Assets/Editor/ODDBEditorSettings.asset";
 
         /// <summary>Pure read; returns null if the asset doesn't exist yet. No side effects.</summary>
         public static ODDBEditorSettings TryLoad()
         {
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(AssetPath);
+            var guids = AssetDatabase.FindAssets($"t:{nameof(ODDBEditorSettings)}");
+            ODDBEditorSettings fallback = null;
+            var fallbackPath = string.Empty;
+
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var settings = AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(path);
+                if (settings == null)
+                    continue;
+
+                if (path == DefaultAssetPath)
+                    return settings;
+
+                if (fallback == null || IsPreferredFallback(path, fallbackPath))
+                {
+                    fallback = settings;
+                    fallbackPath = path;
+                }
+            }
+
+            return fallback;
 #else
             return null;
 #endif
@@ -33,9 +58,8 @@ namespace TeamODD.ODDB.Editors.Settings
                 if (s != null) return s;
                 s = CreateInstance<ODDBEditorSettings>();
                 s.name = "ODDBEditorSettings";
-                if (!AssetDatabase.IsValidFolder("Assets/Editor"))
-                    AssetDatabase.CreateFolder("Assets", "Editor");
-                AssetDatabase.CreateAsset(s, AssetPath);
+                EnsureFolder(DefaultFolderPath);
+                AssetDatabase.CreateAsset(s, DefaultAssetPath);
                 AssetDatabase.SaveAssets();
                 return s;
 #else
@@ -87,5 +111,32 @@ namespace TeamODD.ODDB.Editors.Settings
         [SerializeField] private string _googleSheetAPIURL = string.Empty;
         [Tooltip("API Key for Google Sheets (read-only operations).")]
         [SerializeField] private string _googleSheetAPISecretKey = string.Empty;
+
+#if UNITY_EDITOR
+        private static void EnsureFolder(string folderPath)
+        {
+            var parts = folderPath.Split('/');
+            var current = parts[0];
+
+            for (var i = 1; i < parts.Length; i++)
+            {
+                var next = current + "/" + parts[i];
+                if (!AssetDatabase.IsValidFolder(next))
+                    AssetDatabase.CreateFolder(current, parts[i]);
+                current = next;
+            }
+        }
+
+        private static bool IsPreferredFallback(string path, string currentPath)
+        {
+            if (path == LegacyAssetPath)
+                return currentPath != LegacyAssetPath;
+
+            if (currentPath == LegacyAssetPath)
+                return false;
+
+            return string.Compare(path, currentPath, StringComparison.OrdinalIgnoreCase) < 0;
+        }
+#endif
     }
 }
