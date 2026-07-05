@@ -1,4 +1,5 @@
 using System;
+using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
@@ -86,8 +87,19 @@ namespace TeamODD.ODDB.Editors.UI
                 isReadOnly = true,
                 style = { flexGrow = 0, flexShrink = 1 }
             };
-            idTextField.tooltip = "Read-only unique identifier for this item";
-            idTextField.SetEnabled(false);
+            idTextField.tooltip = "Right-click to change ID";
+            idTextField.RegisterCallback<ContextClickEvent>(evt =>
+            {
+                var capturedId = _view?.ID.ToString();
+                if (string.IsNullOrEmpty(capturedId))
+                    return;
+
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Change ID..."), false,
+                    () => ODDBChangeIdWindow.ShowForView(_editorUseCase, capturedId));
+                menu.ShowAsContext();
+                evt.StopPropagation();
+            });
             _toolbar.Add(idTextField);
 
             // Type Menu

@@ -205,6 +205,32 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.Execute(command);
         }
 
+        public void SetViewId(string id, string newId)
+        {
+            id = NormalizeId(id);
+            newId = NormalizeId(newId);
+            ValidateNewId(newId, "new view id");
+
+            var view = GetViewByKey(id);
+            if (view == null)
+                throw new InvalidOperationException($"View or Table '{id}' was not found.");
+            if (string.Equals(id, newId, StringComparison.Ordinal))
+                return;
+            if (GetViewByKey(newId) != null)
+                throw new InvalidOperationException($"View or Table ID '{newId}' already exists.");
+
+            var repository = view is Table ? _database.Tables : _database.Views;
+            var command = new SetViewIdCommand(
+                repository,
+                new ODDBID(id),
+                new ODDBID(newId),
+                viewId => _database.NotifyDataChanged(new ODDBID(viewId)));
+            _commandProcessor.Execute(command);
+
+            if (string.Equals(_selectedTableId, id, StringComparison.Ordinal))
+                _selectedTableId = newId;
+        }
+
         /// <summary>
         /// Executes a command to create a new Table via the undo/redo pipeline.
         /// </summary>
@@ -280,6 +306,28 @@ namespace TeamODD.ODDB.Editors.Window
             if (view is not Table table) return;
 
             var command = new RemoveRowCommand(table, rowId, (id) => _database.NotifyDataChanged(new ODDBID(id)));
+            _commandProcessor.Execute(command);
+        }
+
+        public void SetRowId(string tableId, string rowId, string newRowId)
+        {
+            tableId = NormalizeId(tableId);
+            rowId = NormalizeId(rowId);
+            newRowId = NormalizeId(newRowId);
+            ValidateNewId(newRowId, "new row id");
+
+            var view = GetViewByKey(tableId);
+            if (view is not Table table)
+                throw new InvalidOperationException($"Table '{tableId}' was not found.");
+            if (table.GetRow(rowId) == null)
+                throw new InvalidOperationException($"Row '{rowId}' was not found in table '{tableId}'.");
+            if (string.Equals(rowId, newRowId, StringComparison.Ordinal))
+                return;
+            var duplicate = GetRow(newRowId);
+            if (duplicate != null)
+                throw new InvalidOperationException($"Row ID '{newRowId}' already exists.");
+
+            var command = new SetRowIdCommand(table, rowId, newRowId, id => _database.NotifyDataChanged(new ODDBID(id)));
             _commandProcessor.Execute(command);
         }
 
@@ -726,6 +774,17 @@ namespace TeamODD.ODDB.Editors.Window
             if (!string.IsNullOrEmpty(backupPath))
                 message += $" backupPath={backupPath}";
             Debug.Log(message);
+        }
+
+        private static string NormalizeId(string id)
+        {
+            return id?.Trim() ?? string.Empty;
+        }
+
+        private static void ValidateNewId(string id, string label)
+        {
+            if (string.IsNullOrEmpty(id))
+                throw new InvalidOperationException($"{label} cannot be empty.");
         }
 
         public void Dispose()

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using TeamODD.ODDB.Editors.PropertyDrawers;
+using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.Utils.Elements;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
@@ -104,9 +105,28 @@ namespace TeamODD.ODDB.Editors.UI
             {
                 if (_table == null || index < 0 || index >= _table.Rows.Count) return;
                 var label = (Label)element;
-                label.text = _table.Rows[index].ID.ToString();
+                var rowId = _table.Rows[index].ID.ToString();
+                label.text = rowId;
+                label.tooltip = "Right-click to change row ID";
+                label.userData = rowId;
+                label.UnregisterCallback<ContextClickEvent>(OnRowIdContextClick);
+                label.RegisterCallback<ContextClickEvent>(OnRowIdContextClick);
             };
             return column;
+        }
+
+        private void OnRowIdContextClick(ContextClickEvent evt)
+        {
+            if (_table == null || evt.currentTarget is not Label label || label.userData is not string rowId)
+                return;
+
+            var capturedTableId = _table.ID.ToString();
+            var capturedRowId = rowId;
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Change ID..."), false,
+                () => ODDBChangeIdWindow.ShowForRow(_editorUseCase, capturedTableId, capturedRowId));
+            menu.ShowAsContext();
+            evt.StopPropagation();
         }
 
         private Column CreateCellColumn(int columnIndex)

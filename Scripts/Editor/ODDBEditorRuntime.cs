@@ -51,10 +51,11 @@ When the user asks to EXPLORE or VIEW data, read resources; do not call tools:
   - oddb://commands/history shows recent undo/redo entries.
 
 When the user asks to MODIFY anything, use tools (names start with `oddb_`):
-  data:    oddb_add_row, oddb_remove_row, oddb_set_cell
+  data:    oddb_add_row, oddb_remove_row, oddb_set_row_id, oddb_set_cell
   schema:  oddb_add_view / oddb_add_table / oddb_remove_view / oddb_remove_table
            oddb_add_field / oddb_remove_field / oddb_move_field
-           oddb_set_view_name / oddb_set_view_bind_type / oddb_set_view_parent
+           oddb_set_view_name / oddb_set_view_id
+           oddb_set_view_bind_type / oddb_set_view_parent
   system:  oddb_generate_code, oddb_save_database
 
 All writes route through ODDB's CommandProcessor so each tool call is undoable
@@ -155,6 +156,7 @@ Workflow shortcuts you can offer the user:
                     // Tools
                     _toolRegistry.Register(new AddRowTool(UseCase));
                     _toolRegistry.Register(new RemoveRowTool(UseCase));
+                    _toolRegistry.Register(new SetRowIdTool(UseCase));
                     _toolRegistry.Register(new SetCellTool(UseCase));
                     _toolRegistry.Register(new AddViewTool(UseCase));
                     _toolRegistry.Register(new AddTableTool(UseCase));
@@ -165,6 +167,7 @@ Workflow shortcuts you can offer the user:
                     _toolRegistry.Register(new MoveFieldTool(UseCase));
                     _toolRegistry.Register(new SetFieldTypeTool(UseCase));
                     _toolRegistry.Register(new SetViewNameTool(UseCase));
+                    _toolRegistry.Register(new SetViewIdTool(UseCase));
                     _toolRegistry.Register(new SetViewBindTypeTool(UseCase));
                     _toolRegistry.Register(new SetViewParentTool(UseCase));
                     _toolRegistry.Register(new GenerateCodeTool(UseCase));

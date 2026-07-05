@@ -21,6 +21,7 @@ namespace TeamODD.ODDB.Editors.Window
         public ODDBViewType GetViewTypeByKey(string key);
         public string GetViewName(string key);
         public void SetViewName(string key, string name);
+        public void SetViewId(string key, string newKey);
         
         // Data Manipulation Methods
         public void AddTable();
@@ -29,6 +30,7 @@ namespace TeamODD.ODDB.Editors.Window
         public void RemoveView(string viewId);
         public void AddRow(string tableId);
         public void RemoveRow(string tableId, string rowId);
+        public void SetRowId(string tableId, string rowId, string newRowId);
         public void AddField(string viewId, Field field);
         public void RemoveField(string viewId, int index);
         public void MoveField(string viewId, int oldIndex, int newIndex);
