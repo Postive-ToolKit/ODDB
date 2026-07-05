@@ -5,7 +5,7 @@ namespace TeamODD.ODDB.Editors.MCP.ClientRegistration
 {
     /// <summary>
     /// Unity menu entries that auto-write the ODDB MCP server URL into the
-    /// supported client config files (Claude Code, Gemini CLI). The key is
+    /// supported client config files (Claude Code, Gemini CLI, Codex). The key is
     /// fixed as "oddb"; existing entries with the same key are overwritten.
     /// </summary>
     public static class McpClientMenu
@@ -20,11 +20,17 @@ namespace TeamODD.ODDB.Editors.MCP.ClientRegistration
         [MenuItem(MENU_REGISTER + "Gemini CLI")]
         public static void RegisterGemini() => Register(new GeminiClient());
 
+        [MenuItem(MENU_REGISTER + "Codex")]
+        public static void RegisterCodex() => Register(new CodexClient());
+
         [MenuItem(MENU_UNREGISTER + "Claude Code")]
         public static void UnregisterClaude() => Unregister(new ClaudeCodeClient());
 
         [MenuItem(MENU_UNREGISTER + "Gemini CLI")]
         public static void UnregisterGemini() => Unregister(new GeminiClient());
+
+        [MenuItem(MENU_UNREGISTER + "Codex")]
+        public static void UnregisterCodex() => Unregister(new CodexClient());
 
         private static void Register(IMcpClient client)
         {
