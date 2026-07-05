@@ -33,17 +33,34 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                 {
                     if (t == null || t.IsAbstract || t.IsInterface) continue;
                     if (!typeof(IODDBCellDrawer).IsAssignableFrom(t)) continue;
+
                     var attr = (CellDrawerAttribute)Attribute.GetCustomAttribute(t, typeof(CellDrawerAttribute));
-                    if (attr == null) continue;
-                    try
+                    if (attr != null)
+                        Register(t, attr.TypeKey);
+
+                    var customAttr = (CustomCellDrawerAttribute)Attribute.GetCustomAttribute(t, typeof(CustomCellDrawerAttribute));
+                    if (customAttr != null)
                     {
-                        _byKey[attr.TypeKey] = (IODDBCellDrawer)Activator.CreateInstance(t);
-                    }
-                    catch (Exception ex)
-                    {
-                        UnityEngine.Debug.LogError($"[ODDB] Failed to instantiate cell drawer '{t.FullName}' for key '{attr.TypeKey}': {ex.Message}");
+                        var key = !string.IsNullOrEmpty(customAttr.TypeID)
+                            ? customAttr.TypeID
+                            : customAttr.TargetType?.FullName;
+                        Register(t, key);
                     }
                 }
+            }
+        }
+
+        private static void Register(Type drawerType, string typeKey)
+        {
+            if (string.IsNullOrEmpty(typeKey)) return;
+
+            try
+            {
+                _byKey[typeKey] = (IODDBCellDrawer)Activator.CreateInstance(drawerType);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[ODDB] Failed to instantiate cell drawer '{drawerType.FullName}' for key '{typeKey}': {ex.Message}");
             }
         }
     }
