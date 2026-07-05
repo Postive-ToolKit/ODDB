@@ -11,6 +11,22 @@
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.0.2"
   },
+  "files": [
+    "Doc",
+    "Doc.meta",
+    "LICENSE",
+    "LICENSE.meta",
+    "Plugins",
+    "Plugins.meta",
+    "README.md",
+    "README.md.meta",
+    "Resources",
+    "Resources.meta",
+    "Samples~",
+    "Scripts",
+    "Scripts.meta",
+    "package.json.meta"
+  ],
   "contributors": [
     {
       "name": "postive12",
