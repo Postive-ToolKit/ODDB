@@ -281,6 +281,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             var sb = new StringBuilder();
             sb.AppendLine("Google Sheets App Script has been created and copied to clipboard.");
             sb.AppendLine("Please paste it into your Google Sheets Script Editor!!");
+            sb.AppendLine("If you already deployed an older script, paste this updated script and deploy a new web app version so formatting-preserving upload is used.");
             EditorUtility.DisplayDialog("ODDB", sb.ToString(), "OK");
         }
     }
