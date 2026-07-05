@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Utils.Converters;
@@ -27,12 +28,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
         private readonly struct SheetHeaderInfo
         {
             public readonly int DataStartIndex;
+            public readonly int TypeRowIndex;
             public readonly int IdColumnIndex;
             public readonly IReadOnlyList<int> DataColumnIndices;
 
-            public SheetHeaderInfo(int dataStartIndex, int idColumnIndex, IReadOnlyList<int> dataColumnIndices)
+            public SheetHeaderInfo(int dataStartIndex, int typeRowIndex, int idColumnIndex, IReadOnlyList<int> dataColumnIndices)
             {
                 DataStartIndex = dataStartIndex;
+                TypeRowIndex = typeRowIndex;
                 IdColumnIndex = idColumnIndex;
                 DataColumnIndices = dataColumnIndices;
             }
@@ -47,11 +50,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (nameRow.Count == 0) return false;
             if (nameRow[0] != SheetConfig.ROW_NAME_MARKER) return false;
 
-            var dataStartIndex = sheet.Values.Count > 1
+            var hasTypeRow = sheet.Values.Count > 1
                 && sheet.Values[1].Count > 0
-                && sheet.Values[1][0] == SheetConfig.ROW_TYPE_MARKER
-                    ? 2
-                    : 1;
+                && sheet.Values[1][0] == SheetConfig.ROW_TYPE_MARKER;
+            var dataStartIndex = hasTypeRow ? 2 : 1;
+            var typeRowIndex = hasTypeRow ? 1 : -1;
 
             var dataColumnIndices = new List<int>();
             for (int i = 2; i < nameRow.Count; i++)
@@ -62,7 +65,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 dataColumnIndices.Add(i);
             }
 
-            headerInfo = new SheetHeaderInfo(dataStartIndex, 1, dataColumnIndices);
+            headerInfo = new SheetHeaderInfo(dataStartIndex, typeRowIndex, 1, dataColumnIndices);
             return true;
         }
 
@@ -72,6 +75,106 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             var firstCell = row[0];
             return !string.IsNullOrEmpty(firstCell)
                 && firstCell.StartsWith(SheetConfig.ROW_COMMENT_PREFIX);
+        }
+
+        private static void ApplyFieldTypesToTable(ODDatabase database, Table table, SheetInfo sheet, SheetHeaderInfo headerInfo)
+        {
+            if (headerInfo.TypeRowIndex < 0 || headerInfo.TypeRowIndex >= sheet.Values.Count)
+                return;
+
+            var typeRow = sheet.Values[headerInfo.TypeRowIndex];
+            if (typeRow == null)
+                return;
+
+            for (int fieldIndex = 0; fieldIndex < headerInfo.DataColumnIndices.Count; fieldIndex++)
+            {
+                if (fieldIndex >= table.TotalFields.Count)
+                    break;
+
+                var columnIndex = headerInfo.DataColumnIndices[fieldIndex];
+                if (columnIndex >= typeRow.Count)
+                    continue;
+
+                if (!TryParseFieldType(typeRow[columnIndex], out var fieldType))
+                    continue;
+
+                fieldType.Param = ResolveImportedTypeParam(database, fieldType.TypeKey, fieldType.Param);
+                table.TotalFields[fieldIndex].Type = fieldType;
+            }
+        }
+
+        private static bool TryParseFieldType(string value, out FieldType fieldType)
+        {
+            fieldType = null;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            var text = value.Trim();
+            var typeKey = text;
+            var param = string.Empty;
+
+            var dashIndex = text.IndexOf(" - ", StringComparison.Ordinal);
+            if (dashIndex >= 0)
+            {
+                typeKey = text.Substring(0, dashIndex);
+                param = text.Substring(dashIndex + 3);
+            }
+            else
+            {
+                var slashIndex = text.IndexOf('/');
+                if (slashIndex >= 0)
+                {
+                    typeKey = text.Substring(0, slashIndex);
+                    param = text.Substring(slashIndex + 1);
+                }
+            }
+
+            typeKey = NormalizeTypeKey(typeKey);
+            if (string.IsNullOrEmpty(typeKey))
+                return false;
+
+            fieldType = new FieldType(typeKey, param.Trim());
+            return true;
+        }
+
+        private static string ResolveImportedTypeParam(ODDatabase database, string typeKey, string param)
+        {
+            if (database == null || typeKey != "view" || string.IsNullOrWhiteSpace(param))
+                return param?.Trim() ?? string.Empty;
+
+            var trimmed = param.Trim();
+            var view = database.GetAll()
+                .FirstOrDefault(v => string.Equals(v.ID.ToString(), trimmed, StringComparison.Ordinal)
+                                     || string.Equals(v.Name, trimmed, StringComparison.OrdinalIgnoreCase));
+
+            return view?.ID.ToString() ?? trimmed;
+        }
+
+        private static string NormalizeTypeKey(string typeKey)
+        {
+            var trimmed = typeKey?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return string.Empty;
+
+            switch (trimmed.ToLowerInvariant())
+            {
+                case "int":
+                case "float":
+                case "bool":
+                case "string":
+                case "enum":
+                case "resource":
+                case "addressable":
+                case "view":
+                case "custom":
+                case "long":
+                case "double":
+                case "byte":
+                case "short":
+                    return trimmed.ToLowerInvariant();
+                default:
+                    return trimmed;
+            }
         }
 
         private static void ApplyRowDataToTable(Table table, List<string> rowData, SheetHeaderInfo headerInfo)
@@ -201,6 +304,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (!TryParseSheetHeader(sheet, out var headerInfo))
                 return;
 
+            ApplyFieldTypesToTable(_dB, table, sheet, headerInfo);
             table.Clear();
 
             for (int i = headerInfo.DataStartIndex; i < sheet.Values.Count; i++)

@@ -221,15 +221,19 @@ namespace TeamODD.ODDB.Editors.UI
         }
 
         private string GetBindTypeFieldName(int columnIndex)
+            => GetBindTypeFieldName(_table?.BindType, columnIndex);
+
+        public static string GetBindTypeFieldName(System.Type bindType, int columnIndex)
         {
-            if (_table.BindType == null)
+            if (bindType == null)
                 return string.Empty;
 
-            var bindType = _table.BindType;
             var allFields = new List<FieldInfo>();
 
             var currentType = bindType;
-            while (currentType != null && currentType != typeof(object))
+            while (currentType != null
+                   && currentType != typeof(object)
+                   && currentType != typeof(ODDBEntity))
             {
                 var fields = currentType
                     .GetFields(ODDBEntity.FieldFlags)
