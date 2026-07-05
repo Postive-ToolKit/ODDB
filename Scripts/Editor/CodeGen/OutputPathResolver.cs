@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using TeamODD.ODDB.Editors.Settings;
+using TeamODD.ODDB.Editors.Utils;
 using UnityEditor;
 using UnityEngine;
 
@@ -24,12 +25,23 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 failureReason = "ODDBEditorSettings.GeneratedCodePath is empty. Set it before generating.";
                 return false;
             }
-            // Settings stores Assets-relative-ish path; canonicalize.
-            string assetsRel = rel.Replace('\\', '/').TrimStart('/');
-            if (!assetsRel.StartsWith("Assets/"))
-                assetsRel = "Assets/" + assetsRel;
+            // Settings stores Assets-relative-ish path; tolerate older absolute values selected through Browse.
+            var normalizedPath = ODDBPathUtility.ToProjectRelativePath(rel).Replace('\\', '/');
+            var assetsRel = normalizedPath.TrimStart('/');
+            if (!assetsRel.Equals("Assets", System.StringComparison.OrdinalIgnoreCase)
+                && !assetsRel.StartsWith("Assets/", System.StringComparison.OrdinalIgnoreCase))
+            {
+                if (Path.IsPathRooted(normalizedPath))
+                {
+                    failureReason = $"Generated code folder must be under Assets: {rel}";
+                    return false;
+                }
 
-            string abs = Path.GetFullPath(assetsRel);
+                assetsRel = "Assets/" + assetsRel;
+            }
+
+            var projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
+            string abs = Path.GetFullPath(Path.Combine(projectRoot, assetsRel));
             if (!Directory.Exists(abs))
             {
                 failureReason = $"Generated code folder does not exist: {assetsRel}";

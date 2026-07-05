@@ -1,8 +1,5 @@
 using System.Collections.Generic;
-using System.IO;
-using TeamODD.ODDB.Editors.Settings;
 using UnityEditor;
-using UnityEngine;
 
 namespace TeamODD.ODDB.Editors.CodeGen.UI
 {
@@ -24,20 +21,10 @@ namespace TeamODD.ODDB.Editors.CodeGen.UI
 
         public static void OpenGeneratedFolder()
         {
-            var rel = ODDBEditorSettings.Setting != null ? ODDBEditorSettings.Setting.GeneratedCodePath : null;
-            if (string.IsNullOrEmpty(rel))
+            if (!OutputPathResolver.TryGetValidOutputFolder(out var abs, out var failureReason))
             {
                 EditorUtility.DisplayDialog("ODDB CodeGen",
-                    "Set ODDBEditorSettings.GeneratedCodePath first.", "OK");
-                return;
-            }
-            string assetsRel = rel.Replace('\\', '/').TrimStart('/');
-            if (!assetsRel.StartsWith("Assets/")) assetsRel = "Assets/" + assetsRel;
-            string abs = Path.GetFullPath(assetsRel);
-            if (!Directory.Exists(abs))
-            {
-                EditorUtility.DisplayDialog("ODDB CodeGen",
-                    $"Folder does not exist: {assetsRel}", "OK");
+                    failureReason, "OK");
                 return;
             }
             EditorUtility.RevealInFinder(abs);

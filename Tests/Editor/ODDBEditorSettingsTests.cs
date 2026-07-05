@@ -1,6 +1,10 @@
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using TeamODD.ODDB.Editors.CodeGen;
 using TeamODD.ODDB.Editors.Settings;
+using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,8 +14,10 @@ namespace TeamODD.ODDB.Tests.Editor
     {
         private const string DefaultAssetPath = "Assets/Settings/ODDBEditorSettings.asset";
         private const string LegacyAssetPath = "Assets/Editor/ODDBEditorSettings.asset";
-        private const string TestFolderPath = "Assets/Plugins/ODDB/Tests/Editor/Generated/ODDBEditorSettingsTests";
+        private const string GeneratedRootPath = "Assets/Plugins/ODDB/Tests/Editor/Generated";
+        private const string TestFolderPath = GeneratedRootPath + "/ODDBEditorSettingsTests";
         private const string MovedAssetPath = TestFolderPath + "/MovedODDBEditorSettings.asset";
+        private const string GeneratedCodeFolderPath = TestFolderPath + "/GeneratedCode";
         private const string TestMarker = "ODDBEditorSettingsTests";
 
         [SetUp]
@@ -56,6 +62,45 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(LegacyAssetPath), Is.Null);
         }
 
+        [Test]
+        public void OutputPathResolver_AcceptsAbsoluteGeneratedCodePathInsideAssets()
+        {
+            EnsureFolder(GeneratedCodeFolderPath);
+
+            var settings = ODDBEditorSettings.Setting;
+            MarkAsTestAsset(settings);
+            var absolutePath = Path.GetFullPath(GeneratedCodeFolderPath).Replace('\\', '/');
+            var serialized = new SerializedObject(settings);
+            serialized.FindProperty("_generatedCodePath").stringValue = absolutePath;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var resolved = OutputPathResolver.TryGetValidOutputFolder(out var absoluteFolder, out var failureReason);
+
+            Assert.That(resolved, Is.True, failureReason);
+            Assert.That(absoluteFolder.Replace('\\', '/'), Is.EqualTo(absolutePath));
+        }
+
+        [Test]
+        public void PathUtility_ConvertsProjectFolderToAssetsRelativePath()
+        {
+            var absolutePath = Path.GetFullPath(GeneratedCodeFolderPath).Replace('\\', '/');
+
+            var storedPath = ODDBPathUtility.ToProjectRelativePath(absolutePath);
+
+            Assert.That(storedPath, Is.EqualTo(GeneratedCodeFolderPath));
+        }
+
+        [Test]
+        public void RuntimeSettings_PathSetterAcceptsAssetsRelativePath()
+        {
+            var settings = ScriptableObject.CreateInstance<ODDBRuntimeSettings>();
+
+            settings.Path = "Assets/Resources";
+
+            Assert.That(settings.DBPath, Is.EqualTo("/Resources"));
+            Assert.That(settings.Path.Replace('\\', '/'), Is.EqualTo((Application.dataPath + "/Resources").Replace('\\', '/')));
+        }
+
         private static void DeleteTestGeneratedAssets()
         {
             foreach (var path in FindSettingsAssetPaths())
@@ -70,6 +115,9 @@ namespace TeamODD.ODDB.Tests.Editor
 
             if (AssetDatabase.IsValidFolder(TestFolderPath))
                 AssetDatabase.DeleteAsset(TestFolderPath);
+
+            if (AssetDatabase.IsValidFolder(GeneratedRootPath) && IsAssetFolderEmpty(GeneratedRootPath))
+                AssetDatabase.DeleteAsset(GeneratedRootPath);
         }
 
         private static string[] FindSettingsAssetPaths()
@@ -78,6 +126,12 @@ namespace TeamODD.ODDB.Tests.Editor
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .Where(path => AssetDatabase.LoadAssetAtPath<ODDBEditorSettings>(path) != null)
                 .ToArray();
+        }
+
+        private static bool IsAssetFolderEmpty(string folderPath)
+        {
+            var absolutePath = Path.GetFullPath(folderPath);
+            return Directory.Exists(absolutePath) && !Directory.EnumerateFileSystemEntries(absolutePath).Any();
         }
 
         private static void EnsureFolder(string folderPath)

@@ -63,25 +63,11 @@ namespace TeamODD.ODDB.Runtime.Settings
 
         public string Path
         {
-            get => (Application.dataPath + DBPath).Replace("\\", "/");
+            get => ToAbsolutePath(DBPath);
             set
             {
-                string newVal = value.Replace("\\", "/");
-                string dataPath = Application.dataPath.Replace("\\", "/");
-                _dbPath = newVal.Replace(dataPath, "");
-
-                string resourcesTag = "/Resources";
-                int index = _dbPath.LastIndexOf(resourcesTag, StringComparison.OrdinalIgnoreCase);
-                if (index != -1)
-                {
-                    var resPath = _dbPath.Substring(index + resourcesTag.Length);
-                    if (resPath.StartsWith("/")) resPath = resPath.Substring(1);
-                    _pathFromResources = resPath;
-                }
-                else
-                {
-                    _pathFromResources = _dbPath.StartsWith("/") ? _dbPath.Substring(1) : _dbPath;
-                }
+                _dbPath = ToDataPathRelativePath(value);
+                _pathFromResources = ToResourcesRelativePath(_dbPath);
             }
         }
 
@@ -101,6 +87,86 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Tooltip("If false, Database returns address of Addressable Asset — not the asset itself.")]
         [SerializeField] private bool _useAddressableAutoLoad = false;
 #endif
+
+        private static string ToAbsolutePath(string path)
+        {
+            var normalized = NormalizeSlashes(path);
+            if (string.IsNullOrEmpty(normalized))
+                return NormalizeSlashes(BASE_PATH);
+
+            var dataPath = NormalizeSlashes(Application.dataPath).TrimEnd('/');
+            if (IsSameOrChildPath(normalized.TrimEnd('/'), dataPath) || IsFilesystemRootedPath(normalized))
+                return normalized;
+
+            if (normalized.Equals("Assets", StringComparison.OrdinalIgnoreCase))
+                return dataPath;
+
+            if (normalized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                var projectRoot = System.IO.Directory.GetParent(Application.dataPath)?.FullName
+                    ?? System.IO.Directory.GetCurrentDirectory();
+                return NormalizeSlashes(System.IO.Path.GetFullPath(System.IO.Path.Combine(projectRoot, normalized)));
+            }
+
+            if (normalized.StartsWith("/"))
+                return dataPath + normalized;
+
+            return dataPath + "/" + normalized;
+        }
+
+        private static string ToDataPathRelativePath(string path)
+        {
+            var normalized = NormalizeSlashes(path).TrimEnd('/');
+            if (string.IsNullOrEmpty(normalized))
+                return string.Empty;
+
+            var dataPath = NormalizeSlashes(Application.dataPath).TrimEnd('/');
+            if (IsSameOrChildPath(normalized, dataPath))
+                return normalized.Substring(dataPath.Length);
+
+            if (normalized.Equals("Assets", StringComparison.OrdinalIgnoreCase))
+                return string.Empty;
+
+            if (normalized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                return normalized.Substring("Assets".Length);
+
+            return normalized;
+        }
+
+        private static string ToResourcesRelativePath(string path)
+        {
+            var normalized = NormalizeSlashes(path);
+            const string resourcesTag = "/Resources";
+            int index = normalized.LastIndexOf(resourcesTag, StringComparison.OrdinalIgnoreCase);
+            if (index != -1)
+            {
+                var resPath = normalized.Substring(index + resourcesTag.Length);
+                return resPath.StartsWith("/") ? resPath.Substring(1) : resPath;
+            }
+
+            if (normalized.StartsWith("Resources/", StringComparison.OrdinalIgnoreCase))
+                return normalized.Substring("Resources/".Length);
+
+            return normalized.StartsWith("/") ? normalized.Substring(1) : normalized;
+        }
+
+        private static string NormalizeSlashes(string path)
+        {
+            return string.IsNullOrEmpty(path) ? path : path.Replace("\\", "/");
+        }
+
+        private static bool IsSameOrChildPath(string path, string parentPath)
+        {
+            return string.Equals(path, parentPath, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(parentPath + "/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsFilesystemRootedPath(string path)
+        {
+            return path.StartsWith("//", StringComparison.Ordinal)
+                || (path.Length >= 3 && char.IsLetter(path[0]) && path[1] == ':' && path[2] == '/')
+                || (path.StartsWith("/", StringComparison.Ordinal) && System.IO.Directory.Exists(path));
+        }
 
         private void OnValidate()
         {
