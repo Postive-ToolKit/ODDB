@@ -45,7 +45,8 @@ namespace TeamODD.ODDB.Editors.MCP
         {
             try { _cts?.Cancel(); } catch { }
             try { _listener?.Stop(); } catch { }
-            try { _thread?.Join(500); } catch { }
+            try { _thread?.Join(2000); } catch { }
+            try { _cts?.Dispose(); } catch { }
             _listener = null;
             _thread = null;
             _cts = null;

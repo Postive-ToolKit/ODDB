@@ -28,6 +28,11 @@ namespace TeamODD.ODDB.Editors
         private static McpDispatcher _dispatcher;
         private static McpToolRegistry _toolRegistry;
         private static McpResourceRegistry _resourceRegistry;
+        private static bool _retryScheduled;
+        private static bool _reportedBindFailure;
+        private static double _nextBootRetryAt;
+
+        private const double BootRetryDelaySeconds = 2.0d;
 
         private const string ServerInstructions =
 @"This server controls a Unity ODDB database — a hierarchical view/table store
@@ -100,13 +105,16 @@ Workflow shortcuts you can offer the user:
 
         static ODDBEditorRuntime()
         {
+            AssemblyReloadEvents.beforeAssemblyReload += StopServer;
+            EditorApplication.quitting += StopServer;
+            System.AppDomain.CurrentDomain.DomainUnload += (_, __) => StopServer();
+
             // Boot inline. The server itself doesn't touch the use case until
             // a request arrives, so the on-first-run picker UI (which lives
             // inside ODDBEditorUseCase's ctor) only fires when the user first
             // opens the editor window or an MCP tool is called.
             try { BootServer(); }
             catch (System.Exception ex) { McpLog.Error($"BootServer crashed: {ex}"); }
-            AssemblyReloadEvents.beforeAssemblyReload += StopServer;
         }
 
         private static void BootServer()
@@ -249,31 +257,72 @@ Workflow shortcuts you can offer the user:
 
             int requestedPort = settings.MCPServerPort;
             string host = settings.MCPServerHost;
-            for (int i = 0; i < 10; i++)
+
+            if (McpServerStartupPolicy.TryStartConfiguredPort(
+                    host,
+                    requestedPort,
+                    _dispatcher,
+                    (h, port, dispatcher) =>
+                    {
+                        var server = new ODDBMcpServer();
+                        server.Start(h, port, dispatcher);
+                        return server;
+                    },
+                    out var startedServer,
+                    out var bindError))
             {
-                int port = requestedPort + i;
-                try
-                {
-                    _server = new ODDBMcpServer();
-                    _server.Start(host, port, _dispatcher);
-                    McpLog.Lifecycle(i > 0
-                        ? $"port {requestedPort} in use, listening on http://{host}:{port}"
-                        : $"listening on http://{host}:{port}");
-                    return;
-                }
-                catch (System.Exception ex)
-                {
-                    _server = null;
-                    McpLog.Warn($"bind to {port} failed: {ex.Message}");
-                }
+                _server = startedServer;
+                _reportedBindFailure = false;
+                CancelBootRetry();
+                McpLog.Lifecycle($"listening on http://{host}:{requestedPort}");
+                return;
             }
-            McpLog.Error($"failed to bind any port in [{requestedPort}, {requestedPort + 9}]");
+
+            _server = null;
+            if (!_reportedBindFailure)
+            {
+                McpLog.Warn($"bind to configured port {requestedPort} failed: {bindError?.Message}");
+                McpLog.Warn($"ODDB MCP will retry http://{host}:{requestedPort}; it will not switch to a fallback port.");
+                _reportedBindFailure = true;
+            }
+            ScheduleBootRetry();
         }
 
         private static void StopServer()
         {
+            CancelBootRetry();
             _server?.Stop();
             _server = null;
+        }
+
+        private static void ScheduleBootRetry()
+        {
+            if (_retryScheduled) return;
+
+            _retryScheduled = true;
+            _nextBootRetryAt = EditorApplication.timeSinceStartup + BootRetryDelaySeconds;
+            EditorApplication.update += RetryBootServer;
+        }
+
+        private static void CancelBootRetry()
+        {
+            if (!_retryScheduled) return;
+
+            _retryScheduled = false;
+            EditorApplication.update -= RetryBootServer;
+        }
+
+        private static void RetryBootServer()
+        {
+            if (!_retryScheduled || EditorApplication.timeSinceStartup < _nextBootRetryAt)
+                return;
+
+            _retryScheduled = false;
+            EditorApplication.update -= RetryBootServer;
+            if (_server != null) return;
+
+            try { BootServer(); }
+            catch (System.Exception ex) { McpLog.Error($"BootServer retry crashed: {ex}"); }
         }
 
         // For tests only — drops the singleton so the next access rebuilds it.

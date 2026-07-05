@@ -21,7 +21,7 @@ namespace TeamODD.ODDB.Editors.MCP
         }
 
         // Always-logged variants for lifecycle events that need to surface
-        // regardless of verbose setting (server start/stop, port fallback).
+        // regardless of verbose setting (server start/stop, bind retries).
         public static void Lifecycle(string msg) => Debug.Log($"[ODDB-MCP] {msg}");
 
         public static void Warn(string msg) => Debug.LogWarning($"[ODDB-MCP] {msg}");

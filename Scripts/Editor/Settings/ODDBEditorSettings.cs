@@ -72,7 +72,7 @@ namespace TeamODD.ODDB.Editors.Settings
         [Header("MCP Server")]
         [Tooltip("Enable the in-Editor MCP server that exposes ODDB to AI clients via HTTP.")]
         [SerializeField] private bool _enableMCPServer = true;
-        [Tooltip("TCP port for the MCP HTTP server. Falls back to +1..+9 if busy.")]
+        [Tooltip("TCP port for the MCP HTTP server. If busy, ODDB retries this same port instead of switching ports.")]
         [SerializeField] private int _mcpServerPort = 9123;
         [Tooltip("Bind host. 127.0.0.1 keeps the server loopback-only.")]
         [SerializeField] private string _mcpServerHost = "127.0.0.1";
