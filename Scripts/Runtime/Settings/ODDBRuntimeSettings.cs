@@ -17,7 +17,8 @@ namespace TeamODD.ODDB.Runtime.Settings
         /// <summary>Pure read; returns null if the asset doesn't exist yet. No side effects.</summary>
         public static ODDBRuntimeSettings TryLoad()
         {
-            return Resources.Load<ODDBRuntimeSettings>("ODDBRuntimeSettings");
+            return Resources.Load<ODDBRuntimeSettings>("ODDBRuntimeSettings")
+                ?? Resources.Load<ODDBRuntimeSettings>("ODDBSettings");
         }
 
         /// <summary>

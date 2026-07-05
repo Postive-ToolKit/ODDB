@@ -18,6 +18,7 @@ namespace TeamODD.ODDB.Tests.Editor
         private const string TestFolderPath = GeneratedRootPath + "/ODDBEditorSettingsTests";
         private const string MovedAssetPath = TestFolderPath + "/MovedODDBEditorSettings.asset";
         private const string GeneratedCodeFolderPath = TestFolderPath + "/GeneratedCode";
+        private const string RuntimeSettingsAssetPath = "Assets/Resources/ODDBRuntimeSettings.asset";
         private const string TestMarker = "ODDBEditorSettingsTests";
 
         [SetUp]
@@ -99,6 +100,39 @@ namespace TeamODD.ODDB.Tests.Editor
 
             Assert.That(settings.DBPath, Is.EqualTo("/Resources"));
             Assert.That(settings.Path.Replace('\\', '/'), Is.EqualTo((Application.dataPath + "/Resources").Replace('\\', '/')));
+        }
+
+        [Test]
+        public void RuntimeSettings_TryLoadUsesResourcesRuntimeSettingsAsset()
+        {
+            var created = false;
+            var runtimeSettings = AssetDatabase.LoadAssetAtPath<ODDBRuntimeSettings>(RuntimeSettingsAssetPath);
+            if (runtimeSettings == null)
+            {
+                if (!AssetDatabase.IsValidFolder("Assets/Resources"))
+                    AssetDatabase.CreateFolder("Assets", "Resources");
+
+                runtimeSettings = ScriptableObject.CreateInstance<ODDBRuntimeSettings>();
+                runtimeSettings.name = "ODDBRuntimeSettings";
+                runtimeSettings.Path = "Assets/Resources";
+                AssetDatabase.CreateAsset(runtimeSettings, RuntimeSettingsAssetPath);
+                AssetDatabase.SaveAssets();
+                created = true;
+            }
+
+            try
+            {
+                var loaded = ODDBRuntimeSettings.TryLoad();
+                var resolvedPath = ODDBRuntimeSettings.ResolveDatabasePath();
+
+                Assert.That(loaded, Is.SameAs(runtimeSettings));
+                Assert.That(resolvedPath.Replace('\\', '/'), Is.EqualTo(runtimeSettings.FullDBPath.Replace('\\', '/')));
+            }
+            finally
+            {
+                if (created)
+                    AssetDatabase.DeleteAsset(RuntimeSettingsAssetPath);
+            }
         }
 
         private static void DeleteTestGeneratedAssets()
