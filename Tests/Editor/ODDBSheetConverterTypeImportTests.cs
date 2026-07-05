@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Collections.Generic;
 using TeamODD.ODDB.Editors.Utils.Sheets;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Utils.Converters;
@@ -29,6 +30,28 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(table.TotalFields[1].Type.TypeKey, Is.EqualTo("addressable"));
             Assert.That(table.TotalFields[1].Type.Param, Is.EqualTo("Sprite"));
             Assert.That(table.GetRow("row1").GetData(1).SerializedData, Is.EqualTo("dummy_box"));
+        }
+
+        [Test]
+        public void ApplySheetToTable_SkipsRowsWhoseFirstCellStartsWithCommentPrefix()
+        {
+            var database = new ODDatabase();
+            var table = (Table)database.Tables.Create(new ODDBID("item"));
+            table.AddField(new Field("Name", new FieldType("string", string.Empty)));
+
+            var sheet = new SheetInfo("ItemData", "item");
+            sheet.Values.Add(new List<string> { "#NAME", "ID", "Name" });
+            sheet.Values.Add(new List<string> { "#TYPE", "ID", "string" });
+            sheet.Values.Add(new List<string> { "# designer note", "not-a-row", "Do not import this row" });
+            sheet.Values.Add(new List<string> { string.Empty, "row1", "Iron Sword" });
+            sheet.Values.Add(new List<string> { "#REMOVED", "old-row", "Old Value" });
+
+            new ODDBSheetConverter(database).ApplySheetToTable(table, sheet);
+
+            Assert.That(table.Rows.Count, Is.EqualTo(1));
+            Assert.That(table.GetRow("row1"), Is.Not.Null);
+            Assert.That(table.GetRow("not-a-row"), Is.Null);
+            Assert.That(table.GetRow("old-row"), Is.Null);
         }
     }
 }

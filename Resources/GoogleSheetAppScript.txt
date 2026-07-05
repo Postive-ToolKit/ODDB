@@ -1,14 +1,16 @@
-﻿const SECRET_KEY = "{GOOGLE_SHEET_API_SECRET}";
-/// <summary>
-/// Returns a JSON array of all sheets in the active spreadsheet with their names, IDs, and values.
-/// </summary>
+const SECRET_KEY = "{GOOGLE_SHEET_API_SECRET}";
+const NAME_MARKER = "#NAME";
+const TYPE_MARKER = "#TYPE";
+const COMMENT_PREFIX = "#";
+const REMOVED_MARKER = "#REMOVED";
+
 function doGet(e) {
-    if (e.parameter.secretKey !== SECRET_KEY)
-        return ContentService.createTextOutput(JSON.stringify({success: false, error: "Unauthorized"}))
-            .setMimeType(ContentService.MimeType.JSON);
-    
-    var activeSheet = SpreadsheetApp.getActiveSpreadsheet();
-    var sheets = activeSheet.getSheets();
+    if (e.parameter.secretKey !== SECRET_KEY) {
+        return jsonResponse({success: false, error: "Unauthorized"});
+    }
+
+    var activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = activeSpreadsheet.getSheets();
     var result = [];
 
     for (var i = 0; i < sheets.length; i++) {
@@ -21,73 +23,329 @@ function doGet(e) {
         });
     }
 
-    return ContentService.createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse(result);
 }
-/// <summary>
-/// Expects a JSON payload in the following format:
-/// </summary>
-/// <example>
-/// [
-///   {
-///     "Name": "Sheet1",
-///     "Values": [
-///       ["Header1", "Header2"],
-///       ["Row1Col1", "Row1Col2"],
-///       ["Row2Col1", "Row2Col2"]
-///     ]
-///   },
-///   {
-///     "Name": "Sheet2",
-///     "Values": [
-///       ["HeaderA", "HeaderB"],
-///       ["Row1ColA", "Row1ColB"]
-///     ]
-///   }
-/// ]
-/// </example>
+
 function doPost(e) {
-    if (e.parameter.secretKey !== SECRET_KEY)
-        return ContentService.createTextOutput(JSON.stringify({success: false, error: "Unauthorized"}))
-            .setMimeType(ContentService.MimeType.JSON);
-    
+    if (e.parameter.secretKey !== SECRET_KEY) {
+        return jsonResponse({success: false, error: "Unauthorized"});
+    }
+
     try {
         var requestData = JSON.parse(e.postData.contents);
         var activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        
+
         if (!Array.isArray(requestData)) {
             requestData = [requestData];
         }
-        
+
         for (var i = 0; i < requestData.length; i++) {
             var sheetData = requestData[i];
             var sheetName = sheetData.Name;
-            var values = sheetData.Values;
-            
-            if (!sheetName || !values) {
+            var values = normalizeValues(sheetData.Values);
+
+            if (!sheetName || values.length === 0 || values[0].length === 0) {
                 continue;
             }
-            
+
             var sheet = activeSpreadsheet.getSheetByName(sheetName);
             if (!sheet) {
                 sheet = activeSpreadsheet.insertSheet(sheetName);
+                writeFreshSheet(sheet, values);
+                continue;
             }
-            
-            // Use clearContents() instead of clear() to preserve formatting (colors, fonts, sizes, etc.)
-            sheet.clearContents();
-            
-            if (values && values.length > 0 && values[0].length > 0) {
-                sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+
+            applyOddbSheetData(sheet, values);
+        }
+
+        return jsonResponse({success: true});
+    } catch (error) {
+        return jsonResponse({success: false, error: error.toString()});
+    }
+}
+
+function jsonResponse(value) {
+    return ContentService.createTextOutput(JSON.stringify(value))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+
+function normalizeValues(values) {
+    if (!Array.isArray(values)) {
+        return [];
+    }
+
+    var width = 0;
+    for (var i = 0; i < values.length; i++) {
+        if (Array.isArray(values[i])) {
+            width = Math.max(width, values[i].length);
+        }
+    }
+
+    var normalized = [];
+    for (var row = 0; row < values.length; row++) {
+        var source = Array.isArray(values[row]) ? values[row] : [];
+        var target = [];
+        for (var col = 0; col < width; col++) {
+            target.push(source[col] === undefined || source[col] === null ? "" : source[col]);
+        }
+        normalized.push(target);
+    }
+    return normalized;
+}
+
+function writeFreshSheet(sheet, values) {
+    ensureSheetSize(sheet, values.length, values[0].length);
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+}
+
+function applyOddbSheetData(sheet, values) {
+    var incomingHeaderRow = values[0];
+    var incomingTypeRow = values.length > 1 && values[1][0] === TYPE_MARKER ? values[1] : [];
+    var incomingDataStart = incomingTypeRow.length > 0 ? 2 : 1;
+
+    var headerRow = findMarkerRow(sheet, NAME_MARKER);
+    if (headerRow < 1) {
+        writeFreshSheet(sheet, values);
+        return;
+    }
+
+    var typeRow = ensureTypeRow(sheet, headerRow, incomingTypeRow);
+    var idColumn = 2;
+    var columnPlan = ensureManagedColumns(sheet, headerRow, typeRow, incomingHeaderRow, incomingTypeRow);
+    var columnMap = columnPlan.columnMap;
+    var managedColumns = getManagedColumns(columnMap);
+
+    updateHeaderRows(sheet, headerRow, typeRow, incomingHeaderRow, incomingTypeRow, columnMap);
+    markRemovedManagedColumns(
+        sheet,
+        headerRow,
+        typeRow,
+        columnPlan.currentHeader,
+        columnPlan.currentType,
+        columnPlan.usedColumns);
+
+    var existingRowsById = findExistingRowsById(sheet, typeRow + 1, idColumn);
+    var incomingRowsById = {};
+
+    for (var incomingRowIndex = incomingDataStart; incomingRowIndex < values.length; incomingRowIndex++) {
+        var rowValues = values[incomingRowIndex];
+        var rowId = String(rowValues[idColumn - 1] || "");
+        if (!rowId) {
+            continue;
+        }
+
+        incomingRowsById[rowId] = true;
+        var targetRow = existingRowsById[rowId] || appendManagedRow(sheet, managedColumns);
+        writeManagedRow(sheet, targetRow, rowValues, columnMap);
+    }
+
+    markRemovedRows(sheet, existingRowsById, incomingRowsById, idColumn, managedColumns);
+}
+
+function findMarkerRow(sheet, marker) {
+    var lastRow = Math.max(sheet.getLastRow(), 1);
+    var values = sheet.getRange(1, 1, lastRow, 1).getValues();
+    for (var i = 0; i < values.length; i++) {
+        if (values[i][0] === marker) {
+            return i + 1;
+        }
+    }
+    return -1;
+}
+
+function ensureTypeRow(sheet, headerRow, incomingTypeRow) {
+    if (incomingTypeRow.length === 0) {
+        return headerRow + 1;
+    }
+
+    if (sheet.getLastRow() >= headerRow + 1) {
+        var firstCell = sheet.getRange(headerRow + 1, 1).getValue();
+        if (firstCell === TYPE_MARKER) {
+            return headerRow + 1;
+        }
+    }
+
+    sheet.insertRowAfter(headerRow);
+    return headerRow + 1;
+}
+
+function ensureManagedColumns(sheet, headerRow, typeRow, incomingHeaderRow, incomingTypeRow) {
+    var requiredWidth = Math.max(incomingHeaderRow.length, incomingTypeRow.length, 2);
+    ensureSheetSize(sheet, Math.max(typeRow, sheet.getLastRow()), requiredWidth);
+
+    var currentWidth = Math.max(sheet.getLastColumn(), requiredWidth);
+    var currentHeader = sheet.getRange(headerRow, 1, 1, currentWidth).getValues()[0];
+    var currentType = sheet.getRange(typeRow, 1, 1, currentWidth).getValues()[0];
+    var usedColumns = {};
+    var columnMap = {};
+
+    columnMap[0] = 1;
+    columnMap[1] = 2;
+    usedColumns[1] = true;
+    usedColumns[2] = true;
+
+    var nextAppendColumn = currentWidth + 1;
+    for (var incomingCol = 2; incomingCol < incomingHeaderRow.length; incomingCol++) {
+        var fieldName = String(incomingHeaderRow[incomingCol] || "");
+        if (!fieldName) {
+            continue;
+        }
+
+        var matchedColumn = 0;
+        for (var currentCol = 3; currentCol <= currentHeader.length; currentCol++) {
+            if (usedColumns[currentCol]) {
+                continue;
+            }
+            if (String(currentHeader[currentCol - 1] || "") === fieldName) {
+                matchedColumn = currentCol;
+                break;
             }
         }
-        
-        return ContentService.createTextOutput(JSON.stringify({success: true}))
-            .setMimeType(ContentService.MimeType.JSON);
-            
-    } 
-    catch (error) 
-    {
-        return ContentService.createTextOutput(JSON.stringify({success: false, error: error.toString()}))
-            .setMimeType(ContentService.MimeType.JSON);
+
+        if (matchedColumn === 0) {
+            matchedColumn = nextAppendColumn++;
+            ensureSheetSize(sheet, Math.max(typeRow, sheet.getLastRow()), matchedColumn);
+        }
+
+        usedColumns[matchedColumn] = true;
+        columnMap[incomingCol] = matchedColumn;
+    }
+
+    return {
+        columnMap: columnMap,
+        usedColumns: usedColumns,
+        currentHeader: currentHeader,
+        currentType: currentType
+    };
+}
+
+function updateHeaderRows(sheet, headerRow, typeRow, incomingHeaderRow, incomingTypeRow, columnMap) {
+    for (var incomingCol = 0; incomingCol < incomingHeaderRow.length; incomingCol++) {
+        var targetCol = columnMap[incomingCol];
+        if (!targetCol) {
+            continue;
+        }
+
+        sheet.getRange(headerRow, targetCol).setValue(incomingHeaderRow[incomingCol] || "");
+        if (incomingTypeRow.length > incomingCol) {
+            sheet.getRange(typeRow, targetCol).setValue(incomingTypeRow[incomingCol] || "");
+        }
+    }
+}
+
+function markRemovedManagedColumns(sheet, headerRow, typeRow, currentHeader, currentType, usedColumns) {
+    for (var col = 3; col <= currentHeader.length; col++) {
+        if (usedColumns[col]) {
+            continue;
+        }
+
+        var header = String(currentHeader[col - 1] || "");
+        var type = String(currentType[col - 1] || "");
+        if (!header || isCommentRow(header) || !type) {
+            continue;
+        }
+
+        sheet.getRange(headerRow, col).setValue(COMMENT_PREFIX + "REMOVED " + header);
+        sheet.getRange(typeRow, col).clear({contentsOnly: true});
+    }
+}
+
+function findExistingRowsById(sheet, startRow, idColumn) {
+    var result = {};
+    var lastRow = sheet.getLastRow();
+    if (lastRow < startRow) {
+        return result;
+    }
+
+    var height = lastRow - startRow + 1;
+    var firstCells = sheet.getRange(startRow, 1, height, 1).getValues();
+    var ids = sheet.getRange(startRow, idColumn, height, 1).getValues();
+
+    for (var i = 0; i < height; i++) {
+        var firstCell = String(firstCells[i][0] || "");
+        if (isCommentRow(firstCell)) {
+            continue;
+        }
+
+        var rowId = String(ids[i][0] || "");
+        if (rowId) {
+            result[rowId] = startRow + i;
+        }
+    }
+    return result;
+}
+
+function isCommentRow(firstCell) {
+    return String(firstCell || "").indexOf(COMMENT_PREFIX) === 0;
+}
+
+function appendManagedRow(sheet, managedColumns) {
+    var targetRow = sheet.getLastRow() + 1;
+    ensureSheetSize(sheet, targetRow, sheet.getLastColumn());
+
+    if (targetRow > 1 && managedColumns.length > 0) {
+        var maxManagedColumn = Math.max.apply(null, managedColumns);
+        sheet.getRange(targetRow - 1, 1, 1, maxManagedColumn)
+            .copyFormatToRange(sheet, 1, maxManagedColumn, targetRow, targetRow);
+    }
+
+    return targetRow;
+}
+
+function writeManagedRow(sheet, targetRow, rowValues, columnMap) {
+    for (var incomingCol = 0; incomingCol < rowValues.length; incomingCol++) {
+        var targetCol = columnMap[incomingCol];
+        if (!targetCol) {
+            continue;
+        }
+        sheet.getRange(targetRow, targetCol).setValue(rowValues[incomingCol] || "");
+    }
+}
+
+function markRemovedRows(sheet, existingRowsById, incomingRowsById, idColumn, managedColumns) {
+    for (var rowId in existingRowsById) {
+        if (!Object.prototype.hasOwnProperty.call(existingRowsById, rowId)) {
+            continue;
+        }
+        if (incomingRowsById[rowId]) {
+            continue;
+        }
+
+        var row = existingRowsById[rowId];
+        sheet.getRange(row, 1).setValue(REMOVED_MARKER);
+        for (var i = 0; i < managedColumns.length; i++) {
+            var col = managedColumns[i];
+            if (col === 1 || col === idColumn) {
+                continue;
+            }
+            sheet.getRange(row, col).clear({contentsOnly: true});
+        }
+    }
+}
+
+function getManagedColumns(columnMap) {
+    var seen = {};
+    var columns = [];
+    for (var key in columnMap) {
+        if (!Object.prototype.hasOwnProperty.call(columnMap, key)) {
+            continue;
+        }
+
+        var col = columnMap[key];
+        if (!seen[col]) {
+            seen[col] = true;
+            columns.push(col);
+        }
+    }
+    columns.sort(function(a, b) { return a - b; });
+    return columns;
+}
+
+function ensureSheetSize(sheet, minRows, minColumns) {
+    if (sheet.getMaxRows() < minRows) {
+        sheet.insertRowsAfter(sheet.getMaxRows(), minRows - sheet.getMaxRows());
+    }
+    if (sheet.getMaxColumns() < minColumns) {
+        sheet.insertColumnsAfter(sheet.getMaxColumns(), minColumns - sheet.getMaxColumns());
     }
 }
