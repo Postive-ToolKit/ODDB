@@ -20,6 +20,7 @@ namespace TeamODD.ODDB.Editors.UI
         private const float DELETE_COLUMN_WIDTH = 30f;
         private readonly IODDBEditorUseCase _editorUseCase;
         private Table _table;
+        private bool _isCommittingCell;
 
         public TableEditor()
         {
@@ -59,7 +60,7 @@ namespace TeamODD.ODDB.Editors.UI
 
         private void OnExternalViewChanged(string viewId)
         {
-            if (_table == null || viewId != _table.ID) return;
+            if (_isCommittingCell || _table == null || viewId != _table.ID) return;
             RefreshRows();
         }
 
@@ -172,7 +173,24 @@ namespace TeamODD.ODDB.Editors.UI
                 var gui = drawer.CreatePropertyGUI(cell, typeKey, param, newSerialized =>
                 {
                     if (_table == null) return;
-                    _editorUseCase.SetCellData(_table.ID, capturedRowId, capturedColumn, newSerialized, direct: true);
+                    try
+                    {
+                        // SetCellData raises OnViewChanged synchronously. The edited
+                        // control already contains the new value, so rebuilding every
+                        // visible cell here only destroys focus and makes typing scale
+                        // with the number of visible rows and columns.
+                        _isCommittingCell = true;
+                        _editorUseCase.SetCellData(
+                            _table.ID,
+                            capturedRowId,
+                            capturedColumn,
+                            newSerialized,
+                            direct: true);
+                    }
+                    finally
+                    {
+                        _isCommittingCell = false;
+                    }
                 });
                 element.Add(gui);
             };

@@ -21,7 +21,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             var floatField = new FloatField()
             {
-                value = value
+                value = value,
+                isDelayed = true
             };
 
             floatField.RegisterValueChangedCallback(evt =>

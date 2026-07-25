@@ -20,7 +20,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             var intField = new IntegerField()
             {
-                value = value
+                value = value,
+                isDelayed = true
             };
 
             intField.RegisterValueChangedCallback(evt =>

@@ -17,7 +17,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
             var textField = new TextField()
             {
-                value = value ?? string.Empty
+                value = value ?? string.Empty,
+                isDelayed = true
             };
 
             textField.RegisterValueChangedCallback(evt =>
