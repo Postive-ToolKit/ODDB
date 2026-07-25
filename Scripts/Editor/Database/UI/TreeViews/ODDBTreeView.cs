@@ -27,6 +27,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly List<IView> _flatViews = new();
         private readonly List<Type> _viewTypes = new();
         private IView _view;
+        private int _structureHash;
 
         private int _itemIds = 0;
         
@@ -163,6 +164,7 @@ namespace TeamODD.ODDB.Editors.UI
                 .GetViews()
                 .Where(v => _viewTypes.Contains(v.GetType()))
                 .ToList();
+            _structureHash = ComputeStructureHash(views);
             var targets = new List<ViewContainer>();
             var dict = new Dictionary<string, ViewContainer>();
             foreach (var v in views)
@@ -379,9 +381,37 @@ namespace TeamODD.ODDB.Editors.UI
             if (_database == null)
                 return;
             var view = _database.GetView(new ODDBID(viewId));
-            if (view != null && _indexMapping.ContainsKey(view.ID) && _itemActions.ContainsKey(viewId))
-                _itemActions[viewId].Invoke();
+            if (view != null && _indexMapping.ContainsKey(view.ID))
+            {
+                if (_itemActions.TryGetValue(viewId, out var updateItem))
+                    updateItem.Invoke();
+                if (ComputeCurrentStructureHash() == _structureHash)
+                    return;
+            }
             ScheduleRebuild();
+        }
+
+        private int ComputeCurrentStructureHash()
+        {
+            var views = _editorUseCase
+                .GetViews()
+                .Where(v => _viewTypes.Contains(v.GetType()));
+            return ComputeStructureHash(views);
+        }
+
+        private static int ComputeStructureHash(IEnumerable<IView> views)
+        {
+            unchecked
+            {
+                var hash = 17;
+                foreach (var view in views)
+                {
+                    hash = hash * 31 + (view?.ID?.ToString().GetHashCode() ?? 0);
+                    hash = hash * 31 + (view?.ParentView?.ID?.ToString().GetHashCode() ?? 0);
+                    hash = hash * 31 + (view?.GetType().GetHashCode() ?? 0);
+                }
+                return hash;
+            }
         }
 
         private void ScheduleRebuild()

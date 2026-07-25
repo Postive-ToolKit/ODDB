@@ -21,6 +21,7 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IODDBEditorUseCase _editorUseCase;
         private Table _table;
         private bool _isCommittingCell;
+        private bool _rowRefreshHandled;
 
         public TableEditor()
         {
@@ -38,7 +39,7 @@ namespace TeamODD.ODDB.Editors.UI
         {
             if (_table != null)
             {
-                _table.OnRowChanged -= RefreshRows;
+                _table.OnRowChanged -= OnRowsChanged;
                 _table.OnFieldsChanged -= CreateColumns;
                 _editorUseCase.OnViewChanged -= OnExternalViewChanged;
             }
@@ -51,7 +52,7 @@ namespace TeamODD.ODDB.Editors.UI
             CreateColumns();
             RefreshRows();
 
-            _table.OnRowChanged += RefreshRows;
+            _table.OnRowChanged += OnRowsChanged;
             _table.OnFieldsChanged += CreateColumns;
             // External (MCP) cell mutations don't fire OnRowChanged; subscribe
             // to the use case's view-changed signal so the table refreshes.
@@ -61,6 +62,20 @@ namespace TeamODD.ODDB.Editors.UI
         private void OnExternalViewChanged(string viewId)
         {
             if (_isCommittingCell || _table == null || viewId != _table.ID) return;
+            if (_rowRefreshHandled)
+            {
+                _rowRefreshHandled = false;
+                return;
+            }
+            RefreshRows();
+        }
+
+        private void OnRowsChanged()
+        {
+            // AddRow/RemoveRow raise OnRowChanged and then synchronously publish
+            // OnViewChanged. Refresh here and consume that duplicate notification.
+            _rowRefreshHandled = true;
+            schedule.Execute(() => _rowRefreshHandled = false);
             RefreshRows();
         }
 
