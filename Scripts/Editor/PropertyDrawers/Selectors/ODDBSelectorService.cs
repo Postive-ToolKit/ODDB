@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.Utils;
+using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Settings;
@@ -32,13 +33,49 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     public class ODDBSelectorService
     {
         private const long CACHE_DURATION_MS = 30000; // 30 seconds
-        private static long _lastCacheTime = 0;
+        private static readonly long CACHE_DURATION_TICKS =
+            TimeSpan.TicksPerMillisecond * CACHE_DURATION_MS;
+        private static readonly Dictionary<string, List<ODDBIDSelectorOption>> _optionsCache = new();
+        private static readonly Dictionary<string, bool> _validityCache = new();
+        private static IODDBEditorUseCase _subscribedUseCase;
+        private static ODDatabase _cachedDatabase;
+        private static long _cacheExpiresAtTicks;
 
-        private static ODDatabase ResolveDatabase()
+        private static ODDatabase PrepareDatabase()
         {
             try
             {
-                return ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
+                var useCase = ODDBEditorRuntime.UseCase;
+                if (!ReferenceEquals(_subscribedUseCase, useCase))
+                {
+                    if (_subscribedUseCase != null)
+                        _subscribedUseCase.OnViewChanged -= Invalidate;
+                    _subscribedUseCase = useCase;
+                    if (_subscribedUseCase != null)
+                        _subscribedUseCase.OnViewChanged += Invalidate;
+                    Invalidate();
+                }
+
+                var db = useCase?.DataBase as ODDatabase;
+                var now = DateTime.UtcNow.Ticks;
+                if (!ReferenceEquals(_cachedDatabase, db) || now >= _cacheExpiresAtTicks)
+                {
+                    _cachedDatabase = db;
+                    _optionsCache.Clear();
+                    _validityCache.Clear();
+                    _cacheExpiresAtTicks = now + CACHE_DURATION_TICKS;
+                }
+
+                if (db != null && !db.IsPorted)
+                {
+                    try { db.PortData(); }
+                    catch (Exception e)
+                    {
+                        TeamODD.ODDB.Runtime.ODDB.Logger.Warn(
+                            $"[ODDBSelectorService] PortData failed: {e.Message}");
+                    }
+                }
+                return db;
             }
             catch (Exception)
             {
@@ -46,45 +83,44 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             }
         }
 
-        private void Refresh()
+        private static void Invalidate(string _ = null)
         {
-            var elapsed = DateTime.Now.Ticks - _lastCacheTime;
-            if (elapsed < CACHE_DURATION_MS)
-                return;
-            _lastCacheTime = DateTime.Now.Ticks;
-
-            var db = ResolveDatabase();
-            if (db != null && !db.IsPorted)
-            {
-                try { db.PortData(); }
-                catch (Exception e) { TeamODD.ODDB.Runtime.ODDB.Logger.Warn($"[ODDBSelectorService] PortData failed: {e.Message}"); }
-            }
+            _optionsCache.Clear();
+            _validityCache.Clear();
+            _cacheExpiresAtTicks = 0;
         }
 
         public List<string> GetTypeEntities(Type type)
         {
-            Refresh();
-            var db = ResolveDatabase();
-            if (db == null)
+            if (type == null)
                 return new List<string>();
-            return db.GetEntities(type)
-                .Select(entity => entity.ID)
+            return GetOptions(type)
+                .Select(option => option.ID)
                 .ToList();
         }
 
         public List<ODDBIDSelectorOption> GetOptions(params Type[] filterTypes)
         {
-            Refresh();
-
             if (filterTypes == null || filterTypes.Length == 0)
                 return new List<ODDBIDSelectorOption>();
 
-            var db = ResolveDatabase();
+            var types = filterTypes
+                .Where(type => type != null)
+                .Distinct()
+                .OrderBy(type => type.AssemblyQualifiedName)
+                .ToArray();
+            if (types.Length == 0)
+                return new List<ODDBIDSelectorOption>();
+
+            var db = PrepareDatabase();
             if (db == null)
                 return new List<ODDBIDSelectorOption>();
 
-            return filterTypes
-                .Where(type => type != null)
+            var cacheKey = string.Join("|", types.Select(type => type.AssemblyQualifiedName));
+            if (_optionsCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var options = types
                 .SelectMany(type => db.GetEntities(type))
                 .GroupBy(entity => entity.ID)
                 .Select(group => group.First())
@@ -95,6 +131,8 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
                     entity.ID,
                     entity.ID))
                 .ToList();
+            _optionsCache[cacheKey] = options;
+            return options;
         }
 
         /// <summary>
@@ -104,11 +142,18 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         /// <returns> true if valid, otherwise false </returns>
         public bool IsValidID(string id)
         {
-            Refresh();
-            var db = ResolveDatabase();
+            if (string.IsNullOrEmpty(id))
+                return false;
+
+            var db = PrepareDatabase();
             if (db == null)
                 return false;
-            return db.TryGetEntity<ODDBEntity>(id, out _);
+            if (_validityCache.TryGetValue(id, out var cached))
+                return cached;
+
+            var isValid = db.TryGetEntity<ODDBEntity>(id, out _);
+            _validityCache[id] = isValid;
+            return isValid;
         }
     }
 }

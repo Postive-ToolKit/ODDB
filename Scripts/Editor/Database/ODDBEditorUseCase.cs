@@ -43,6 +43,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private ODDatabase _database;
         private readonly CommandProcessor _commandProcessor = new();
+        private readonly Dictionary<string, IReadOnlyList<Table>> _inheritedTablesCache = new();
         private string _selectedTableId;
         private const int PreImportBackupKeep = 3;
         private const int PreSaveBackupKeep = 3;
@@ -152,6 +153,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         private void OnDataChanged(ODDBID id)
         {
+            _inheritedTablesCache.Clear();
             OnViewChanged?.Invoke(id.ToString());
         }
 
@@ -465,32 +467,44 @@ namespace TeamODD.ODDB.Editors.Window
 
         public IEnumerable<Row> GetViewRows(string viewId)
         {
-            var tableList = GetInheritedTables(viewId).ToList();
-            var rows = new List<Row>();
-            foreach (var table in tableList)
-                rows.AddRange(table.Rows);
-            return rows;
+            return GetInheritedTables(viewId).SelectMany(table => table.Rows);
         }
         
         public IEnumerable<Table> GetInheritedTables(string viewId)
         {
+            if (string.IsNullOrEmpty(viewId))
+                return Enumerable.Empty<Table>();
+            if (_inheritedTablesCache.TryGetValue(viewId, out var cached))
+                return cached;
+
             var view = GetViewByKey(viewId);
             if (view == null)
                 return Enumerable.Empty<Table>();
 
-            var children = _database.GetAll()
-                .Where(v => v.ParentView != null && v.ParentView.ID == view.ID);
+            var childrenByParent = _database.GetAll()
+                .Where(candidate => candidate?.ParentView?.ID != null)
+                .GroupBy(candidate => candidate.ParentView.ID.ToString())
+                .ToDictionary(group => group.Key, group => group.ToList());
             var tables = new List<Table>();
-            
-            if (view is Table tableView)
-                tables.Add(tableView);
-            
-            foreach (var child in children)
+            var visited = new HashSet<string>();
+
+            void Collect(IView current)
             {
-                if (child is Table table)
+                var currentId = current?.ID?.ToString();
+                if (string.IsNullOrEmpty(currentId) || !visited.Add(currentId))
+                    return;
+
+                if (current is Table table)
                     tables.Add(table);
-                tables.AddRange(GetInheritedTables(child.ID.ToString()));
+
+                if (!childrenByParent.TryGetValue(currentId, out var children))
+                    return;
+                foreach (var child in children)
+                    Collect(child);
             }
+
+            Collect(view);
+            _inheritedTablesCache[viewId] = tables;
             return tables;
         }
 
@@ -509,11 +523,17 @@ namespace TeamODD.ODDB.Editors.Window
         public bool TryGetRow(string viewId, string rowId, out Row row)
         {
             row = null;
-            var getViewRows = GetViewRows(viewId).ToList();
-            if (getViewRows.Count == 0)
+            if (string.IsNullOrEmpty(rowId))
                 return false;
-            row = getViewRows.FirstOrDefault(r => r.ID.ToString() == rowId);
-            return row != null;
+
+            foreach (var table in GetInheritedTables(viewId))
+            {
+                row = table.GetRow(rowId);
+                if (row != null)
+                    return true;
+            }
+
+            return false;
         }
 
         public void SaveDatabase(string fullPath)
