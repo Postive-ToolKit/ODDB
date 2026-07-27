@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using TeamODD.ODDB.Editors.UI;
+using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Entities;
+using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Tests.Editor
 {
@@ -19,6 +21,38 @@ namespace TeamODD.ODDB.Tests.Editor
             private string _name;
             private string _desc;
 #pragma warning restore 0169
+        }
+    }
+
+    public sealed class ODDBEditorWindowDelayedFieldTests
+    {
+        [Test]
+        public void FindDelayedField_ReturnsSupportedDelayedAncestorOfFocusedInput()
+        {
+            var fields = new VisualElement[]
+            {
+                new TextField { isDelayed = true },
+                new IntegerField { isDelayed = true },
+                new FloatField { isDelayed = true }
+            };
+
+            foreach (var field in fields)
+            {
+                var focusedInput = new VisualElement();
+                field.Add(focusedInput);
+
+                Assert.That(ODDBEditorWindow.FindDelayedField(focusedInput), Is.SameAs(field));
+            }
+        }
+
+        [Test]
+        public void FindDelayedField_IgnoresImmediateField()
+        {
+            var field = new TextField { isDelayed = false };
+            var focusedInput = new VisualElement();
+            field.Add(focusedInput);
+
+            Assert.That(ODDBEditorWindow.FindDelayedField(focusedInput), Is.Null);
         }
     }
 }

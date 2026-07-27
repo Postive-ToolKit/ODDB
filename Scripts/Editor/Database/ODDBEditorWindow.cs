@@ -23,6 +23,7 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDBTreeView _tableTreeView;
         private ODDBHistoryView _historyView;
         private ODDBEditorView _editorView;
+        private bool _saveScheduled;
         #endregion
 
         [MenuItem(ODDBEditorConst.MENU_ROOT + "ODDB Editor")]
@@ -57,8 +58,8 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     if (evt.keyCode == KeyCode.S)
                     {
-                        var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
-                        _editorUseCase.SaveDatabase(fullPath);
+                        RequestSave();
+                        evt.StopPropagation();
                     }
                     else if (evt.keyCode == KeyCode.Z)
                     {
@@ -70,6 +71,59 @@ namespace TeamODD.ODDB.Editors.Window
                     }
                 }
             });
+        }
+
+        private void RequestSave()
+        {
+            // Delayed fields publish their ChangeEvent when editing ends. Move focus
+            // first, then save from the next UI tick so the cell command has completed.
+            CommitFocusedDelayedField();
+
+            if (_saveScheduled)
+                return;
+
+            _saveScheduled = true;
+            rootVisualElement.schedule.Execute(() =>
+            {
+                _saveScheduled = false;
+                SaveDatabaseNow();
+            });
+        }
+
+        private void SaveDatabaseNow()
+        {
+            if (_editorUseCase == null)
+                return;
+
+            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
+            _editorUseCase.SaveDatabase(fullPath);
+        }
+
+        private bool CommitFocusedDelayedField()
+        {
+            var focusedElement = rootVisualElement.focusController?.focusedElement as VisualElement;
+            if (FindDelayedField(focusedElement) == null)
+                return false;
+
+            // Focus events are dispatched synchronously. RequestSave still defers the
+            // actual file write by one UI tick to keep save ordering explicit.
+            focusedElement.Blur();
+            return true;
+        }
+
+        internal static VisualElement FindDelayedField(VisualElement element)
+        {
+            for (var current = element; current != null; current = current.parent)
+            {
+                if (current is TextField { isDelayed: true }
+                    || current is IntegerField { isDelayed: true }
+                    || current is FloatField { isDelayed: true })
+                {
+                    return current;
+                }
+            }
+
+            return null;
         }
 
         private void CreateLayout()
@@ -182,6 +236,10 @@ namespace TeamODD.ODDB.Editors.Window
             if (_editorUseCase == null)
                 return;
 
+            // A delayed field has not made the command processor dirty yet. Commit it
+            // before checking IsDirty so closing the window cannot silently discard it.
+            CommitFocusedDelayedField();
+
             if (_editorUseCase is ODDBEditorUseCase concrete && !concrete.CanSave)
             {
                 EditorUtility.DisplayDialog(
@@ -210,8 +268,7 @@ namespace TeamODD.ODDB.Editors.Window
             }
             if (choice == 0)
             {
-                var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
-                _editorUseCase.SaveDatabase(fullPath);
+                SaveDatabaseNow();
             }
             // Discard (choice == 1): do nothing.
             // The use case and DI registrations live in ODDBEditorRuntime now;
