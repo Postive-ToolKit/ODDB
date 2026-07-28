@@ -13,11 +13,13 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly ListView _listView;
         private List<ICommand> _allCommands = new List<ICommand>();
+        private bool _isSubscribed;
 
         public ODDBHistoryView()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            _editorUseCase.OnHistoryChanged += Refresh;
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
 
             style.flexGrow = 1;
             style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 1f);
@@ -38,7 +40,7 @@ namespace TeamODD.ODDB.Editors.UI
 
             _listView = new ListView
             {
-                itemHeight = 20,
+                fixedItemHeight = 20,
                 makeItem = () => new Label { style = { unityTextAlign = TextAnchor.MiddleLeft, paddingLeft = 5 } },
                 bindItem = BindItem,
                 selectionType = SelectionType.Single,
@@ -117,9 +119,22 @@ namespace TeamODD.ODDB.Editors.UI
             }
         }
         
-        // Destructor or Dispose needed to unsubscribe?
-        // VisualElement doesn't have OnDestroy.
-        // Need to handle detaching from panel.
-        // But for now, UseCase lives with Window, and View lives with Window.
+        private void OnAttachToPanel(AttachToPanelEvent evt) => Subscribe();
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt) => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || panel == null || _editorUseCase == null) return;
+            _editorUseCase.OnHistoryChanged += Refresh;
+            _isSubscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_isSubscribed || _editorUseCase == null) return;
+            _editorUseCase.OnHistoryChanged -= Refresh;
+            _isSubscribed = false;
+        }
     }
 }

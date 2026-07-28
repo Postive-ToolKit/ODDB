@@ -65,56 +65,52 @@ namespace TeamODD.ODDB.Editors.Window
             _commandProcessor.MaxHistoryCount = editorSettings?.MaxHistoryCount ?? 50;
             _commandProcessor.OnHistoryChanged += HandleHistoryChanged;
 
+            _database = LoadDatabaseFromDisk(out _loadReport);
+            AttachDatabaseEvents(_database);
+        }
+
+        private static ODDatabase LoadDatabaseFromDisk(out ODDBLoadReport loadReport)
+        {
             var runtimeSettings = ODDBRuntimeSettings.TryLoad();
             var verbose = runtimeSettings != null && runtimeSettings.UseDebugLog;
-
-            string fullPath = ODDBRuntimeSettings.ResolveDatabasePath(runtimeSettings);
-
+            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath(runtimeSettings);
             var fileExisted = File.Exists(fullPath);
-            long fileSize = fileExisted ? new FileInfo(fullPath).Length : 0;
+            var fileSize = fileExisted ? new FileInfo(fullPath).Length : 0;
             if (verbose)
                 Debug.Log($"[ODDB] Load path={fullPath} exists={fileExisted} size={fileSize}B");
 
             if (fileExisted)
             {
-                if (ODDatabase.TryLoad(fullPath, out _database, out _loadReport))
+                if (ODDatabase.TryLoad(fullPath, out var loaded, out loadReport))
                 {
-                    if (verbose) DumpLoadDiagnostics(fullPath);
+                    if (verbose) DumpLoadDiagnostics(loaded, fullPath);
+                    return loaded;
                 }
-                else
-                {
-                    // TryLoad may have exposed a partial DB for read-only inspection
-                    // (EmptyRestoredOnNonEmptyDto / UnmappedFieldType); fall back to
-                    // CreateEmpty when nothing was exposed.
-                    _database ??= ODDatabase.CreateEmpty();
-                    // Always-on diagnostic log; not gated on UseDebugLog.
-                    Debug.LogError(
-                        $"[ODDB][LOAD-FATAL] stage={_loadReport.FailureStage} reason={_loadReport.FailureReason} " +
-                        $"path={fullPath} size={_loadReport.FileSize} " +
-                        $"dto-tables={_loadReport.DtoTableCount} dto-views={_loadReport.DtoViewCount} " +
-                        $"restored-tables={_loadReport.RestoredTableCount} restored-views={_loadReport.RestoredViewCount} " +
-                        $"unmapped={_loadReport.UnmappedFieldTypeCount} fmt={_loadReport.SourceFormatVersion}");
-                }
-            }
-            else
-            {
-                // Fresh install — explicit intent, no load attempt; CanSave returns true.
-                _database = ODDatabase.CreateEmpty();
-                _loadReport = null;
-                Debug.LogWarning($"[ODDB] Database not found at {fullPath} — created an empty one. If you have an existing ODDB.bytes elsewhere, set its location in Assets/Resources/ODDBRuntimeSettings.asset (Path field).");
-                try
-                {
-                    _database.Save(fullPath);
-                    AssetDatabase.Refresh();
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"Initial DB save failed: {ex.Message}");
-                }
+
+                // TryLoad may expose a partial DB for read-only inspection.
+                loaded ??= ODDatabase.CreateEmpty();
+                Debug.LogError(
+                    $"[ODDB][LOAD-FATAL] stage={loadReport.FailureStage} reason={loadReport.FailureReason} " +
+                    $"path={fullPath} size={loadReport.FileSize} " +
+                    $"dto-tables={loadReport.DtoTableCount} dto-views={loadReport.DtoViewCount} " +
+                    $"restored-tables={loadReport.RestoredTableCount} restored-views={loadReport.RestoredViewCount} " +
+                    $"unmapped={loadReport.UnmappedFieldTypeCount} fmt={loadReport.SourceFormatVersion}");
+                return loaded;
             }
 
-            _database.OnDataChanged += OnDataChanged;
-            _database.OnDataRemoved += OnDataChanged;
+            var database = ODDatabase.CreateEmpty();
+            loadReport = null;
+            Debug.LogWarning($"[ODDB] Database not found at {fullPath} — created an empty one. If you have an existing ODDB.bytes elsewhere, set its location in Assets/Resources/ODDBRuntimeSettings.asset (Path field).");
+            try
+            {
+                database.Save(fullPath);
+                AssetDatabase.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Initial DB save failed: {ex.Message}");
+            }
+            return database;
         }
 
         /// <summary>
@@ -123,13 +119,18 @@ namespace TeamODD.ODDB.Editors.Window
         /// </summary>
         public void DumpLoadDiagnostics(string fullPath)
         {
-            if (_database == null)
+            DumpLoadDiagnostics(_database, fullPath);
+        }
+
+        private static void DumpLoadDiagnostics(ODDatabase database, string fullPath)
+        {
+            if (database == null)
             {
                 Debug.LogError($"[ODDB] Diagnostics: _database is null after Load({fullPath})");
                 return;
             }
-            var views = _database.Views?.GetAll();
-            var tables = _database.Tables?.GetAll();
+            var views = database.Views?.GetAll();
+            var tables = database.Tables?.GetAll();
             int viewCount = views == null ? 0 : System.Linq.Enumerable.Count(views);
             int tableCount = tables == null ? 0 : System.Linq.Enumerable.Count(tables);
             Debug.Log($"[ODDB] After load: views={viewCount} tables={tableCount} (path={fullPath})");
@@ -160,6 +161,46 @@ namespace TeamODD.ODDB.Editors.Window
         private void HandleHistoryChanged()
         {
             OnHistoryChanged?.Invoke();
+        }
+
+        internal void ReloadFromDisk()
+        {
+            var reloaded = LoadDatabaseFromDisk(out var loadReport);
+            ReplaceDatabase(reloaded, loadReport, clearHistory: true);
+        }
+
+        private void ReplaceDatabase(ODDatabase replacement, ODDBLoadReport loadReport, bool clearHistory)
+        {
+            if (replacement == null) throw new ArgumentNullException(nameof(replacement));
+
+            DetachDatabaseEvents(_database);
+            _database = replacement;
+            _loadReport = loadReport;
+            AttachDatabaseEvents(_database);
+            _inheritedTablesCache.Clear();
+            _selectedTableId = null;
+            ODDBEditorDI.RegisterSelfAndInterfaces(_database);
+
+            if (clearHistory)
+                _commandProcessor.Clear();
+
+            // Null is the explicit full-reload signal. UI consumers re-resolve
+            // their current IDs instead of retaining objects from the old DB.
+            OnViewChanged?.Invoke(null);
+        }
+
+        private void AttachDatabaseEvents(ODDatabase database)
+        {
+            if (database == null) return;
+            database.OnDataChanged += OnDataChanged;
+            database.OnDataRemoved += OnDataChanged;
+        }
+
+        private void DetachDatabaseEvents(ODDatabase database)
+        {
+            if (database == null) return;
+            database.OnDataChanged -= OnDataChanged;
+            database.OnDataRemoved -= OnDataChanged;
         }
 
         public IView GetViewByKey(string id)
@@ -630,6 +671,7 @@ namespace TeamODD.ODDB.Editors.Window
             var sheetCount = 0;
             var rowCount = 0;
             var status = "success";
+            string stagingPath = null;
             try
             {
                 EditorApplication.LockReloadAssemblies();
@@ -652,12 +694,13 @@ namespace TeamODD.ODDB.Editors.Window
                     throw new OperationCanceledException("Import cancelled from preview window.");
 
                 backupPath = CreatePreImportBackup();
-                var converter = new ODDBSheetConverter();
-                var affected = ApplySheetsToDatabase(scope, sheets, converter);
+                var stagingDatabase = CreateImportStagingDatabase(out stagingPath);
+                var converter = new ODDBSheetConverter(stagingDatabase);
+                var affected = ApplySheetsToDatabase(scope, sheets, converter, stagingDatabase);
                 sheetCount = affected.Count;
                 rowCount = TotalDataRows(affected);
-                PersistDatabase();
-                _commandProcessor.Clear();
+                PersistDatabase(stagingDatabase);
+                ReplaceDatabase(stagingDatabase, null, clearHistory: true);
                 NotifyAffectedViews(affected);
             }
             catch (OperationCanceledException)
@@ -672,6 +715,7 @@ namespace TeamODD.ODDB.Editors.Window
             }
             finally
             {
+                TryDeleteImportStagingFile(stagingPath);
                 EditorApplication.UnlockReloadAssemblies();
                 stopwatch.Stop();
                 LogOperation("Import", backend, scope, sheetCount, rowCount, stopwatch.ElapsedMilliseconds, status, backupPath);
@@ -690,7 +734,10 @@ namespace TeamODD.ODDB.Editors.Window
         }
 
         private IReadOnlyList<SheetInfo> ApplySheetsToDatabase(
-            ExportScope scope, IReadOnlyList<SheetInfo> sheets, ODDBSheetConverter converter)
+            ExportScope scope,
+            IReadOnlyList<SheetInfo> sheets,
+            ODDBSheetConverter converter,
+            ODDatabase database)
         {
             var applied = new List<SheetInfo>();
             if (scope.All)
@@ -699,7 +746,7 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     if (sheet == null) continue;
                     if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX)) continue;
-                    if (_database.Tables.Read(new ODDBID(sheet.ID)) is not Table table)
+                    if (database.Tables.Read(new ODDBID(sheet.ID)) is not Table table)
                     {
                         Debug.LogWarning($"Import: table {sheet.ID} not found in current database; skipping.");
                         continue;
@@ -714,7 +761,7 @@ namespace TeamODD.ODDB.Editors.Window
             if (targetSheet == null)
                 throw new InvalidOperationException(
                     $"No sheet found for table id '{scope.TargetTableId}'.");
-            if (_database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table targetTable)
+            if (database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table targetTable)
                 throw new InvalidOperationException(
                     $"Table '{scope.TargetTableId}' not found in current database.");
             converter.ApplySheetToTable(targetTable, targetSheet);
@@ -723,6 +770,11 @@ namespace TeamODD.ODDB.Editors.Window
         }
 
         private void PersistDatabase()
+        {
+            PersistDatabase(_database);
+        }
+
+        private void PersistDatabase(ODDatabase database)
         {
             var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
             if (!CanSave)
@@ -733,8 +785,50 @@ namespace TeamODD.ODDB.Editors.Window
                 return;
             }
             ODDBBackup.CreatePreSaveBackup(fullPath, PreSaveBackupKeep);
-            _database.Save(fullPath);
+            database.Save(fullPath);
             _commandProcessor.MarkSaved();
+        }
+
+        private ODDatabase CreateImportStagingDatabase(out string stagingPath)
+        {
+            if (!CanSave)
+                throw new InvalidOperationException("Import is disabled because the current database did not load safely.");
+            return CreateImportStagingDatabase(_database, out stagingPath);
+        }
+
+        internal static ODDatabase CreateImportStagingDatabase(
+            ODDatabase source,
+            out string stagingPath)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+
+            stagingPath = Path.Combine(
+                Path.GetTempPath(),
+                $"oddb-import-{Guid.NewGuid():N}.bytes");
+            source.Save(stagingPath);
+
+            if (!ODDatabase.TryLoad(stagingPath, out var stagingDatabase, out var report)
+                || stagingDatabase == null
+                || (report != null && !report.IsSafeToSave))
+            {
+                throw new InvalidOperationException(
+                    $"Could not create a safe import staging database: {report?.FailureReason ?? "load failed"}");
+            }
+            return stagingDatabase;
+        }
+
+        internal static void TryDeleteImportStagingFile(string stagingPath)
+        {
+            if (string.IsNullOrEmpty(stagingPath)) return;
+            try
+            {
+                if (File.Exists(stagingPath))
+                    File.Delete(stagingPath);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Could not delete import staging file '{stagingPath}': {ex.Message}");
+            }
         }
 
         private void NotifyAffectedViews(IReadOnlyList<SheetInfo> sheets)
@@ -811,8 +905,7 @@ namespace TeamODD.ODDB.Editors.Window
         {
             _commandProcessor.OnHistoryChanged -= HandleHistoryChanged;
 
-            _database.OnDataChanged -= OnDataChanged;
-            _database.OnDataRemoved -= OnDataChanged;
+            DetachDatabaseEvents(_database);
             _database = null;
             OnViewChanged = null;
             OnHistoryChanged = null;

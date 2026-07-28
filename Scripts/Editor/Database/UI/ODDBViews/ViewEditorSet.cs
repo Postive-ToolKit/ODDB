@@ -24,10 +24,14 @@ namespace TeamODD.ODDB.Editors.UI
         
         private IView _view;
         private ODDBViewType _mode;
+        private string _viewId;
+        private bool _isSubscribed;
         
         public ViewEditorSet(string viewId)
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
             
             style.flexDirection = FlexDirection.Column;
             style.flexGrow = 1;
@@ -63,6 +67,7 @@ namespace TeamODD.ODDB.Editors.UI
         /// </summary>
         public void SetView(string viewKey)
         {
+            _viewId = viewKey;
             if (string.IsNullOrEmpty(viewKey))
             {
                 ClearView();
@@ -90,6 +95,45 @@ namespace TeamODD.ODDB.Editors.UI
             // Update Listeners
             foreach (var listener in _viewListeners)
                 listener.SetView(viewKey);
+        }
+
+        private void OnExternalViewChanged(string viewId)
+        {
+            if (string.IsNullOrEmpty(viewId))
+            {
+                var currentId = _viewId;
+                _view = null;
+                SetView(currentId);
+                return;
+            }
+
+            if (_view == null || viewId != _view.ID) return;
+            var refreshed = _editorUseCase.GetViewByKey(viewId);
+            if (refreshed == null)
+            {
+                ClearView();
+                return;
+            }
+            _view = refreshed;
+            _headerView.UpdateView(_view, _mode);
+        }
+
+        private void OnAttachToPanel(AttachToPanelEvent evt) => Subscribe();
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt) => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || panel == null || _editorUseCase == null) return;
+            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+            _isSubscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_isSubscribed || _editorUseCase == null) return;
+            _editorUseCase.OnViewChanged -= OnExternalViewChanged;
+            _isSubscribed = false;
         }
 
         private void ClearView()

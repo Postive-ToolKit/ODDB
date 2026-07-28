@@ -101,16 +101,13 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
 
         public List<ODDBIDSelectorOption> GetOptions(params Type[] filterTypes)
         {
-            if (filterTypes == null || filterTypes.Length == 0)
-                return new List<ODDBIDSelectorOption>();
-
-            var types = filterTypes
+            var types = (filterTypes ?? Array.Empty<Type>())
                 .Where(type => type != null)
                 .Distinct()
                 .OrderBy(type => type.AssemblyQualifiedName)
                 .ToArray();
             if (types.Length == 0)
-                return new List<ODDBIDSelectorOption>();
+                types = new[] { typeof(ODDBEntity) };
 
             var db = PrepareDatabase();
             if (db == null)
@@ -140,7 +137,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         /// </summary>
         /// <param name="id"> check this id </param>
         /// <returns> true if valid, otherwise false </returns>
-        public bool IsValidID(string id)
+        public bool IsValidID(string id, params Type[] filterTypes)
         {
             if (string.IsNullOrEmpty(id))
                 return false;
@@ -148,12 +145,27 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             var db = PrepareDatabase();
             if (db == null)
                 return false;
-            if (_validityCache.TryGetValue(id, out var cached))
+            var types = (filterTypes ?? Array.Empty<Type>())
+                .Where(type => type != null)
+                .Distinct()
+                .OrderBy(type => type.AssemblyQualifiedName)
+                .ToArray();
+            var cacheKey = id + "|" + string.Join("|", types.Select(type => type.AssemblyQualifiedName));
+            if (_validityCache.TryGetValue(cacheKey, out var cached))
                 return cached;
 
-            var isValid = db.TryGetEntity<ODDBEntity>(id, out _);
-            _validityCache[id] = isValid;
+            var isValid = db.TryGetEntity<ODDBEntity>(id, out var entity)
+                          && IsAllowedEntityType(entity.GetType(), types);
+            _validityCache[cacheKey] = isValid;
             return isValid;
+        }
+
+        internal static bool IsAllowedEntityType(Type entityType, IReadOnlyCollection<Type> filterTypes)
+        {
+            if (entityType == null) return false;
+            return filterTypes == null
+                   || filterTypes.Count == 0
+                   || filterTypes.Any(type => type != null && type.IsAssignableFrom(entityType));
         }
     }
 }

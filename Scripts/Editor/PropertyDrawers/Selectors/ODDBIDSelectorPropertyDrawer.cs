@@ -49,7 +49,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             var attr = Attribute;
             var stringValue = ValueEntry.SmartValue ?? string.Empty;
-            var isValid = _service.IsValidID(stringValue);
+            var isValid = _service.IsValidID(stringValue, attr.AllowEntities);
 
             var fullRect = EditorGUILayout.GetControlRect();
             
@@ -107,7 +107,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             
             var attr = (ODDBIDSelectorAttribute)attribute;
             var stringValue = property.stringValue;
-            var isValid = _service.IsValidID(stringValue);
+            var isValid = _service.IsValidID(stringValue, attr.AllowEntities);
             
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
@@ -148,7 +148,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
             {
                 property.stringValue = evt.newValue;
                 property.serializedObject.ApplyModifiedProperties();
-                var valid = _service.IsValidID(evt.newValue);
+                var valid = _service.IsValidID(evt.newValue, attr.AllowEntities);
                 button.text = GetButtonText(valid);
                 container.tooltip = GetTooltipText(valid);
             });

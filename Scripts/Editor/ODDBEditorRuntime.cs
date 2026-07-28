@@ -33,6 +33,7 @@ namespace TeamODD.ODDB.Editors
         private static double _nextBootRetryAt;
 
         private const double BootRetryDelaySeconds = 2.0d;
+        internal const string EmbeddedPackageVersion = "2.3.3";
 
         private const string ServerInstructions =
 @"This server controls a Unity ODDB database — a hierarchical view/table store
@@ -121,6 +122,7 @@ Workflow shortcuts you can offer the user:
         private static void BootServer()
         {
             McpMainThread.EnsurePump();
+            var serverVersion = ResolveServerVersion();
 
             var settings = ODDBEditorSettings.TryLoad();
             if (settings == null)
@@ -192,7 +194,7 @@ Workflow shortcuts you can offer the user:
             _dispatcher.Register("initialize", (id, p) => McpResponse.Success(id, new
             {
                 protocolVersion = "2024-11-05",
-                serverInfo = new { name = "ODDB", version = "2.2.6" },
+                serverInfo = new { name = "ODDB", version = serverVersion },
                 capabilities = new { tools = new { }, resources = new { } },
                 instructions = ServerInstructions,
             }));
@@ -242,11 +244,9 @@ Workflow shortcuts you can offer the user:
                     return McpResponse.Failure(id, McpError.Of(McpErrorKind.NotFound, $"resource not found: {uri}"));
                 try
                 {
-                    // Resources are read on the background thread. They must avoid
-                    // touching Unity-only APIs (ScriptableObject.Setting access is
-                    // already cached on the main thread above; database state is
-                    // plain C# objects and thread-safe to read).
-                    var payload = res.Read(uri);
+                    // Reads share mutable database collections with editor and MCP
+                    // writes, so snapshot/serialize them on the same main thread.
+                    var payload = ReadResourceOnMainThread(res, uri);
                     return McpResponse.Success(id, new
                     {
                         contents = new[] { new { uri, mimeType = res.MimeType ?? "application/json", text = JsonConvert.SerializeObject(payload) } },
@@ -289,6 +289,25 @@ Workflow shortcuts you can offer the user:
                 _reportedBindFailure = true;
             }
             ScheduleBootRetry();
+        }
+
+        internal static string ResolveServerVersion()
+        {
+            try
+            {
+                return UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(ODDBEditorRuntime).Assembly)?.version
+                       ?? EmbeddedPackageVersion;
+            }
+            catch
+            {
+                return EmbeddedPackageVersion;
+            }
+        }
+
+        internal static object ReadResourceOnMainThread(IMcpResource resource, string uri)
+        {
+            if (resource == null) throw new System.ArgumentNullException(nameof(resource));
+            return McpMainThread.Run(() => resource.Read(uri));
         }
 
         private static void StopServer()
@@ -344,14 +363,13 @@ Workflow shortcuts you can offer the user:
         /// </summary>
         public static void ReloadDatabase()
         {
-            try { _useCase?.Dispose(); }
-            catch (System.Exception ex) { McpLog.Warn($"UseCase dispose threw during reload: {ex.Message}"); }
-            _useCase = null;
-            ODDBEditorDI.DisposeAll();
+            var useCase = UseCase;
+            if (useCase is not ODDBEditorUseCase concrete)
+                throw new System.InvalidOperationException("ODDB editor use case is unavailable.");
 
-            // Re-trigger lazy construction immediately so DI is repopulated and
-            // any open windows can re-resolve their dependencies.
-            var _ = UseCase;
+            // Preserve the UseCase identity: open UI elements and registered MCP
+            // endpoints intentionally retain this shared process-lifetime object.
+            concrete.ReloadFromDisk();
             McpLog.Lifecycle("database reloaded from disk");
         }
     }

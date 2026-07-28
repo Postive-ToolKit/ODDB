@@ -16,14 +16,15 @@ namespace TeamODD.ODDB.Editors.UI
         private const string BIND_CLASS_NOT_FOUND = "None";
         private const string TEXT_PREFIX = "Bind Class: ";
         private Type _baseType;
-        private IODDBEditorUseCase _editorUseCase;
+        private readonly IODDBEditorUseCase _editorUseCase;
         private string _currentViewId;
         private Type _currentBindType;
+        private bool _isSubscribed;
         
         public BindClassSelectView()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            _editorUseCase.OnViewChanged += OnViewChanged;
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
             RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
             clicked += OnClicked;
         }
@@ -51,6 +52,12 @@ namespace TeamODD.ODDB.Editors.UI
         {
             if (string.IsNullOrEmpty(_currentViewId))
                 return;
+
+            if (string.IsNullOrEmpty(viewId))
+            {
+                SetView(_currentViewId);
+                return;
+            }
 
             if (_currentViewId == viewId)
             {
@@ -81,13 +88,19 @@ namespace TeamODD.ODDB.Editors.UI
             text = TEXT_PREFIX + (view.BindType?.Name ?? BIND_CLASS_NOT_FOUND);
         }
         
+        private void OnAttachToPanel(AttachToPanelEvent evt)
+        {
+            if (_isSubscribed || _editorUseCase == null) return;
+            _editorUseCase.OnViewChanged += OnViewChanged;
+            _isSubscribed = true;
+        }
+
         private void OnDetachFromPanel(DetachFromPanelEvent evt)
         {
-            if (_editorUseCase != null) {
+            if (_isSubscribed && _editorUseCase != null) {
                 _editorUseCase.OnViewChanged -= OnViewChanged;
-                _editorUseCase = null;
+                _isSubscribed = false;
             }
-            _currentViewId = null;
         }
     }
 }

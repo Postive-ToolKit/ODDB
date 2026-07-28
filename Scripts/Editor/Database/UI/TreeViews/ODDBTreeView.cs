@@ -20,7 +20,6 @@ namespace TeamODD.ODDB.Editors.UI
     {
         public event Action<string> OnViewSelected;
         public bool IsDirty { get; set; }
-        private readonly ODDatabase _database;
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly Dictionary<string, int> _indexMapping = new Dictionary<string, int>();
         private readonly Dictionary<string, Action> _itemActions = new Dictionary<string, Action>();
@@ -28,14 +27,15 @@ namespace TeamODD.ODDB.Editors.UI
         private readonly List<Type> _viewTypes = new();
         private IView _view;
         private int _structureHash;
+        private bool _isSubscribed;
 
         private int _itemIds = 0;
         
         public ODDBTreeView(params Type[] viewTypes)
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
-            _database = ODDBEditorDI.Resolve<ODDatabase>();
-            _editorUseCase.OnViewChanged += UpdateView;
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
             SetTypes(viewTypes);
             autoExpand = true;
             
@@ -157,7 +157,7 @@ namespace TeamODD.ODDB.Editors.UI
         }
         private void UpdateItemSource()
         {
-            if (_database == null)
+            if (_editorUseCase == null)
                 return;
             
             var views = _editorUseCase
@@ -231,7 +231,7 @@ namespace TeamODD.ODDB.Editors.UI
         {
             // Item containers stop propagation, so this only fires when the
             // user right-clicks empty space within the tree view.
-            if (_database == null)
+            if (_editorUseCase == null)
                 return;
 
             _view = null;
@@ -378,9 +378,15 @@ namespace TeamODD.ODDB.Editors.UI
         
         private void UpdateView(string viewId)
         {
-            if (_database == null)
+            if (_editorUseCase == null)
                 return;
-            var view = _database.GetView(new ODDBID(viewId));
+            if (string.IsNullOrEmpty(viewId))
+            {
+                ScheduleRebuild();
+                return;
+            }
+
+            var view = _editorUseCase.GetViewByKey(viewId);
             if (view != null && _indexMapping.ContainsKey(view.ID))
             {
                 if (_itemActions.TryGetValue(viewId, out var updateItem))
@@ -389,6 +395,24 @@ namespace TeamODD.ODDB.Editors.UI
                     return;
             }
             ScheduleRebuild();
+        }
+
+        private void OnAttachToPanel(AttachToPanelEvent evt) => Subscribe();
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt) => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || panel == null || _editorUseCase == null) return;
+            _editorUseCase.OnViewChanged += UpdateView;
+            _isSubscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_isSubscribed || _editorUseCase == null) return;
+            _editorUseCase.OnViewChanged -= UpdateView;
+            _isSubscribed = false;
         }
 
         private int ComputeCurrentStructureHash()

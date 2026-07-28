@@ -25,14 +25,32 @@ namespace TeamODD.ODDB.Editors.MCP
 
         public static T Run<T>(Func<T> action)
         {
+            return Run(action, 10_000);
+        }
+
+        internal static T Run<T>(Func<T> action, int timeoutMilliseconds)
+        {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            if (timeoutMilliseconds <= 0) throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds));
+
             T result = default;
             Exception err = null;
+            var stateGate = new object();
+            var started = false;
+            var cancelled = false;
             using (var done = new ManualResetEventSlim(false))
             {
                 lock (_gate)
                 {
                     _queue.Enqueue(() =>
                     {
+                        lock (stateGate)
+                        {
+                            if (cancelled)
+                                return;
+                            started = true;
+                        }
+
                         try { result = action(); }
                         catch (Exception ex) { err = ex; }
                         finally { done.Set(); }
@@ -42,8 +60,23 @@ namespace TeamODD.ODDB.Editors.MCP
                 // the editor window is unfocused. Delegate concat is atomic, so
                 // this is safe to call from a background thread.
                 try { EditorApplication.delayCall += NoOp; } catch { }
-                if (!done.Wait(10_000))
-                    throw new TimeoutException("main thread did not respond within 10s");
+                if (!done.Wait(timeoutMilliseconds))
+                {
+                    lock (stateGate)
+                    {
+                        if (!started)
+                        {
+                            cancelled = true;
+                            throw new TimeoutException(
+                                $"main thread did not respond within {timeoutMilliseconds}ms");
+                        }
+                    }
+
+                    // The action already started. Waiting for its real result preserves
+                    // exactly-once semantics instead of reporting failure while a
+                    // mutation is still running and encouraging a duplicate retry.
+                    done.Wait();
+                }
             }
             if (err != null) throw err;
             return result;
@@ -66,6 +99,23 @@ namespace TeamODD.ODDB.Editors.MCP
                 try { work(); }
                 catch (Exception ex) { McpLog.Error($"main-thread work threw: {ex}"); }
             }
+        }
+
+        internal static void PumpPendingForTesting() => Pump();
+
+        internal static int PendingCountForTesting
+        {
+            get
+            {
+                lock (_gate)
+                    return _queue.Count;
+            }
+        }
+
+        internal static void ResetForTesting()
+        {
+            lock (_gate)
+                _queue.Clear();
         }
     }
 }

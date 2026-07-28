@@ -16,6 +16,8 @@ namespace TeamODD.ODDB.Editors.UI
         private IView _view;
         private const float DELETE_COLUMN_WIDTH = 30f;
         private readonly IODDBEditorUseCase _editorUseCase;
+        private string _viewId;
+        private bool _isSubscribed;
 
         public ViewEditor()
         {
@@ -43,6 +45,8 @@ namespace TeamODD.ODDB.Editors.UI
             horizontalScrollingEnabled = true;
             showBorder = true;
             style.flexGrow = 1;
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
 
             columns.Add(CreateHandleColumn());
             columns.Add(CreateNameColumn());
@@ -52,25 +56,48 @@ namespace TeamODD.ODDB.Editors.UI
 
         public override void SetView(string viewKey)
         {
-            if (_view != null)
-            {
-                _view.OnFieldsChanged -= RefreshRows;
-                _editorUseCase.OnViewChanged -= OnExternalViewChanged;
-            }
+            Unsubscribe();
+            _viewId = viewKey;
             _view = _editorUseCase.GetViewByKey(viewKey);
             if (_view == null) return;
 
             itemsSource = _view.ScopedFields;
             RefreshRows();
 
-            _view.OnFieldsChanged += RefreshRows;
-            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+            Subscribe();
         }
 
         private void OnExternalViewChanged(string viewId)
         {
+            if (string.IsNullOrEmpty(viewId))
+            {
+                SetView(_viewId);
+                return;
+            }
             if (_view == null || viewId != _view.ID) return;
             RefreshRows();
+        }
+
+        private void OnAttachToPanel(AttachToPanelEvent evt) => Subscribe();
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt) => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || panel == null || _view == null || _editorUseCase == null) return;
+            _view.OnFieldsChanged += RefreshRows;
+            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+            _isSubscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_isSubscribed) return;
+            if (_view != null)
+                _view.OnFieldsChanged -= RefreshRows;
+            if (_editorUseCase != null)
+                _editorUseCase.OnViewChanged -= OnExternalViewChanged;
+            _isSubscribed = false;
         }
 
         private void RefreshRows()

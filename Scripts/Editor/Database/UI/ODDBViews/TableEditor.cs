@@ -20,8 +20,10 @@ namespace TeamODD.ODDB.Editors.UI
         private const float DELETE_COLUMN_WIDTH = 30f;
         private readonly IODDBEditorUseCase _editorUseCase;
         private Table _table;
+        private string _viewId;
         private bool _isCommittingCell;
         private bool _rowRefreshHandled;
+        private bool _isSubscribed;
 
         public TableEditor()
         {
@@ -32,35 +34,37 @@ namespace TeamODD.ODDB.Editors.UI
             showBorder = true;
             style.flexGrow = 1;
             style.height = Length.Percent(100);
+            RegisterCallback<AttachToPanelEvent>(OnAttachToPanel);
+            RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
             CreateColumns();
         }
 
         public override void SetView(string viewKey)
         {
-            if (_table != null)
-            {
-                _table.OnRowChanged -= OnRowsChanged;
-                _table.OnFieldsChanged -= CreateColumns;
-                _editorUseCase.OnViewChanged -= OnExternalViewChanged;
-            }
+            Unsubscribe();
+            _viewId = viewKey;
             var view = _editorUseCase.GetViewByKey(viewKey);
             if (view is not Table table)
+            {
+                _table = null;
                 return;
+            }
             _table = table;
 
             itemsSource = _table.Rows;
             CreateColumns();
             RefreshRows();
 
-            _table.OnRowChanged += OnRowsChanged;
-            _table.OnFieldsChanged += CreateColumns;
-            // External (MCP) cell mutations don't fire OnRowChanged; subscribe
-            // to the use case's view-changed signal so the table refreshes.
-            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+            Subscribe();
         }
 
         private void OnExternalViewChanged(string viewId)
         {
+            if (string.IsNullOrEmpty(viewId))
+            {
+                SetView(_viewId);
+                return;
+            }
             if (_isCommittingCell || _table == null || viewId != _table.ID) return;
             if (_rowRefreshHandled)
             {
@@ -68,6 +72,32 @@ namespace TeamODD.ODDB.Editors.UI
                 return;
             }
             RefreshRows();
+        }
+
+        private void OnAttachToPanel(AttachToPanelEvent evt) => Subscribe();
+
+        private void OnDetachFromPanel(DetachFromPanelEvent evt) => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || panel == null || _table == null || _editorUseCase == null) return;
+            _table.OnRowChanged += OnRowsChanged;
+            _table.OnFieldsChanged += CreateColumns;
+            _editorUseCase.OnViewChanged += OnExternalViewChanged;
+            _isSubscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_isSubscribed) return;
+            if (_table != null)
+            {
+                _table.OnRowChanged -= OnRowsChanged;
+                _table.OnFieldsChanged -= CreateColumns;
+            }
+            if (_editorUseCase != null)
+                _editorUseCase.OnViewChanged -= OnExternalViewChanged;
+            _isSubscribed = false;
         }
 
         private void OnRowsChanged()
