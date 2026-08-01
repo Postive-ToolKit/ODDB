@@ -55,6 +55,11 @@ ExportedObj/
 # Unity3D generated file on crash reports
 sysinfo.txt
 
+# Versioned standalone Core source. Unity ignores Source~; Git retains its build inputs.
+!Source~/ODDB.Core/ODDB.Core.csproj
+Source~/ODDB.Core/bin/
+Source~/ODDB.Core/obj/
+
 # Builds
 *.apk
 *.aab
