@@ -11,25 +11,28 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// Property drawer for boolean fields in the ODDB system.
     /// </summary>
     [CellDrawer("bool")]
-    public class BoolCellDrawer : IODDBCellDrawer
+    public class BoolCellDrawer : IODDBReusableCellDrawer
     {
         private static readonly IDataSerializer _serializer = TypeRegistry.Get("bool") ?? new BoolSerializer();
         public VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit)
         {
-            var value = (bool)(_serializer.Deserialize(cell.SerializedData, param) ?? false);
+            var element = CreateReusablePropertyGUI(typeKey, param, commit);
+            BindPropertyGUI(element, cell, typeKey, param);
+            return element;
+        }
 
-            var toggle = new Toggle()
+        public VisualElement CreateReusablePropertyGUI(string typeKey, string param, Action<string> commit)
+        {
+            var toggle = new Toggle
             {
-                value = value,
                 style = { alignSelf = Align.Center}
             };
-
-            toggle.RegisterValueChangedCallback(evt =>
-            {
-                commit(_serializer.Serialize(evt.newValue, param));
-            });
-
+            toggle.RegisterValueChangedCallback(evt => commit(_serializer.Serialize(evt.newValue, param)));
             return toggle;
         }
+
+        public void BindPropertyGUI(VisualElement element, Cell cell, string typeKey, string param)
+            => ((Toggle)element).SetValueWithoutNotify(
+                (bool)(_serializer.Deserialize(cell.SerializedData, param) ?? false));
     }
 }

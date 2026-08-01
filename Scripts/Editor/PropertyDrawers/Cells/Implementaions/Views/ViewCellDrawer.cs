@@ -14,12 +14,19 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
     /// Property drawer for ODDBCell with view-reference data type.
     /// </summary>
     [CellDrawer("view")]
-    public class ViewCellDrawer : StringSerializer, IODDBCellDrawer
+    public class ViewCellDrawer : StringSerializer, IODDBReusableCellDrawer
     {
         private const string NOT_FOUND_TEXT = "No Entity Selected";
         private static IODDBEditorUseCase _useCase;
         private static IDataSerializer _serializer;
         public VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit)
+        {
+            var element = CreateReusablePropertyGUI(typeKey, param, commit);
+            BindPropertyGUI(element, cell, typeKey, param);
+            return element;
+        }
+
+        public VisualElement CreateReusablePropertyGUI(string typeKey, string param, Action<string> commit)
         {
             if (_serializer == null)
                 _serializer = TypeRegistry.Get("view") ?? new ViewRefSerializer();
@@ -29,21 +36,7 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
             if (_useCase == null)
                 return new Label("ODDB Editor Use Case Not Found");
 
-            var formalRowId = cell.SerializedData;
-            var title = NOT_FOUND_TEXT;
-
-            if (_useCase.TryGetRow(param, formalRowId, out Row row))
-            {
-                title = ViewIdDropDownItem.FormatDisplayName(RowDisplayName.For(row), row.ID.ToString());
-            }
-            // Stale reference (cell points to a row that no longer exists in the
-            // target view): display NOT_FOUND_TEXT but do NOT auto-clear the cell.
-            // Auto-clearing during GUI creation cascaded into an infinite refresh
-            // loop: commit → NotifyDataChanged → OnViewChanged → RefreshRows
-            // → bindCell → CreatePropertyGUI → commit → … (StackOverflow).
-            // The user can explicitly clear via the dropdown's "None" option.
-            var button = new Button();
-            button.text = title;
+            var button = new Button { text = NOT_FOUND_TEXT };
             button.clicked += () =>
             {
                 var dropdown = new ViewIdDropDown(new AdvancedDropdownState(), param);
@@ -56,6 +49,20 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers.Views
                 };
             };
             return button;
+        }
+
+        public void BindPropertyGUI(VisualElement element, Cell cell, string typeKey, string param)
+        {
+            if (element is not Button button || _useCase == null)
+                return;
+
+            var title = NOT_FOUND_TEXT;
+            if (_useCase.TryGetRow(param, cell.SerializedData, out Row row))
+                title = ViewIdDropDownItem.FormatDisplayName(RowDisplayName.For(row), row.ID.ToString());
+
+            // Stale references are displayed but never mutated while binding. This
+            // keeps scrolling side-effect free and avoids refresh recursion.
+            button.text = title;
         }
     }
 }

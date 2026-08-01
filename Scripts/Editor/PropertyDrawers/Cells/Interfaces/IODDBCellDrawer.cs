@@ -18,4 +18,22 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
         /// <param name="commit">Invoked with a new serialized data string when the user edits the value.</param>
         VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit);
     }
+
+    /// <summary>
+    /// Optional fast path for cell drawers used by virtualized table views.
+    /// The visual tree is created once and rebound as rows enter the viewport.
+    /// </summary>
+    public interface IODDBReusableCellDrawer : IODDBCellDrawer
+    {
+        VisualElement CreateReusablePropertyGUI(
+            string typeKey,
+            string param,
+            Action<string> commit);
+
+        void BindPropertyGUI(
+            VisualElement element,
+            Cell cell,
+            string typeKey,
+            string param);
+    }
 }

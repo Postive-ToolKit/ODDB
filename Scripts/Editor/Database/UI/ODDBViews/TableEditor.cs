@@ -25,6 +25,12 @@ namespace TeamODD.ODDB.Editors.UI
         private bool _rowRefreshHandled;
         private bool _isSubscribed;
 
+        private sealed class ReusableCellHost : VisualElement
+        {
+            public string RowId { get; set; }
+            public VisualElement Content { get; set; }
+        }
+
         public TableEditor()
         {
             _editorUseCase = ODDBEditorDI.Resolve<IODDBEditorUseCase>();
@@ -47,6 +53,9 @@ namespace TeamODD.ODDB.Editors.UI
             if (view is not Table table)
             {
                 _table = null;
+                itemsSource = null;
+                columns.Clear();
+                RefreshItems();
                 return;
             }
             _table = table;
@@ -143,21 +152,27 @@ namespace TeamODD.ODDB.Editors.UI
                 maxWidth = 80,
                 width = 80,
             };
-            column.makeCell = () => new Label()
+            column.makeCell = () =>
             {
-                style = { unityTextAlign = TextAnchor.MiddleLeft, paddingLeft = 4 }
+                var label = new Label
+                {
+                    style = { unityTextAlign = TextAnchor.MiddleLeft, paddingLeft = 4 }
+                };
+                label.RegisterCallback<ContextClickEvent>(OnRowIdContextClick);
+                return label;
             };
             column.bindCell = (element, index) =>
             {
-                if (_table == null || index < 0 || index >= _table.Rows.Count) return;
                 var label = (Label)element;
+                label.userData = null;
+                label.text = string.Empty;
+                if (_table == null || index < 0 || index >= _table.Rows.Count) return;
                 var rowId = _table.Rows[index].ID.ToString();
                 label.text = rowId;
                 label.tooltip = "Right-click to change row ID";
                 label.userData = rowId;
-                label.UnregisterCallback<ContextClickEvent>(OnRowIdContextClick);
-                label.RegisterCallback<ContextClickEvent>(OnRowIdContextClick);
             };
+            column.unbindCell = (element, _) => element.userData = null;
             return column;
         }
 
@@ -179,7 +194,11 @@ namespace TeamODD.ODDB.Editors.UI
         {
             var meta = _table.TotalFields[columnIndex];
             if (meta.Type == null) meta.Type = new FieldType();
-            var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(meta.Type.TypeKey, meta.Type.Param)}]";
+            var typeKey = meta.Type.TypeKey ?? string.Empty;
+            var param = meta.Type.Param ?? string.Empty;
+            var drawer = CellDrawerRegistry.Get(typeKey);
+            var reusableDrawer = drawer as IODDBReusableCellDrawer;
+            var columnName = $"{meta.Name}[{EditorDataTypeExtensions.GetDisplayName(typeKey, param)}]";
             var column = new Column()
             {
                 title = columnName,
@@ -188,13 +207,30 @@ namespace TeamODD.ODDB.Editors.UI
                 minWidth = 80,
             };
             column.makeHeader = () => CreateColumnHeader(columnIndex);
-            column.makeCell = () => new VisualElement()
+            column.makeCell = () =>
             {
-                style = { flexGrow = 1, justifyContent = Justify.Center }
+                var host = new ReusableCellHost
+                {
+                    style = { flexGrow = 1, justifyContent = Justify.Center }
+                };
+                if (reusableDrawer == null)
+                    return host;
+
+                host.Content = reusableDrawer.CreateReusablePropertyGUI(
+                    typeKey,
+                    param,
+                    serialized => CommitCell(host, columnIndex, serialized));
+                host.Add(host.Content);
+                return host;
             };
             column.bindCell = (element, index) =>
             {
-                element.Clear();
+                var host = (ReusableCellHost)element;
+                host.RowId = null;
+                if (host.Content != null)
+                    host.Content.style.display = DisplayStyle.None;
+                else
+                    host.Clear();
                 if (_table == null || index < 0 || index >= _table.Rows.Count) return;
                 if (columnIndex >= _table.TotalFields.Count) return;
 
@@ -202,44 +238,60 @@ namespace TeamODD.ODDB.Editors.UI
                 var cell = row.GetData(columnIndex);
                 if (cell == null) return;
 
-                var fieldType = _table.TotalFields[columnIndex].Type;
-                var typeKey = fieldType?.TypeKey ?? string.Empty;
-                var param = fieldType?.Param ?? string.Empty;
-
-                var drawer = CellDrawerRegistry.Get(typeKey);
                 if (drawer == null)
                 {
-                    element.Add(new Label($"<no drawer for '{typeKey}'>"));
+                    host.Clear();
+                    host.Add(new Label($"<no drawer for '{typeKey}'>"));
                     return;
                 }
 
-                var capturedRowId = row.ID.ToString();
-                var capturedColumn = columnIndex;
-                var gui = drawer.CreatePropertyGUI(cell, typeKey, param, newSerialized =>
+                host.RowId = row.ID.ToString();
+                if (reusableDrawer != null)
                 {
-                    if (_table == null) return;
-                    try
-                    {
-                        // SetCellData raises OnViewChanged synchronously. The edited
-                        // control already contains the new value, so rebuilding every
-                        // visible cell here only destroys focus and makes typing scale
-                        // with the number of visible rows and columns.
-                        _isCommittingCell = true;
-                        _editorUseCase.SetCellData(
-                            _table.ID,
-                            capturedRowId,
-                            capturedColumn,
-                            newSerialized,
-                            direct: true);
-                    }
-                    finally
-                    {
-                        _isCommittingCell = false;
-                    }
-                });
-                element.Add(gui);
+                    host.Content.style.display = DisplayStyle.Flex;
+                    reusableDrawer.BindPropertyGUI(host.Content, cell, typeKey, param);
+                    return;
+                }
+
+                host.Clear();
+                host.Add(drawer.CreatePropertyGUI(
+                    cell,
+                    typeKey,
+                    param,
+                    serialized => CommitCell(host, columnIndex, serialized)));
+            };
+            column.unbindCell = (element, _) =>
+            {
+                var host = (ReusableCellHost)element;
+                host.RowId = null;
+                if (host.Content != null)
+                    host.Content.style.display = DisplayStyle.None;
+                else
+                    host.Clear();
             };
             return column;
+        }
+
+        private void CommitCell(ReusableCellHost host, int columnIndex, string serialized)
+        {
+            if (_table == null || string.IsNullOrEmpty(host.RowId)) return;
+            try
+            {
+                // SetCellData raises OnViewChanged synchronously. The edited control
+                // already contains the new value, so refreshing here would destroy
+                // focus and defeat list virtualization.
+                _isCommittingCell = true;
+                _editorUseCase.SetCellData(
+                    _table.ID,
+                    host.RowId,
+                    columnIndex,
+                    serialized,
+                    direct: true);
+            }
+            finally
+            {
+                _isCommittingCell = false;
+            }
         }
 
         private Column CreateToolColumn()
@@ -255,24 +307,34 @@ namespace TeamODD.ODDB.Editors.UI
                 resizable = false
             };
 
-            toolColumn.makeCell = () => new ODDBButton() { text = "-", };
+            toolColumn.makeCell = () =>
+            {
+                var button = new ODDBButton { text = "-" };
+                button.AddOnClickCallback(OnDeleteRowClicked);
+                return button;
+            };
 
             toolColumn.bindCell = (element, index) =>
             {
+                element.userData = null;
                 if (_table == null || index < 0 || index >= _table.Rows.Count)
                     return;
                 var row = _table.Rows.ElementAt(index);
-                var button = element as ODDBButton;
-                button!.ClearCallbacks();
-                button.AddOnClickCallback(evt =>
-                {
-                    if (_table == null)
-                        return;
-                    _editorUseCase.RemoveRow(_table.ID, row.ID);
-                });
+                element.userData = row.ID.ToString();
             };
+            toolColumn.unbindCell = (element, _) => element.userData = null;
 
             return toolColumn;
+        }
+
+        private void OnDeleteRowClicked(ClickEvent evt)
+        {
+            if (_table == null
+                || evt.currentTarget is not ODDBButton button
+                || button.userData is not string rowId)
+                return;
+
+            _editorUseCase.RemoveRow(_table.ID, rowId);
         }
 
         private VisualElement CreateColumnHeader(int columnIndex)

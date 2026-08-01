@@ -12,25 +12,28 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// Property drawer for float data type.
     /// </summary>
     [CellDrawer("float")]
-    public class FloatCellDrawer : IODDBCellDrawer
+    public class FloatCellDrawer : IODDBReusableCellDrawer
     {
         private static readonly IDataSerializer _serializer = TypeRegistry.Get("float") ?? new FloatSerializer();
         public VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit)
         {
-            var value = _serializer.Deserialize(cell.SerializedData, param) is float floatValue ? floatValue : 0f;
+            var element = CreateReusablePropertyGUI(typeKey, param, commit);
+            BindPropertyGUI(element, cell, typeKey, param);
+            return element;
+        }
 
-            var floatField = new FloatField()
+        public VisualElement CreateReusablePropertyGUI(string typeKey, string param, Action<string> commit)
+        {
+            var floatField = new FloatField
             {
-                value = value,
                 isDelayed = true
             };
-
-            floatField.RegisterValueChangedCallback(evt =>
-            {
-                commit(_serializer.Serialize(evt.newValue, param));
-            });
-
+            floatField.RegisterValueChangedCallback(evt => commit(_serializer.Serialize(evt.newValue, param)));
             return floatField;
         }
+
+        public void BindPropertyGUI(VisualElement element, Cell cell, string typeKey, string param)
+            => ((FloatField)element).SetValueWithoutNotify(
+                _serializer.Deserialize(cell.SerializedData, param) is float value ? value : 0f);
     }
 }

@@ -11,25 +11,28 @@ namespace TeamODD.ODDB.Editors.PropertyDrawers
     /// Property drawer for ODDBCell of type Int.
     /// </summary>
     [CellDrawer("int")]
-    public class IntCellDrawer : IntSerializer, IODDBCellDrawer
+    public class IntCellDrawer : IntSerializer, IODDBReusableCellDrawer
     {
         private static readonly IDataSerializer _serializer = TypeRegistry.Get("int") ?? new IntSerializer();
         public VisualElement CreatePropertyGUI(Cell cell, string typeKey, string param, Action<string> commit)
         {
-            var value = (int)(_serializer.Deserialize(cell.SerializedData, param) ?? 0);
+            var element = CreateReusablePropertyGUI(typeKey, param, commit);
+            BindPropertyGUI(element, cell, typeKey, param);
+            return element;
+        }
 
-            var intField = new IntegerField()
+        public VisualElement CreateReusablePropertyGUI(string typeKey, string param, Action<string> commit)
+        {
+            var intField = new IntegerField
             {
-                value = value,
                 isDelayed = true
             };
-
-            intField.RegisterValueChangedCallback(evt =>
-            {
-                commit(_serializer.Serialize(evt.newValue, param));
-            });
-
+            intField.RegisterValueChangedCallback(evt => commit(_serializer.Serialize(evt.newValue, param)));
             return intField;
         }
+
+        public void BindPropertyGUI(VisualElement element, Cell cell, string typeKey, string param)
+            => ((IntegerField)element).SetValueWithoutNotify(
+                (int)(_serializer.Deserialize(cell.SerializedData, param) ?? 0));
     }
 }

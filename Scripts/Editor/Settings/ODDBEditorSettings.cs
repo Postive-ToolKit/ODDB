@@ -17,6 +17,7 @@ namespace TeamODD.ODDB.Editors.Settings
         private const string DefaultFolderPath = "Assets/Settings";
         private const string DefaultAssetPath = DefaultFolderPath + "/ODDBEditorSettings.asset";
         private const string LegacyAssetPath = "Assets/Editor/ODDBEditorSettings.asset";
+        private static ODDBEditorSettings _cachedSetting;
 
         /// <summary>Pure read; returns null if the asset doesn't exist yet. No side effects.</summary>
         public static ODDBEditorSettings TryLoad()
@@ -54,13 +55,25 @@ namespace TeamODD.ODDB.Editors.Settings
             get
             {
 #if UNITY_EDITOR
+                // AssetDatabase.FindAssets is project-wide and this property is read
+                // while binding every visible view-reference cell. Unity keeps the
+                // ScriptableObject instance updated when its asset changes, so reuse
+                // it until it is deleted or the domain reloads.
+                if (_cachedSetting != null)
+                    return _cachedSetting;
+
                 var s = TryLoad();
-                if (s != null) return s;
+                if (s != null)
+                {
+                    _cachedSetting = s;
+                    return s;
+                }
                 s = CreateInstance<ODDBEditorSettings>();
                 s.name = "ODDBEditorSettings";
                 EnsureFolder(DefaultFolderPath);
                 AssetDatabase.CreateAsset(s, DefaultAssetPath);
                 AssetDatabase.SaveAssets();
+                _cachedSetting = s;
                 return s;
 #else
                 return null;
