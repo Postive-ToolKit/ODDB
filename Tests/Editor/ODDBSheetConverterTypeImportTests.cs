@@ -53,5 +53,26 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(table.GetRow("not-a-row"), Is.Null);
             Assert.That(table.GetRow("old-row"), Is.Null);
         }
+
+        [Test]
+        public void ApplySheetToTable_MapsReorderedColumnsByFieldName()
+        {
+            var database = new ODDatabase();
+            var table = (Table)database.Tables.Create(new ODDBID("item"));
+            table.AddField(new Field("Name", new FieldType("string", string.Empty)));
+            table.AddField(new Field("Power", new FieldType("int", string.Empty)));
+
+            var sheet = new SheetInfo("ItemData", "item");
+            sheet.Values.Add(new List<string> { "#NAME", "ID", "Power", "Name" });
+            sheet.Values.Add(new List<string> { "#TYPE", "ID", "int", "string" });
+            sheet.Values.Add(new List<string> { string.Empty, "row1", "25", "Iron Sword" });
+
+            new ODDBSheetConverter(database).ApplySheetToTable(table, sheet);
+
+            Assert.That(table.GetRow("row1").GetData(0).SerializedData, Is.EqualTo("Iron Sword"));
+            Assert.That(table.GetRow("row1").GetData(1).SerializedData, Is.EqualTo("25"));
+            Assert.That(table.TotalFields[0].Type.TypeKey, Is.EqualTo("string"));
+            Assert.That(table.TotalFields[1].Type.TypeKey, Is.EqualTo("int"));
+        }
     }
 }

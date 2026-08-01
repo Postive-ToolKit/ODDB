@@ -86,13 +86,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (typeRow == null)
                 return;
 
-            for (int fieldIndex = 0; fieldIndex < headerInfo.DataColumnIndices.Count; fieldIndex++)
+            var nameRow = sheet.Values[0];
+            for (int columnOffset = 0; columnOffset < headerInfo.DataColumnIndices.Count; columnOffset++)
             {
-                if (fieldIndex >= table.TotalFields.Count)
-                    break;
-
-                var columnIndex = headerInfo.DataColumnIndices[fieldIndex];
+                var columnIndex = headerInfo.DataColumnIndices[columnOffset];
                 if (columnIndex >= typeRow.Count)
+                    continue;
+
+                var fieldIndex = FindFieldIndex(table, columnIndex < nameRow.Count ? nameRow[columnIndex] : null);
+                if (fieldIndex < 0)
                     continue;
 
                 if (!TryParseFieldType(typeRow[columnIndex], out var fieldType))
@@ -177,7 +179,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             }
         }
 
-        private static void ApplyRowDataToTable(Table table, List<string> rowData, SheetHeaderInfo headerInfo)
+        private static void ApplyRowDataToTable(
+            Table table,
+            List<string> nameRow,
+            List<string> rowData,
+            SheetHeaderInfo headerInfo)
         {
             if (rowData.Count <= headerInfo.IdColumnIndex)
                 return;
@@ -194,12 +200,28 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
 
             var newRow = table.AddRow(new ODDBID(rowId));
 
-            for (int fieldIndex = 0; fieldIndex < headerInfo.DataColumnIndices.Count; fieldIndex++)
+            for (int columnOffset = 0; columnOffset < headerInfo.DataColumnIndices.Count; columnOffset++)
             {
-                var columnIndex = headerInfo.DataColumnIndices[fieldIndex];
+                var columnIndex = headerInfo.DataColumnIndices[columnOffset];
+                var fieldIndex = FindFieldIndex(table, columnIndex < nameRow.Count ? nameRow[columnIndex] : null);
+                if (fieldIndex < 0)
+                    continue;
                 if (columnIndex < rowData.Count)
                     newRow.SetData(fieldIndex, rowData[columnIndex], true);
             }
+        }
+
+        private static int FindFieldIndex(Table table, string fieldName)
+        {
+            if (table == null || string.IsNullOrEmpty(fieldName))
+                return -1;
+
+            for (var index = 0; index < table.TotalFields.Count; index++)
+            {
+                if (string.Equals(table.TotalFields[index]?.Name, fieldName, StringComparison.Ordinal))
+                    return index;
+            }
+            return -1;
         }
 
         /// <summary>
@@ -306,13 +328,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
 
             ApplyFieldTypesToTable(_dB, table, sheet, headerInfo);
             table.Clear();
+            var nameRow = sheet.Values[0];
 
             for (int i = headerInfo.DataStartIndex; i < sheet.Values.Count; i++)
             {
                 var rowData = sheet.Values[i];
                 if (rowData == null || rowData.Count == 0) continue;
                 if (IsCommentRow(rowData)) continue;
-                ApplyRowDataToTable(table, rowData, headerInfo);
+                ApplyRowDataToTable(table, nameRow, rowData, headerInfo);
             }
         }
 

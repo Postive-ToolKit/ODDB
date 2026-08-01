@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
@@ -52,6 +53,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
             if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX))
                 return;
 
+            Table table = null;
             if (string.IsNullOrEmpty(sheet.ID))
             {
                 report.Add(new SheetValidationIssue(
@@ -61,7 +63,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                     -1,
                     "Sheet has an empty sheet ID."));
             }
-            else if (database != null && database.Tables.Read(new ODDBID(sheet.ID)) == null)
+            else if (database != null && (table = database.Tables.Read(new ODDBID(sheet.ID)) as Table) == null)
             {
                 report.Add(new SheetValidationIssue(
                     SheetValidationSeverity.Warning,
@@ -94,6 +96,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 return;
             }
 
+            ValidateFieldHeaders(sheet, nameRow, table, report);
+
             var dataStartIndex = 1;
             if (sheet.Values.Count > 1
                 && sheet.Values[1] != null
@@ -113,6 +117,70 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
             }
 
             ValidateRowIds(sheet, dataStartIndex, report);
+        }
+
+        private static void ValidateFieldHeaders(
+            SheetInfo sheet,
+            IReadOnlyList<string> nameRow,
+            Table table,
+            SheetValidationReport report)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (var columnIndex = 2; columnIndex < nameRow.Count; columnIndex++)
+            {
+                var fieldName = nameRow[columnIndex];
+                if (string.IsNullOrEmpty(fieldName) || fieldName.StartsWith(SheetConfig.IGNORE_PREFIX))
+                    continue;
+
+                if (!seen.Add(fieldName))
+                {
+                    report.Add(new SheetValidationIssue(
+                        SheetValidationSeverity.Error,
+                        sheet.Name,
+                        sheet.ID,
+                        0,
+                        $"Duplicate field header '{fieldName}' at column {columnIndex + 1}."));
+                    continue;
+                }
+
+                if (table != null && !ContainsField(table, fieldName))
+                {
+                    report.Add(new SheetValidationIssue(
+                        SheetValidationSeverity.Error,
+                        sheet.Name,
+                        sheet.ID,
+                        0,
+                        $"Field header '{fieldName}' does not exist in ODDB table '{sheet.ID}'."));
+                }
+            }
+
+
+            if (table == null)
+                return;
+
+            for (var fieldIndex = 0; fieldIndex < table.TotalFields.Count; fieldIndex++)
+            {
+                var fieldName = table.TotalFields[fieldIndex]?.Name;
+                if (!string.IsNullOrEmpty(fieldName) && !seen.Contains(fieldName))
+                {
+                    report.Add(new SheetValidationIssue(
+                        SheetValidationSeverity.Error,
+                        sheet.Name,
+                        sheet.ID,
+                        0,
+                        $"Google Sheet is missing ODDB field column '{fieldName}'. Export the current ODDB schema before importing."));
+                }
+            }
+        }
+
+        private static bool ContainsField(Table table, string fieldName)
+        {
+            for (var index = 0; index < table.TotalFields.Count; index++)
+            {
+                if (string.Equals(table.TotalFields[index]?.Name, fieldName, StringComparison.Ordinal))
+                    return true;
+            }
+            return false;
         }
 
         private static void ValidateRowIds(

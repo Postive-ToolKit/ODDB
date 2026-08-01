@@ -57,7 +57,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Diff
                     continue;
                 }
 
-                var cellChanges = GetCellChanges(currentRow, imported.Cells);
+                var cellChanges = GetCellChanges(currentRow, imported.Cells, table);
                 var changed = cellChanges.Count > 0;
                 diff.AddRow(new SheetImportRowDiff(
                     changed ? SheetImportDiffKind.Updated : SheetImportDiffKind.Unchanged,
@@ -133,23 +133,38 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Diff
 
         private static IReadOnlyList<SheetImportCellDiff> GetCellChanges(
             Row currentRow,
-            IReadOnlyList<ImportedCell> importedCells)
+            IReadOnlyList<ImportedCell> importedCells,
+            Table table)
         {
             var changes = new List<SheetImportCellDiff>();
-            var count = System.Math.Max(currentRow.Cells.Count, importedCells.Count);
-            for (var i = 0; i < count; i++)
+            foreach (var importedCell in importedCells)
             {
-                var currentValue = i < currentRow.Cells.Count
-                    ? currentRow.GetData(i)?.SerializedData ?? string.Empty
+                var fieldIndex = FindFieldIndex(table, importedCell.ColumnName);
+                if (fieldIndex < 0)
+                    continue;
+
+                var currentValue = fieldIndex < currentRow.Cells.Count
+                    ? currentRow.GetData(fieldIndex)?.SerializedData ?? string.Empty
                     : string.Empty;
-                var importedValue = i < importedCells.Count ? importedCells[i].Value ?? string.Empty : string.Empty;
+                var importedValue = importedCell.Value ?? string.Empty;
                 if (currentValue != importedValue)
                 {
-                    var columnName = i < importedCells.Count ? importedCells[i].ColumnName : $"Column {i + 1}";
-                    changes.Add(new SheetImportCellDiff(columnName, currentValue, importedValue));
+                    changes.Add(new SheetImportCellDiff(importedCell.ColumnName, currentValue, importedValue));
                 }
             }
             return changes;
+        }
+
+        private static int FindFieldIndex(Table table, string fieldName)
+        {
+            if (table == null || string.IsNullOrEmpty(fieldName))
+                return -1;
+            for (var index = 0; index < table.TotalFields.Count; index++)
+            {
+                if (string.Equals(table.TotalFields[index]?.Name, fieldName, System.StringComparison.Ordinal))
+                    return index;
+            }
+            return -1;
         }
 
         private readonly struct ImportedRow

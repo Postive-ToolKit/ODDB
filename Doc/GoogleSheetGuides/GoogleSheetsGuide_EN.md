@@ -1,50 +1,38 @@
-﻿# Google Sheets Integration Guide
-To integrate with Google Sheets, you need to use Google Sheets' Apps Script. Follow the guide below to complete the setup.
+# Google Sheets API Integration Guide
 
-## 1. Creating Apps Script
-ODDB provides a feature to automatically generate the script for integration. Follow these steps:
-1. Set the `Google Sheet API Secret Key` in the `Google Sheets Settings` section of the ODDB Setting file.
-2. Click `ODDB/Google Sheets/Create App Script` from the ODDB top menu.
-3. Once the script is generated, it will be automatically copied to your clipboard.
+ODDB imports and exports Google Sheets through Google Sheets API v4 with a service account. Apps Script deployment is no longer required.
 
-## 2. Adding Apps Script to Google Sheets
-<img width="899" height="357" alt="image" src="https://github.com/user-attachments/assets/b3a5f0c3-a550-4bec-976c-d177d0c98a81" />
+## 1. Configure Google Cloud
 
-1. Open your Google Sheet.
-2. Click `Extensions > Apps Script` from the top menu.
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable `Google Sheets API` under `APIs & Services > Library`.
+3. Create a service account under `IAM & Admin > Service Accounts`.
+4. Create a JSON key for the service account and save it in a secure local folder.
 
-<img width="1056" height="323" alt="image" src="https://github.com/user-attachments/assets/61a0c970-21a7-41db-8717-293a06eaa6c7" />
+The credential JSON contains a private key. Never place it under `Assets` or commit it to source control.
 
-3. Delete all existing code in the newly opened Apps Script editor.
-4. Paste the script copied to your clipboard.
+## 2. Share the Spreadsheet
 
-## 3. Deploying Apps Script
-<img width="1124" height="321" alt="image" src="https://github.com/user-attachments/assets/1e5bec3a-ea47-43c6-96fd-5df4696d2fc6" />
+1. Open the target Google Spreadsheet.
+2. Click `Share`.
+3. Add the `client_email` from the service-account JSON as an Editor.
+4. Copy the Spreadsheet ID found between `/d/` and `/edit` in its URL.
 
-1. Click `Deploy > New deployment` from the top menu of the Apps Script editor.
+## 3. Configure ODDB
 
-<img width="755" height="373" alt="image" src="https://github.com/user-attachments/assets/def3dc85-32e8-4f92-a520-2701fb345598" />
+1. Set `Google Spreadsheet Id` under `Google Sheets Settings` in `ODDBEditorSettings`.
+2. Open `ODDB > Google Sheets > Setup` in Unity.
+3. Select the service-account JSON with `Browse`.
+4. Use `Test Connection` to verify authentication and sharing permissions.
 
-2. Select `Web app` for the `Deployment type`.
+The credential path is stored per user in `EditorPrefs`; it is not written to project assets.
 
-<img width="761" height="598" alt="image" src="https://github.com/user-attachments/assets/d52e98e8-7413-4890-84a1-03d94d309fa9" />
+## 4. Synchronize
 
-3. Enter a description for the deployment in the `Description` field.
-4. Set the `Who has access` option to `Anyone (including anonymous users)`.
-5. Click the `Deploy` button.
+- Select `Google Sheets` from the ODDB Editor Import or Export menu.
+- The first export detects legacy Apps Script tabs and attaches ODDB metadata.
+- Removing an ODDB-managed field physically deletes its Google Sheet column on the next export.
+- ODDB asks for confirmation before deletion. User-managed columns and `#` comment rows are preserved.
+- Removed rows continue to be marked with `#REMOVED`.
 
-## 3.1 Authorizing Permissions
-1. During the deployment process, you may need to authorize permissions. Click the `Authorize access` button.
-2. Select your Google account.
-3. Click `Advanced` and then click the `Go to [project name] (unsafe)` link.
-4. Click the `Allow` button to grant the permissions.
-
-## 4. Copying the Web App URL
-<img width="758" height="589" alt="image" src="https://github.com/user-attachments/assets/cb17bb6d-de1d-4770-ae4c-b89aac0a824c" />
-
-1. Copy the `Web app URL` displayed after deployment is complete.
-2. Paste the copied URL into the `Google Sheets API URL` field in the `Google Sheets Settings` section of the ODDB Setting file.
-
----
-Integration between ODDB and Google Sheets is now complete. You can use the `ODDB/Google Sheets/Import from Google Sheets` and `ODDB/Google Sheets/Export to Google Sheets` options from the ODDB top menu to import and export data.
-
+Field names currently identify managed columns. Renaming a field is treated as deleting the old column and adding a new one, so custom formatting on that column might not be preserved.

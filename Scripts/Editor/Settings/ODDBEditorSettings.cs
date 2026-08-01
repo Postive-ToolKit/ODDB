@@ -85,8 +85,8 @@ namespace TeamODD.ODDB.Editors.Settings
         public bool UseFirstColumnAsRowName => _useFirstColumnAsRowName;
         public string GeneratedCodePath => _generatedCodePath;
         public bool DisableGoogleSheetExport => _disableGoogleSheetExport;
-        public string GoogleSheetAPIURL => _googleSheetAPIURL;
-        public string GoogleSheetAPISecretKey => _googleSheetAPISecretKey;
+        public string GoogleSpreadsheetId => _googleSpreadsheetId;
+        public bool ConfirmGoogleSheetColumnDeletion => _confirmGoogleSheetColumnDeletion;
 
         public bool EnableMCPServer => _enableMCPServer;
         public int MCPServerPort => _mcpServerPort;
@@ -119,11 +119,15 @@ namespace TeamODD.ODDB.Editors.Settings
         [Space(10)]
         [Header("Google Sheets Settings")]
         [SerializeField] private bool _disableGoogleSheetExport = false;
-        [TextArea]
-        [Tooltip("The ID of the Google Sheets document to sync with.")]
-        [SerializeField] private string _googleSheetAPIURL = string.Empty;
-        [Tooltip("API Key for Google Sheets (read-only operations).")]
-        [SerializeField] private string _googleSheetAPISecretKey = string.Empty;
+        [Tooltip("The spreadsheet ID from the Google Sheets document URL.")]
+        [SerializeField] private string _googleSpreadsheetId = string.Empty;
+        [Tooltip("Ask for confirmation before an export physically deletes ODDB-managed columns.")]
+        [SerializeField] private bool _confirmGoogleSheetColumnDeletion = true;
+
+        // Kept serialized for one migration cycle so existing assets do not lose
+        // their values before users finish moving away from Apps Script.
+        [SerializeField, HideInInspector] private string _googleSheetAPIURL = string.Empty;
+        [SerializeField, HideInInspector] private string _googleSheetAPISecretKey = string.Empty;
 
 #if UNITY_EDITOR
         private static void EnsureFolder(string folderPath)

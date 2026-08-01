@@ -112,7 +112,7 @@ The exported tables are saved with the filename `{Table Name}_{Table ID}` and ca
 
 #### Google Sheets Synchronization
 ODDB also provides integration with Google Sheets. You can utilize more intuitive and useful features for data management compared to CSV.
-However, to integrate ODDB with Google Sheets, you need to use Google Sheets' `Apps Script`.
+Google Sheets integration uses Google Sheets API v4 with a service account. Apps Script deployment is not required.
 For detailed Google Sheets integration instructions, please refer to the [Google Sheets Integration Guide](./Doc/GoogleSheetGuides/GoogleSheetsGuide_EN.md).
 
 Once integration is complete, you can load data from Google Sheets through the `ODDB/Google Sheets/Import from Google Sheets` menu, and export current table data to Google Sheets through the `ODDB/Google Sheets/Export to Google Sheets` menu.

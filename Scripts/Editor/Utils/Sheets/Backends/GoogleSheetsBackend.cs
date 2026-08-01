@@ -26,12 +26,18 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
-            if (string.IsNullOrEmpty(ODDBEditorSettings.Setting.GoogleSheetAPIURL))
+            if (string.IsNullOrWhiteSpace(ODDBEditorSettings.Setting.GoogleSpreadsheetId))
             {
                 EditorUtility.DisplayDialog(
                     "Google Sheets",
-                    "GoogleSheetAPIURL is not configured in ODDBEditorSettings. Configure it before using the Google Sheets backend.",
+                    "Google Spreadsheet ID is not configured in ODDBEditorSettings.",
                     "OK");
+                return Task.FromResult(BackendContext.Cancel(scope, intent));
+            }
+
+            if (!GoogleSheetsUserSettings.TryGetCredentialPath(out _, out var failureReason))
+            {
+                EditorUtility.DisplayDialog("Google Sheets", failureReason, "OK");
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
@@ -47,7 +53,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             if (ctx == null) throw new ArgumentNullException(nameof(ctx));
 
             ReportStage(progress, "Loading data from Google Sheets...", 0.1f);
-            var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ct);
+            var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ctx.Scope, ct);
             ReportStage(progress, "Parsing sheet data...", 0.7f);
             var filtered = FilterSheets(sheets, ctx.Scope);
             ReportSheets(progress, filtered, "Processing downloaded sheet", 0.75f, 0.95f);
@@ -67,7 +73,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             var filtered = FilterSheets(sheets, ctx.Scope);
             ReportSheets(progress, filtered, "Preparing sheet for upload", 0.15f, 0.45f);
             ReportStage(progress, $"Uploading {filtered.Count} sheet(s) to Google Sheets...", 0.5f);
-            await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, ct);
+            await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, progress, ct);
             ReportStage(progress, "Finalizing...", 0.95f);
         }
 
