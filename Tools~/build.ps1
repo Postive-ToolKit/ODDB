@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 
 $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PackageRoot  = Resolve-Path (Join-Path $ScriptDir '..')
-$CoreProject  = Resolve-Path (Join-Path $PackageRoot '../../../src/ODDB.Core')
+$CoreProject  = Resolve-Path (Join-Path $PackageRoot 'Source~/ODDB.Core')
 $PluginsDir   = Join-Path $PackageRoot 'Plugins'
 $Dll          = Join-Path $CoreProject "bin/$Configuration/netstandard2.1/ODDB.Core.dll"
 

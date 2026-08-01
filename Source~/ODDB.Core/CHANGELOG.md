@@ -2,6 +2,16 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## v2.6.0 — 2026-08-02
+
+### feat(core): add type-declared async loading
+
+- Added `ODDBLoadType.Default` and `ODDBLoadType.Async` to `ODDBTypeAttribute` while preserving the existing constructor.
+- Added the `IAsyncLoader` integration point and `ODDB.RegisterAsyncLoader`, `GetAsync`, and `Release` APIs.
+- Async entity fields retain their serialized key, so existing database files require no migration.
+- Unity CodeGen emits typed `Get{Field}Async` and `Release{Field}` wrappers for async types.
+- Added the default `AddressablesAsyncLoader` adapter and removed synchronous Addressables materialization.
+
 ## v2.2.6 — 2026-07-12
 
 ### fix(core): exclude entity infrastructure fields during porting

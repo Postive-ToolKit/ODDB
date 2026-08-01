@@ -237,6 +237,42 @@ ODDBPort 클래스는 데이터베이스에 접근하기 위한 다양한 메서
 - 두번째 예로 `Item` View에 바인드된 `ItemData` 클래스가 있으며 해당 View를 상속받는 `Weapon`과 `Armor` 테이블이 있다고 가정해봅시다.
   이 경우, 개발자는 `ODDBPort.GetEntities<ItemData>()`와 같은 방법으로 `Weapon`과 `Armor` 테이블의 모든 데이터를 포함하는 객체의 리스트로 쉽게 접근할 수 있습니다.
 
+### 비동기 에셋 로딩
+
+`ODDBLoadType.Async`로 등록된 데이터 타입은 DB에 기존과 동일한 문자열 key를 저장하면서,
+CodeGen 결과에 타입 안전한 `Get{Field}Async`와 `Release{Field}` 함수를 생성합니다.
+기본 `addressable` 타입은 Async 타입으로 등록됩니다.
+
+애플리케이션 시작 시 에셋 로더를 한 번 등록합니다.
+
+```csharp
+[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+private static void RegisterODDBLoader()
+{
+    ODDB.RegisterAsyncLoader(
+        new AddressablesAsyncLoader(),
+        replaceExisting: true);
+}
+```
+
+생성된 API는 획득과 해제를 한 쌍으로 사용합니다.
+
+```csharp
+var icon = await item.GetIconAsync(cancellationToken);
+try
+{
+    image.sprite = icon;
+}
+finally
+{
+    item.ReleaseIcon(icon);
+}
+```
+
+자체 에셋 매니저를 사용하려면 `IAsyncLoader`를 구현해서 등록하면 됩니다.
+기존 `.bytes`, CSV, Google Sheets 데이터 형식은 변경되지 않으므로 DB 마이그레이션은 필요 없지만,
+Async 타입을 사용하는 View/Table의 생성 코드는 다시 생성해야 합니다.
+
 ---
 ### 설치 방법
 <img width="617" height="153" alt="image" src="https://github.com/user-attachments/assets/de3c0af9-9a4b-445f-883d-de76d1362388" />

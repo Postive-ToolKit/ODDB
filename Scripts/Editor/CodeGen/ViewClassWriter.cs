@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
 
 namespace TeamODD.ODDB.Editors.CodeGen
@@ -88,7 +89,17 @@ namespace TeamODD.ODDB.Editors.CodeGen
                     usings.Add(resolved.Namespace);
 
                 var backingName = "_" + char.ToLowerInvariant(field.Name[0]) + field.Name.Substring(1);
-                body.Append(Render(TemplateLoader.FieldTemplate, new Dictionary<string, string>
+                var template = resolved.LoadType == ODDBLoadType.Async
+                    ? TemplateLoader.AsyncFieldTemplate
+                    : TemplateLoader.FieldTemplate;
+
+                if (resolved.LoadType == ODDBLoadType.Async)
+                {
+                    usings.Add("System.Threading");
+                    usings.Add("System.Threading.Tasks");
+                }
+
+                body.Append(Render(template, new Dictionary<string, string>
                 {
                     ["Type"] = resolved.TypeName,
                     ["Backing"] = backingName,

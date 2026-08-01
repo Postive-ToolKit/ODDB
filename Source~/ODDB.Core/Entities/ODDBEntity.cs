@@ -4,6 +4,8 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Enums;
+using TeamODD.ODDB.Runtime.Types;
 
 namespace TeamODD.ODDB.Runtime.Entities
 {
@@ -66,6 +68,13 @@ namespace TeamODD.ODDB.Runtime.Entities
                 if (meta.Type != null && meta.Type.TypeKey == "view")
                 {
                     RegisterAsLazyLoad(field, cell.SerializedData);
+                    continue;
+                }
+
+                var descriptor = TypeRegistry.GetDescriptor(meta.Type?.TypeKey);
+                if (descriptor?.LoadType == ODDBLoadType.Async)
+                {
+                    field.SetValue(this, cell.SerializedData);
                     continue;
                 }
 

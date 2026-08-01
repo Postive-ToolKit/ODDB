@@ -2,7 +2,7 @@
 
 ## `build.sh` / `build.ps1` — rebuild ODDB.Core dll
 
-Run after any change under `src/ODDB.Core/` to refresh `Plugins/ODDB.Core.dll`:
+Run after any change under `Source~/ODDB.Core/` to refresh `Plugins/ODDB.Core.dll`:
 
 ```sh
 ./Tools~/build.sh           # macOS / Linux, Release (default)

@@ -1,28 +1,18 @@
 ﻿#if ADDRESSABLE_EXIST
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Attributes;
 using TeamODD.ODDB.Runtime.Enums;
-using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Types;
-using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using Object = UnityEngine.Object;
 
 namespace TeamODD.ODDB.Runtime.Serializers
 {
-    [ODDBType("addressable", targetType: typeof(UnityEngine.Object), folder: "Unity Assets", requiresParam: true)]
+    [ODDBType(
+        "addressable",
+        ODDBLoadType.Async,
+        targetType: typeof(UnityEngine.Object),
+        folder: "Unity Assets",
+        requiresParam: true)]
     public class AddressableSerializer : IDataSerializer
     {
-        private const string LOAD_ASSET_ASYNC_METHOD = nameof(Addressables.LoadAssetAsync);
-        private const string WAIT_FOR_COMPLETION_METHOD = nameof(AsyncOperationHandle.WaitForCompletion);
-        private const string RESULT_PROPERTY = nameof(AsyncOperationHandle<Object>.Result);
-        
-        private static readonly Dictionary<Type, MethodInfo> _cachedLoadMethods = new Dictionary<Type, MethodInfo>();
-        
         public virtual string Serialize(object data, string param)
         {
             #if UNITY_EDITOR
@@ -33,59 +23,9 @@ namespace TeamODD.ODDB.Runtime.Serializers
 
         public virtual object Deserialize(string serializedData, string param)
         {
-            // Need to make how to handle async properly later
-            if (string.IsNullOrEmpty(serializedData))
-                return null;
-
-            if (ODDBRuntimeSettings.Setting.UseAddressableAutoLoad == false)
-                return serializedData;
-            
-            var oddbRefDataType = ODDBReferenceDataType.Object;
-            if (Enum.TryParse<ODDBReferenceDataType>(param, out var parsedType))
-                oddbRefDataType = parsedType;
-            
-            var assetType = oddbRefDataType.GetReferenceDataBindType();
-            
-            if (assetType == null)
-                assetType = typeof(Object);
-            
-            try
-            {
-                var loadMethod = GetOrCreateLoadMethod(assetType);
-                var handle = loadMethod.Invoke(null, new object[] { serializedData });
-                
-                var waitMethod = handle.GetType().GetMethod(WAIT_FOR_COMPLETION_METHOD);
-                waitMethod?.Invoke(handle, null);
-                
-                var resultProperty = handle.GetType().GetProperty(RESULT_PROPERTY);
-                return resultProperty?.GetValue(handle);
-            }
-            catch (Exception e)
-            {
-                ODDB.Logger.Warn("Failed to load addressable asset: " + serializedData + " | Error: " + e.Message);
-                return null;
-            }
-        }
-        
-        private static MethodInfo GetOrCreateLoadMethod(Type assetType)
-        {
-            if (_cachedLoadMethods.TryGetValue(assetType, out var cachedMethod))
-                return cachedMethod;
-            
-            var genericMethod = typeof(Addressables)
-                .GetMethod(LOAD_ASSET_ASYNC_METHOD, BindingFlags.Public | BindingFlags.Static, null,
-                    new[] { typeof(object) }, null);
-            
-            if (genericMethod == null)
-            {
-                ODDB.Logger.Error($"Failed to find {LOAD_ASSET_ASYNC_METHOD} method");
-                return null;
-            }
-            
-            var typedMethod = genericMethod.MakeGenericMethod(assetType);
-            _cachedLoadMethods[assetType] = typedMethod;
-            
-            return typedMethod;
+            // Async types preserve their serialized key during database porting.
+            // Actual asset materialization is delegated to the registered IAsyncLoader.
+            return serializedData;
         }
     }
 }

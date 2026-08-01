@@ -4,8 +4,8 @@ using System.Linq;
 using System.Reflection;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Attributes;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Interfaces;
-using TeamODD.ODDB.Runtime.Settings;
 using TeamODD.ODDB.Runtime.Types;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
@@ -24,16 +24,24 @@ namespace TeamODD.ODDB.Editors.CodeGen
             public readonly string Namespace;    // namespace to add to using; null/empty if BCL
             public readonly bool Ok;
             public readonly string FailureReason;
+            public readonly ODDBLoadType LoadType;
 
-            private Resolved(string typeName, string ns, bool ok, string reason)
+            private Resolved(string typeName, string ns, bool ok, string reason, ODDBLoadType loadType)
             {
-                TypeName = typeName; Namespace = ns; Ok = ok; FailureReason = reason;
+                TypeName = typeName;
+                Namespace = ns;
+                Ok = ok;
+                FailureReason = reason;
+                LoadType = loadType;
             }
 
-            public static Resolved Success(string typeName, string ns)
-                => new(typeName, ns, true, null);
+            public static Resolved Success(
+                string typeName,
+                string ns,
+                ODDBLoadType loadType = ODDBLoadType.Default)
+                => new(typeName, ns, true, null, loadType);
             public static Resolved Failure(string reason)
-                => new(null, null, false, reason);
+                => new(null, null, false, reason, ODDBLoadType.Default);
         }
 
         // ViewID → generated class name (for views in the current generation batch).
@@ -58,14 +66,14 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 case "enum":
                     return ResolveEnum(fieldType.Param);
                 case "resource":
-                    return ResolveType(fieldType.Param, "Resource");
+                    return ApplyRegisteredLoadType(key, ResolveType(fieldType.Param, "Resource"));
                 case "view":
                     return ResolveViewReference(fieldType.Param, referencedViewLookup);
                 case "custom":
-                    return ResolveCustom(fieldType.Param);
+                    return ApplyRegisteredLoadType(key, ResolveCustom(fieldType.Param));
 #if ADDRESSABLE_EXIST
                 case "addressable":
-                    return ResolveAddressable(fieldType.Param);
+                    return ApplyRegisteredLoadType(key, ResolveAddressable(fieldType.Param));
 #endif
             }
 
@@ -76,8 +84,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 var t = descriptor.TargetType;
                 var keyword = CSharpKeywordFor(t);
                 if (keyword != null)
-                    return Resolved.Success(keyword, null);
-                return Resolved.Success(t.Name, t.Namespace);
+                    return Resolved.Success(keyword, null, descriptor.LoadType);
+                return Resolved.Success(t.Name, t.Namespace, descriptor.LoadType);
             }
 
             return Resolved.Failure($"unsupported data type '{key}'");
@@ -130,11 +138,21 @@ namespace TeamODD.ODDB.Editors.CodeGen
 #if ADDRESSABLE_EXIST
         private static Resolved ResolveAddressable(string param)
         {
-            if (ODDBRuntimeSettings.Setting.UseAddressableAutoLoad)
-                return ResolveType(param, "Addressable");
-            return Resolved.Success("string", null);
+            return ResolveType(param, "Addressable");
         }
 #endif
+
+        private static Resolved ApplyRegisteredLoadType(string key, Resolved resolved)
+        {
+            if (!resolved.Ok)
+                return resolved;
+
+            var descriptor = TypeRegistry.GetDescriptor(key);
+            return Resolved.Success(
+                resolved.TypeName,
+                resolved.Namespace,
+                descriptor?.LoadType ?? ODDBLoadType.Default);
+        }
 
         private Resolved ResolveCustom(string typeId)
         {

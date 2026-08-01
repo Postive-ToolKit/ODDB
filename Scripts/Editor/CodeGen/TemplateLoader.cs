@@ -12,10 +12,12 @@ namespace TeamODD.ODDB.Editors.CodeGen
     {
         private static string _classTemplate;
         private static string _fieldTemplate;
+        private static string _asyncFieldTemplate;
         private static IReadOnlyCollection<string> _reservedWords;
 
         public static string ClassTemplate => _classTemplate ??= Load("CodeGen/class");
         public static string FieldTemplate => _fieldTemplate ??= Load("CodeGen/field");
+        public static string AsyncFieldTemplate => _asyncFieldTemplate ??= Load("CodeGen/field-async");
         public static IReadOnlyCollection<string> ReservedWords =>
             _reservedWords ??= ParseLines(Load("CodeGen/reserved-words"));
 

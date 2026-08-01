@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CORE_PROJECT="$(cd "$PACKAGE_ROOT/../../../src/ODDB.Core" && pwd)"
+CORE_PROJECT="$(cd "$PACKAGE_ROOT/Source~/ODDB.Core" && pwd)"
 PLUGINS_DIR="$PACKAGE_ROOT/Plugins"
 
 CONFIG="${1:-Release}"

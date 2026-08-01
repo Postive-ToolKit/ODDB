@@ -1,0 +1,8 @@
+        private string @Backing;
+        public string @NameKey => @Backing;
+
+        public Task<@Type> Get@NameAsync(CancellationToken cancellationToken = default)
+            => TeamODD.ODDB.Runtime.ODDB.GetAsync<@Type>(@Backing, cancellationToken);
+
+        public void Release@Name(@Type asset)
+            => TeamODD.ODDB.Runtime.ODDB.Release(asset);

@@ -245,6 +245,63 @@ Another useful method is the `GetEntities<T>()` method, which returns all data b
   In this case, developers can easily access a list of objects containing all data from the `Weapon` and `Armor` tables using a method like `ODDBPort.GetEntities<ItemData>()`.
 
 ---
+## Async Asset Loading
+
+ODDB data types can opt into asynchronous materialization without changing the database format.
+The database continues to store the serialized asset key, while generated entity classes expose
+type-safe `Get{Field}Async` and `Release{Field}` wrappers.
+
+Register one loader during application startup:
+
+```csharp
+using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Serializers;
+using UnityEngine;
+
+public static class ODDBAssetLoaderBootstrap
+{
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void Register()
+    {
+        ODDB.RegisterAsyncLoader(
+            new AddressablesAsyncLoader(),
+            replaceExisting: true);
+    }
+}
+```
+
+The built-in `addressable` data type is declared with `ODDBLoadType.Async`. After regenerating code,
+an Addressable field named `Icon` is consumed as follows:
+
+```csharp
+var icon = await item.GetIconAsync(cancellationToken);
+try
+{
+    image.sprite = icon;
+}
+finally
+{
+    item.ReleaseIcon(icon);
+}
+```
+
+Custom data types can opt in by setting the registration attribute property:
+
+```csharp
+[ODDBType(
+    "my-assets",
+    ODDBLoadType.Async,
+    targetType: typeof(UnityEngine.Object))]
+public sealed class MyAssetKeySerializer : IDataSerializer
+{
+    // Serialize and Deserialize only transform the stored key.
+}
+```
+
+Implement `IAsyncLoader` to route serialized asset keys to a custom asset manager. Existing `.bytes`,
+CSV, and Google Sheets data do not require migration; generated classes must be regenerated.
+
+---
 ## Installation
 <img width="617" height="153" alt="image" src="https://github.com/user-attachments/assets/de3c0af9-9a4b-445f-883d-de76d1362388" />
 

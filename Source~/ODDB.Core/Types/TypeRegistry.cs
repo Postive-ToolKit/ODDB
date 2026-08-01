@@ -57,7 +57,7 @@ namespace TeamODD.ODDB.Runtime.Types
                     IDataSerializer inst;
                     try { inst = (IDataSerializer)Activator.CreateInstance(t); }
                     catch { continue; }
-                    var reg = new RegisteredType(attr.Key, attr.TargetType, attr.Folder, attr.RequiresParam, inst, attr.FlattenMenu);
+                    var reg = new RegisteredType(attr.Key, attr.LoadType, attr.TargetType, attr.Folder, attr.RequiresParam, inst, attr.FlattenMenu);
                     if (_byKey.ContainsKey(attr.Key))
                         TeamODD.ODDB.Runtime.ODDB.Logger.Warn($"duplicate ODDBType key '{attr.Key}', last registration wins ({t.FullName})");
                     _byKey[attr.Key] = reg;

@@ -1,4 +1,5 @@
 using System;
+using TeamODD.ODDB.Runtime.Enums;
 
 namespace TeamODD.ODDB.Runtime.Types
 {
@@ -19,10 +20,17 @@ namespace TeamODD.ODDB.Runtime.Types
         /// Implies <see cref="RequiresParam"/> for the flatten to be meaningful.
         /// </summary>
         public bool FlattenMenu { get; }
+        public ODDBLoadType LoadType { get; }
 
         public ODDBTypeAttribute(string key, Type targetType = null, string folder = "Other", bool requiresParam = false, bool flattenMenu = false)
+            : this(key, ODDBLoadType.Default, targetType, folder, requiresParam, flattenMenu)
+        {
+        }
+
+        public ODDBTypeAttribute(string key, ODDBLoadType loadType, Type targetType = null, string folder = "Other", bool requiresParam = false, bool flattenMenu = false)
         {
             Key = key;
+            LoadType = loadType;
             TargetType = targetType;
             Folder = folder;
             RequiresParam = requiresParam;
