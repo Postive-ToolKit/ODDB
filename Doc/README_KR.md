@@ -46,6 +46,59 @@ ODDB는 테이블과 특정 클래스를 바인드하여 데이터를 객체로 
 ### 외부 데이터 소스와의 동기화
 ODDB는 CSV 파일 및 Google Sheets와 같은 외부 데이터 소스와의 동기화 기능을 제공합니다.
 이를 통해 개발자는 다양한 직군의 사람들이 협업하여 데이터를 관리할 수 있습니다.
+
+### 커스텀 에디터 연동
+별도의 Unity 에디터 창에서도 기본 ODDB 에디터와 동일한 편집 세션을 사용할 수 있습니다.
+DB 파일을 직접 로드하거나 저장하지 말고 `ODDBEditorSession.Current`를 사용하세요.
+`session.Commands`를 통한 변경은 ODDB 명령 파이프라인을 거치므로 Undo/Redo, dirty 상태,
+실시간 화면 갱신, 로드 안전성 검사 및 저장 전 백업 기능이 연결된 모든 에디터에서 유지됩니다.
+
+```csharp
+using TeamODD.ODDB.Editors;
+using UnityEditor;
+
+public sealed class WeaponDataEditor : EditorWindow
+{
+    private ODDBEditorSession Session => ODDBEditorSession.Current;
+
+    private void OnEnable()
+    {
+        Session.ViewChanged += OnODDBChanged;
+        Session.StateChanged += Repaint;
+    }
+
+    private void OnDisable()
+    {
+        Session.ViewChanged -= OnODDBChanged;
+        Session.StateChanged -= Repaint;
+    }
+
+    private void SetWeaponCell(string rowId, int fieldIndex, object value)
+    {
+        // 하나의 편집기에서 무기, 스탯, 효과 테이블을 같은 Commands로 편집할 수 있습니다.
+        Session.Commands.SetCellData("weapon-table-id", rowId, fieldIndex, value);
+    }
+
+    private void Save() => Session.Save();
+    private void OnODDBChanged(string viewId) => Repaint();
+}
+```
+
+저장소를 직접 순회하지 않고 테이블, 행, 셀 및 타입 변환된 값을 읽을 수도 있습니다.
+
+```csharp
+var table = Session.GetTable("weapon-table-id");
+var rows = Session.GetRows("weapon-table-id");
+var attackCell = Session.GetCell("weapon-table-id", "sword_001", "Attack");
+var attack = Session.GetValue<int>("weapon-table-id", "sword_001", "Attack");
+
+if (Session.TryGetValue("weapon-table-id", "sword_001", "Attack", out int safeAttack))
+    UnityEngine.Debug.Log(safeAttack);
+```
+
+반환된 테이블, 행, 셀은 조회 용도로 사용하고, 값 수정은 Undo/Redo 및 dirty 상태 추적을 위해
+`Session.Commands`를 통해 처리해야 합니다.
+
 #### CSV 동기화
 ODDB는 CSV 파일을 통해 테이블 데이터를 가져오고 내보낼 수 있는 기능을 제공합니다.
 `ODDB/CSV/Import from CSV` 메뉴를 통해 CSV 파일에서 데이터를 불러올 수 있으며, `ODDB/CSV/Export to CSV` 메뉴를 통해 현재 테이블 데이터를 CSV 파일로 내보낼 수 있습니다.

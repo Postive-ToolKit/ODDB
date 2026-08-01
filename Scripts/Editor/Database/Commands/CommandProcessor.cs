@@ -100,7 +100,12 @@ namespace TeamODD.ODDB.Editors.Commands
         /// <summary>
         /// Marks the current state as saved, clearing the dirty flag.
         /// </summary>
-        public void MarkSaved() => IsDirty = false;
+        public void MarkSaved()
+        {
+            if (!IsDirty) return;
+            IsDirty = false;
+            OnHistoryChanged?.Invoke();
+        }
 
         /// <summary>
         /// Jumps to the state AFTER the execution of the target command.

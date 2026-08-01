@@ -51,6 +51,59 @@ This is to provide the basic functionality needed for ODDB to manage and manipul
 ODDB provides synchronization capabilities with external data sources such as CSV files and Google Sheets.
 This allows developers to collaborate with people from various roles to manage data.
 
+### Custom Editor Integration
+Custom Unity editor windows can attach to the same editing session used by the built-in ODDB editor.
+Use `ODDBEditorSession.Current` instead of loading or saving the database directly. Mutations made through
+`session.Commands` use ODDB's command pipeline, so Undo/Redo, dirty state, live refresh, load safety, and
+pre-save backups continue to work across every attached editor.
+
+```csharp
+using TeamODD.ODDB.Editors;
+using UnityEditor;
+
+public sealed class WeaponDataEditor : EditorWindow
+{
+    private ODDBEditorSession Session => ODDBEditorSession.Current;
+
+    private void OnEnable()
+    {
+        Session.ViewChanged += OnODDBChanged;
+        Session.StateChanged += Repaint;
+    }
+
+    private void OnDisable()
+    {
+        Session.ViewChanged -= OnODDBChanged;
+        Session.StateChanged -= Repaint;
+    }
+
+    private void SetWeaponCell(string rowId, int fieldIndex, object value)
+    {
+        // A composite editor may update weapon, stat, and effect tables through
+        // the same Commands object. Each edit remains visible and undoable in ODDB.
+        Session.Commands.SetCellData("weapon-table-id", rowId, fieldIndex, value);
+    }
+
+    private void Save() => Session.Save();
+    private void OnODDBChanged(string viewId) => Repaint();
+}
+```
+
+Tables, rows, cells, and typed values can be read without manually traversing ODDB repositories:
+
+```csharp
+var table = Session.GetTable("weapon-table-id");
+var rows = Session.GetRows("weapon-table-id");
+var attackCell = Session.GetCell("weapon-table-id", "sword_001", "Attack");
+var attack = Session.GetValue<int>("weapon-table-id", "sword_001", "Attack");
+
+if (Session.TryGetValue("weapon-table-id", "sword_001", "Attack", out int safeAttack))
+    UnityEngine.Debug.Log(safeAttack);
+```
+
+Returned tables, rows, and cells are for reading. Route writes through `Session.Commands` so ODDB can
+track Undo/Redo and dirty state.
+
 #### CSV Synchronization
 ODDB provides the ability to import and export table data through CSV files.
 You can load data from CSV files through the `ODDB/CSV/Import from CSV` menu, and export current table data to CSV files through the `ODDB/CSV/Export to CSV` menu.

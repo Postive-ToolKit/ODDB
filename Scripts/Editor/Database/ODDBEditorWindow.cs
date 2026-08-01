@@ -1,4 +1,3 @@
-using System.IO;
 using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.CodeGen.UI;
 using TeamODD.ODDB.Editors.UI;
@@ -6,7 +5,6 @@ using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
-using TeamODD.ODDB.Runtime.Settings;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -18,6 +16,7 @@ namespace TeamODD.ODDB.Editors.Window
     public class ODDBEditorWindow : EditorWindow
     {
         private IODDBEditorUseCase _editorUseCase;
+        private ODDBEditorSession _session;
         #region Layout
         private TwoPaneSplitView _splitView;
         private ODDBTreeView _tableTreeView;
@@ -39,7 +38,8 @@ namespace TeamODD.ODDB.Editors.Window
             // Use case + DI are now owned by ODDBEditorRuntime so the MCP server
             // and the window share the same instance. Accessing the property here
             // triggers lazy creation and DI registration if this is the first use.
-            _editorUseCase = ODDBEditorRuntime.UseCase;
+            _session = ODDBEditorSession.Current;
+            _editorUseCase = _session.Commands;
             if (_editorUseCase == null)
             {
                 rootVisualElement.Add(new UnityEngine.UIElements.Label(
@@ -95,8 +95,7 @@ namespace TeamODD.ODDB.Editors.Window
             if (_editorUseCase == null)
                 return;
 
-            var fullPath = ODDBRuntimeSettings.ResolveDatabasePath();
-            _editorUseCase.SaveDatabase(fullPath);
+            _session.Save();
         }
 
         private bool CommitFocusedDelayedField()
@@ -240,7 +239,7 @@ namespace TeamODD.ODDB.Editors.Window
             // before checking IsDirty so closing the window cannot silently discard it.
             CommitFocusedDelayedField();
 
-            if (_editorUseCase is ODDBEditorUseCase concrete && !concrete.CanSave)
+            if (!_session.CanSave)
             {
                 EditorUtility.DisplayDialog(
                     "ODDB Load Was Fatal",

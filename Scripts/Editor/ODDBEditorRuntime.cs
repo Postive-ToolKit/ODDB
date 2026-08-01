@@ -24,6 +24,7 @@ namespace TeamODD.ODDB.Editors
     public static class ODDBEditorRuntime
     {
         private static IODDBEditorUseCase _useCase;
+        private static ODDBEditorSession _session;
         private static ODDBMcpServer _server;
         private static McpDispatcher _dispatcher;
         private static McpToolRegistry _toolRegistry;
@@ -100,6 +101,16 @@ Workflow shortcuts you can offer the user:
         }
 
         public static IODDatabase Database => UseCase.DataBase;
+        public static ODDBEditorSession Session
+        {
+            get
+            {
+                var useCase = UseCase;
+                if (useCase == null)
+                    throw new System.InvalidOperationException("ODDB editor session is unavailable.");
+                return _session ??= new ODDBEditorSession(useCase);
+            }
+        }
         public static int? McpPort => _server?.Port;
         public static McpDispatcher Dispatcher => _dispatcher;
         public static McpToolRegistry Tools => _toolRegistry;
@@ -353,6 +364,7 @@ Workflow shortcuts you can offer the user:
             StopServer();
             _useCase?.Dispose();
             _useCase = null;
+            _session = null;
         }
 
         /// <summary>
