@@ -2,6 +2,16 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## v2.6.1 — 2026-08-02
+
+### feat(core): centralize mutations and runtime cache reset
+
+- Added engine-agnostic mutation APIs for repository IDs, rows, fields, cells, and sibling ordering.
+- Editor commands now delegate domain mutation rules to Core while retaining Undo/Redo ownership.
+- Added `ODDB.ResetRuntimeState()` for Core caches and pending converter callbacks.
+- Restored `UseAddressableAutoLoad` as opt-in default Addressables async-loader registration without replacing custom loaders.
+- Database serialization remains unchanged; no migration is required.
+
 ## v2.6.0 — 2026-08-02
 
 ### feat(core): add type-declared async loading

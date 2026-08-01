@@ -14,6 +14,12 @@ namespace TeamODD.ODDB.Runtime.Entities
         public static readonly BindingFlags FieldFlags =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
         private static Dictionary<Type, List<FieldInfo>> _fieldFieldCache = new Dictionary<Type, List<FieldInfo>>();
+
+        internal static void ResetFieldCache()
+        {
+            _fieldFieldCache.Clear();
+        }
+
         private static List<FieldInfo> GetFieldFields(Type type)
         {
             if (_fieldFieldCache.TryGetValue(type, out var cachedFields))

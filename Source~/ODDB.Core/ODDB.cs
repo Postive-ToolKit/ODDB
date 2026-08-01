@@ -2,7 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Runtime.Async;
+using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Logging;
+using TeamODD.ODDB.Runtime.Types;
+using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Runtime
 {
@@ -21,6 +24,28 @@ namespace TeamODD.ODDB.Runtime
         /// for Core code that cannot reference the Unity-side ScriptableObject.
         /// </summary>
         public static bool DebugLog { get; set; } = false;
+
+        public static bool HasAsyncLoader
+        {
+            get
+            {
+                lock (AsyncLoaderLock)
+                    return _asyncLoader != null;
+            }
+        }
+
+        public static bool TryRegisterAsyncLoader(IAsyncLoader loader)
+        {
+            if (loader == null) throw new ArgumentNullException(nameof(loader));
+
+            lock (AsyncLoaderLock)
+            {
+                if (_asyncLoader != null)
+                    return false;
+                _asyncLoader = loader;
+                return true;
+            }
+        }
 
         public static void RegisterAsyncLoader(IAsyncLoader loader, bool replaceExisting = false)
         {
@@ -71,6 +96,21 @@ namespace TeamODD.ODDB.Runtime
                     "No ODDB async loader is registered. Call ODDB.RegisterAsyncLoader first.");
 
             loader.Release(asset);
+        }
+
+        /// <summary>
+        /// Clears engine-agnostic static caches and pending conversion callbacks.
+        /// Unity-side lifecycle hooks call this when entering play mode or reloading assemblies.
+        /// The registered async loader and logger are intentionally preserved.
+        /// </summary>
+        public static void ResetRuntimeState()
+        {
+            ODDBID.ClearTrackedIds();
+            ODDBTypeUtility.ResetCache();
+            ODDBEnumUtility.ResetCache();
+            TypeRegistry.ResetCache();
+            ODDBEntity.ResetFieldCache();
+            ODDBConverter.ResetRuntimeState();
         }
     }
 }

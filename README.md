@@ -251,7 +251,9 @@ ODDB data types can opt into asynchronous materialization without changing the d
 The database continues to store the serialized asset key, while generated entity classes expose
 type-safe `Get{Field}Async` and `Release{Field}` wrappers.
 
-Register one loader during application startup:
+For quick Addressables testing, enable `UseAddressableAutoLoad` in `ODDBRuntimeSettings`.
+ODDB then registers `AddressablesAsyncLoader` automatically without replacing an existing custom loader.
+Alternatively, register one loader explicitly during application startup:
 
 ```csharp
 using TeamODD.ODDB.Runtime;

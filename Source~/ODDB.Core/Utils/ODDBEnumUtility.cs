@@ -12,6 +12,13 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         private static Dictionary<string, Type> _enumTypeCache = new Dictionary<string, Type>();
         private static Dictionary<string, Dictionary<string, Enum>> _enumValuesCache = new Dictionary<string, Dictionary<string, Enum>>();
 
+        internal static void ResetCache()
+        {
+            _oddbEnumTypes.Clear();
+            _enumTypeCache.Clear();
+            _enumValuesCache.Clear();
+        }
+
         /// <summary>
         /// Initialize the ODDB Enum Types by scanning assemblies for enums with the ODDBEnumAttribute
         /// </summary>

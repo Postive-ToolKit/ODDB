@@ -3,14 +3,16 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Runtime.Async;
+using TeamODD.ODDB.Runtime.Settings;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace TeamODD.ODDB.Runtime.Serializers
 {
     /// <summary>
-    /// Optional Addressables adapter for ODDB async fields.
-    /// Register an instance with ODDB.RegisterAsyncLoader during application startup.
+    /// Default Addressables adapter for ODDB async fields. It is registered automatically
+    /// when ODDBRuntimeSettings.UseAddressableAutoLoad is enabled, or can be registered manually.
     /// </summary>
     public sealed class AddressablesAsyncLoader : IAsyncLoader
     {
@@ -56,6 +58,32 @@ namespace TeamODD.ODDB.Runtime.Serializers
                 return;
 
             Addressables.Release(asset);
+        }
+    }
+
+    internal static class AddressablesAsyncLoaderBoot
+    {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void InstallRuntimeDefault()
+        {
+            InstallIfEnabled();
+        }
+
+#if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+        private static void InstallEditorDefault()
+        {
+            InstallIfEnabled();
+        }
+#endif
+
+        internal static bool InstallIfEnabled()
+        {
+            var settings = ODDBRuntimeSettings.TryLoad();
+            if (settings == null || !settings.UseAddressableAutoLoad)
+                return false;
+
+            return ODDB.TryRegisterAsyncLoader(new AddressablesAsyncLoader());
         }
     }
 }

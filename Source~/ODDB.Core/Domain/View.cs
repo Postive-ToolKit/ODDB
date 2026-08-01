@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TeamODD.ODDB.Runtime.DTO;
 using TeamODD.ODDB.Runtime.DTO.Builders;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Mutations;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Runtime
@@ -169,6 +170,11 @@ namespace TeamODD.ODDB.Runtime
 
             NotifyFieldMoved(oldIndex, newIndex);
             NotifyFieldsChanged();
+        }
+
+        public bool SetFieldType(int fieldIndex, string typeKey, string param)
+        {
+            return ODDBMutations.SetFieldType(this, fieldIndex, typeKey, param);
         }
 
         public bool IsScopedField(int index)

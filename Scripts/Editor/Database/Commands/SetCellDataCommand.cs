@@ -4,9 +4,7 @@ using TeamODD.ODDB.Runtime;
 namespace TeamODD.ODDB.Editors.Commands
 {
     /// <summary>
-    /// Mutates a single cell value through the command pipeline so external callers
-    /// (e.g. MCP tools) get undo/redo and history tracking. The Editor UI continues
-    /// to mutate cells directly via SerializedProperty and does not route through here.
+    /// Adds undo/redo and history tracking around the Core Table.SetCellData mutation.
     /// </summary>
     public class SetCellDataCommand : BaseCommand
     {
@@ -48,8 +46,8 @@ namespace TeamODD.ODDB.Editors.Commands
                 _oldSerializedData = cell.SerializedData;
                 _captured = true;
             }
-            cell.SetData(_newValue, _direct);
-            _notifyChanged?.Invoke(_table.ID);
+            if (_table.SetCellData(_rowId, _fieldIndex, _newValue, _direct))
+                _notifyChanged?.Invoke(_table.ID);
         }
 
         public override void Undo()
@@ -58,16 +56,13 @@ namespace TeamODD.ODDB.Editors.Commands
             var cell = ResolveCell();
             if (cell == null) return;
 
-            cell.SetData(_oldSerializedData, direct: true);
-            _notifyChanged?.Invoke(_table.ID);
+            if (_table.SetCellData(_rowId, _fieldIndex, _oldSerializedData, direct: true))
+                _notifyChanged?.Invoke(_table.ID);
         }
 
         private Cell ResolveCell()
         {
-            if (_table == null || string.IsNullOrEmpty(_rowId)) return null;
-            var row = _table.GetRow(_rowId);
-            if (row == null) return null;
-            return row.GetData(_fieldIndex);
+            return _table?.GetCell(_rowId, _fieldIndex);
         }
     }
 }

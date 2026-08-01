@@ -11,6 +11,12 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         private static readonly Dictionary<string, Type> _typeCache = new();
         private static bool _isFullIndexed = false;
 
+        internal static void ResetCache()
+        {
+            _typeCache.Clear();
+            _isFullIndexed = false;
+        }
+
         public static bool TryConvertBindType(string bindType, out Type type)
         {
             type = null;

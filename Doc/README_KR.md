@@ -243,7 +243,9 @@ ODDBPort 클래스는 데이터베이스에 접근하기 위한 다양한 메서
 CodeGen 결과에 타입 안전한 `Get{Field}Async`와 `Release{Field}` 함수를 생성합니다.
 기본 `addressable` 타입은 Async 타입으로 등록됩니다.
 
-애플리케이션 시작 시 에셋 로더를 한 번 등록합니다.
+빠른 Addressables 테스트가 필요하면 `ODDBRuntimeSettings`의 `UseAddressableAutoLoad`를 활성화합니다.
+그러면 기존 커스텀 로더를 덮어쓰지 않고 `AddressablesAsyncLoader`가 자동 등록됩니다.
+직접 관리하려면 애플리케이션 시작 시 에셋 로더를 명시적으로 등록합니다.
 
 ```csharp
 [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

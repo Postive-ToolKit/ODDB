@@ -1,6 +1,7 @@
 using System;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Interfaces;
+using TeamODD.ODDB.Runtime.Mutations;
 
 namespace TeamODD.ODDB.Editors.Commands
 {
@@ -45,10 +46,8 @@ namespace TeamODD.ODDB.Editors.Commands
                 _captured = true;
             }
 
-            field.Type.TypeKey = _newTypeKey;
-            field.Type.Param = _newParam;
-            _view.NotifyFieldsChanged();
-            _notifyChanged?.Invoke(_view.ID);
+            if (ODDBMutations.SetFieldType(_view, _fieldIndex, _newTypeKey, _newParam))
+                _notifyChanged?.Invoke(_view.ID);
         }
 
         public override void Undo()
@@ -56,11 +55,8 @@ namespace TeamODD.ODDB.Editors.Commands
             if (!_captured) return;
             var field = ResolveField();
             if (field == null) return;
-            if (field.Type == null) field.Type = new FieldType();
-            field.Type.TypeKey = _oldTypeKey;
-            field.Type.Param = _oldParam;
-            _view.NotifyFieldsChanged();
-            _notifyChanged?.Invoke(_view.ID);
+            if (ODDBMutations.SetFieldType(_view, _fieldIndex, _oldTypeKey, _oldParam))
+                _notifyChanged?.Invoke(_view.ID);
         }
 
         private Field ResolveField()

@@ -96,6 +96,43 @@ namespace TeamODD.ODDB.Runtime
             return row;
         }
 
+        public bool RekeyRow(string oldId, string newId)
+        {
+            if (string.IsNullOrEmpty(oldId) || string.IsNullOrEmpty(newId))
+                return false;
+            if (string.Equals(oldId, newId, StringComparison.Ordinal))
+                return false;
+            if (!_rows.TryGetValue(oldId, out var row) || _rows.ContainsKey(newId))
+                return false;
+
+            var orderedRows = _rows.Values.ToList();
+            row.ID = new ODDBID(newId);
+            _rows.Clear();
+            foreach (var orderedRow in orderedRows)
+                _rows.Add(orderedRow.ID, orderedRow);
+
+            OnRowChanged?.Invoke();
+            return true;
+        }
+
+        public Cell GetCell(string rowId, int fieldIndex)
+        {
+            if (string.IsNullOrEmpty(rowId))
+                return null;
+            return GetRow(rowId)?.GetData(fieldIndex);
+        }
+
+        public bool SetCellData(string rowId, int fieldIndex, object value, bool direct = false)
+        {
+            var cell = GetCell(rowId, fieldIndex);
+            if (cell == null)
+                return false;
+
+            cell.SetData(value, direct);
+            OnRowChanged?.Invoke();
+            return true;
+        }
+
         public void Clear()
         {
             _rows.Clear();

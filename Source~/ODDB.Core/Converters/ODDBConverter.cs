@@ -13,6 +13,12 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         public static readonly List<DataBaseCreateEvent> OnDatabaseCreated = new List<DataBaseCreateEvent>();
         public static event Action<ODDatabase> OnDatabaseExported;
 
+        internal static void ResetRuntimeState()
+        {
+            OnDatabaseCreated.Clear();
+            OnDatabaseExported = null;
+        }
+
         public ODDatabase Import(byte[] binary)
         {
             if (!TryImportDTO(binary, out var databaseDto, out _, out _))

@@ -25,6 +25,8 @@ namespace TeamODD.ODDB.Runtime.Infrastructure
 
         public static void TriggerClearAll()
         {
+            ODDB.ResetRuntimeState();
+
             foreach (var cache in _caches)
             {
                 try

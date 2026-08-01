@@ -85,7 +85,7 @@ namespace TeamODD.ODDB.Runtime.Settings
         [Tooltip("If true, disables automatic initialization at startup.")]
         [SerializeField] private bool _disableAutoInitialization = false;
 #if ADDRESSABLE_EXIST
-        [Tooltip("If false, Database returns address of Addressable Asset — not the asset itself.")]
+        [Tooltip("Automatically registers ODDB's default Addressables async loader. Disable this when registering a custom IAsyncLoader.")]
         [SerializeField] private bool _useAddressableAutoLoad = false;
 #endif
 
