@@ -2,6 +2,16 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## v2.7.0 — 2026-08-02
+
+### feat(sheets): add configurable Google OAuth sign-in
+
+- Replaced service-account setup with user-authorized Google OAuth and PKCE in the Unity Editor.
+- Added encrypted OAuth Desktop Client credentials to `ODDBEditorSettings` and kept user access tokens in local application data.
+- Added connection testing, operation timeouts, cancellation, and automatic settings selection when configuration is incomplete.
+- Removed the standalone Google Sheets Setup menu and retained direct Google Sheets API v4 synchronization.
+- ODDB.Core runtime APIs and database serialization are unchanged.
+
 ## v2.6.1 — 2026-08-02
 
 ### feat(core): centralize mutations and runtime cache reset

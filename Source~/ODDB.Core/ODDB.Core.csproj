@@ -5,7 +5,7 @@
     <RootNamespace>TeamODD.ODDB</RootNamespace>
     <LangVersion>9.0</LangVersion>
     <Nullable>disable</Nullable>
-    <Version>2.6.1</Version>
+    <Version>2.7.0</Version>
     <PackageId>TeamODD.ODDB.Core</PackageId>
     <Authors>TeamODD</Authors>
     <Description>ODDB Core — engine-agnostic database for view/table data with code binding.</Description>
