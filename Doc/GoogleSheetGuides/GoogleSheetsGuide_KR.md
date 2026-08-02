@@ -1,31 +1,33 @@
 # Google Sheets API 연동 가이드
 
-ODDB는 Google Sheets API v4와 서비스 계정을 사용해 Google Sheets를 가져오고 내보냅니다. Apps Script 배포는 필요하지 않습니다.
+ODDB는 Google OAuth 사용자 인증과 Google Sheets API v4를 사용해 Google Sheets를 가져오고 내보냅니다. Apps Script 배포나 서비스 계정 공유는 필요하지 않습니다.
 
-## 1. Google Cloud 설정
+## 1. Google OAuth Client 생성
 
 1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 생성하거나 선택합니다.
 2. `API 및 서비스 > 라이브러리`에서 `Google Sheets API`를 활성화합니다.
-3. `IAM 및 관리자 > 서비스 계정`에서 서비스 계정을 생성합니다.
-4. 서비스 계정의 JSON 키를 생성해 안전한 로컬 폴더에 저장합니다.
+3. OAuth 동의 화면과 대상 사용자를 구성합니다.
+4. 애플리케이션 유형이 `데스크톱 앱`인 OAuth 2.0 Client를 생성합니다.
+5. 생성된 Client ID와 Client Secret을 복사합니다.
 
-Credential JSON에는 개인 키가 포함됩니다. `Assets` 폴더나 버전 관리 저장소에 넣지 마세요.
-
-## 2. Spreadsheet 공유
+## 2. Spreadsheet 준비
 
 1. 대상 Google Spreadsheet를 엽니다.
 2. `공유`를 누릅니다.
-3. 서비스 계정 JSON의 `client_email` 주소를 편집자로 추가합니다.
+3. Unity에서 인증할 Google 계정에 편집자 권한이 있는지 확인합니다.
 4. Spreadsheet URL에서 `/d/`와 `/edit` 사이의 Spreadsheet ID를 복사합니다.
 
 ## 3. ODDB 설정
 
-1. `ODDBEditorSettings`의 `Google Sheets Settings`에서 `Google Spreadsheet Id`를 입력합니다.
-2. Unity 메뉴에서 `ODDB > Google Sheets > Setup`을 엽니다.
-3. `Browse`를 눌러 서비스 계정 JSON을 선택합니다.
-4. `Test Connection`으로 인증과 공유 권한을 확인합니다.
+1. `ODDBEditorSettings` 에셋을 선택합니다.
+2. `Google Sheets Authentication`에 Desktop OAuth Client ID와 Client Secret을 입력하고 `Save OAuth Client`를 누릅니다.
+3. `Google Sheets Settings`에서 `Google Spreadsheet Id`를 입력합니다.
+4. `Sign in with Google`을 누르고 브라우저 인증을 완료합니다.
+5. `Test Connection`으로 인증과 Spreadsheet 접근 권한을 확인합니다.
 
-Credential 경로는 사용자별 `EditorPrefs`에 저장되며 프로젝트 에셋에는 기록되지 않습니다.
+설정이 완료되지 않은 상태에서 Import 또는 Export를 실행하면 ODDB가 안내창을 표시하고 Inspector에서 `ODDBEditorSettings`를 선택합니다.
+
+OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화됩니다. 이는 평문 노출을 방지하지만 ODDB에도 복호화 로직이 포함되므로 저장소 접근 제어를 대체하지는 않습니다. 자격 증명이 들어간 프로젝트 저장소는 Private으로 유지하세요. OAuth 토큰은 사용자 로컬 애플리케이션 데이터 폴더에 저장되며 프로젝트 에셋에는 기록되지 않습니다.
 
 ## 4. 동기화
 

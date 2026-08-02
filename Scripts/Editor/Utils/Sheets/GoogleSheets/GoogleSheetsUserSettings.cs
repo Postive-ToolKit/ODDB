@@ -1,56 +1,43 @@
 using System;
 using System.IO;
-using UnityEditor;
-using UnityEngine;
+using System.Threading.Tasks;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
     internal static class GoogleSheetsUserSettings
     {
-        private const string CredentialPathSuffix = ".GoogleSheets.ServiceAccountCredentialPath";
+        public static string TokenStorePath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "TeamODD",
+            "ODDB",
+            "GoogleSheets");
 
-        public static string CredentialPath
+        public static string TokenFilePath => Path.Combine(TokenStorePath, "oauth-token.json");
+
+        public static bool HasStoredAuthorization
         {
-            get => EditorPrefs.GetString(GetProjectKey(CredentialPathSuffix), string.Empty);
-            set
+            get
             {
-                if (string.IsNullOrWhiteSpace(value))
+                try
                 {
-                    EditorPrefs.DeleteKey(GetProjectKey(CredentialPathSuffix));
-                    return;
+                    return File.Exists(TokenFilePath);
                 }
-
-                EditorPrefs.SetString(
-                    GetProjectKey(CredentialPathSuffix),
-                    Path.GetFullPath(value.Trim()));
+                catch
+                {
+                    return false;
+                }
             }
         }
 
-        public static bool TryGetCredentialPath(out string path, out string failureReason)
+        public static Task ClearAuthorizationAsync()
         {
-            path = CredentialPath;
-            if (string.IsNullOrEmpty(path))
-            {
-                failureReason = "Select a Google service-account JSON file from ODDB > Google Sheets > Setup.";
-                return false;
-            }
-
-            if (!File.Exists(path))
-            {
-                failureReason = $"The configured Google service-account JSON file does not exist: {path}";
-                return false;
-            }
-
-            failureReason = string.Empty;
-            return true;
+            return Task.Run(ClearAuthorization);
         }
 
-        private static string GetProjectKey(string suffix)
+        public static void ClearAuthorization()
         {
-            var projectPath = Path.GetFullPath(Path.Combine(Application.dataPath, ".."))
-                .Replace('\\', '/')
-                .ToLowerInvariant();
-            return $"TeamODD.ODDB.{Hash128.Compute(projectPath)}{suffix}";
+            if (File.Exists(TokenFilePath))
+                File.Delete(TokenFilePath);
         }
     }
 }

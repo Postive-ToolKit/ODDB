@@ -15,9 +15,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
     {
         private readonly SheetsService _service;
 
-        public GoogleSheetsApiClient()
+        private GoogleSheetsApiClient(SheetsService service)
         {
-            _service = GoogleSheetsServiceFactory.Create();
+            _service = service ?? throw new ArgumentNullException(nameof(service));
+        }
+
+        public static async Task<GoogleSheetsApiClient> CreateAsync(CancellationToken ct)
+        {
+            return new GoogleSheetsApiClient(await GoogleSheetsServiceFactory.CreateAsync(ct));
         }
 
         public async Task<List<GoogleSheetSnapshot>> ReadSpreadsheetAsync(

@@ -26,18 +26,28 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
-            if (string.IsNullOrWhiteSpace(ODDBEditorSettings.Setting.GoogleSpreadsheetId))
+            var editorSettings = ODDBEditorSettings.Setting;
+            if (string.IsNullOrWhiteSpace(editorSettings.GoogleSpreadsheetId))
             {
-                EditorUtility.DisplayDialog(
-                    "Google Sheets",
-                    "Google Spreadsheet ID is not configured in ODDBEditorSettings.",
-                    "OK");
+                ShowSettingsRequired(
+                    editorSettings,
+                    "Google Spreadsheet ID is not configured. Enter the Spreadsheet ID, then test the connection.");
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
-            if (!GoogleSheetsUserSettings.TryGetCredentialPath(out _, out var failureReason))
+            if (!editorSettings.HasGoogleOAuthClientConfiguration)
             {
-                EditorUtility.DisplayDialog("Google Sheets", failureReason, "OK");
+                ShowSettingsRequired(
+                    editorSettings,
+                    "Google OAuth Desktop Client credentials are required. Enter and save the Client ID and Client Secret.");
+                return Task.FromResult(BackendContext.Cancel(scope, intent));
+            }
+
+            if (!GoogleSheetsUserSettings.HasStoredAuthorization)
+            {
+                ShowSettingsRequired(
+                    editorSettings,
+                    "Google authorization is required. Sign in with Google, then test the connection.");
                 return Task.FromResult(BackendContext.Cancel(scope, intent));
             }
 
@@ -80,6 +90,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
         private static void ReportStage(IProgress<float> progress, string stage, float value)
         {
             ODDBProgress.Report(progress, stage, value);
+        }
+
+        private static void ShowSettingsRequired(ODDBEditorSettings settings, string message)
+        {
+            EditorUtility.DisplayDialog(
+                "Google Sheets Setup Required",
+                message + "\n\nODDBEditorSettings will now be selected in the Inspector.",
+                "Open Settings");
+
+            Selection.activeObject = settings;
+            EditorGUIUtility.PingObject(settings);
         }
 
         private static void ReportSheets(

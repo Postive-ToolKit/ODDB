@@ -16,7 +16,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         public async Task<List<SheetInfo>> LoadAsync(ExportScope scope, CancellationToken ct)
         {
             var spreadsheetId = GetSpreadsheetId();
-            using (var client = new GoogleSheetsApiClient())
+            using (var client = await GoogleSheetsApiClient.CreateAsync(ct))
             {
                 var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
                 ResolveLegacyTableIds(snapshots);
@@ -50,7 +50,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             if (desiredSheets == null) throw new ArgumentNullException(nameof(desiredSheets));
             var spreadsheetId = GetSpreadsheetId();
 
-            using (var client = new GoogleSheetsApiClient())
+            using (var client = await GoogleSheetsApiClient.CreateAsync(ct))
             {
                 var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
                 EnsureNoDuplicateTableMetadata(snapshots);
@@ -538,8 +538,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             var id = ODDBEditorSettings.Setting.GoogleSpreadsheetId?.Trim();
             if (string.IsNullOrEmpty(id))
                 throw new InvalidOperationException("Google Spreadsheet ID is not configured in ODDBEditorSettings.");
-            if (!GoogleSheetsUserSettings.TryGetCredentialPath(out _, out var failureReason))
-                throw new InvalidOperationException(failureReason);
+            if (!GoogleSheetsUserSettings.HasStoredAuthorization)
+                throw new InvalidOperationException("Sign in with Google from ODDBEditorSettings first.");
             return id;
         }
 

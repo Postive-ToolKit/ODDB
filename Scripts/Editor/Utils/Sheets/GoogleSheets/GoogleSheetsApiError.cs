@@ -14,11 +14,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             switch (exception.HttpStatusCode)
             {
                 case HttpStatusCode.Forbidden:
-                    return "Google Sheets access was denied. Enable Google Sheets API and share the spreadsheet with the configured service-account email as an Editor.";
+                    return "Google Sheets access was denied. Enable Google Sheets API and sign in with an account that can edit the spreadsheet.";
                 case HttpStatusCode.NotFound:
-                    return "The configured Google spreadsheet was not found. Check the Spreadsheet ID and service-account sharing permissions.";
+                    return "The configured Google spreadsheet was not found. Check the Spreadsheet ID and the signed-in account's access.";
                 case HttpStatusCode.Unauthorized:
-                    return "Google service-account authentication failed. Check or replace the credential JSON file.";
+                    return "Google OAuth authentication failed. Sign out, then sign in with Google again.";
                 case (HttpStatusCode)429:
                     return "Google Sheets API quota was exceeded. Try again after a short delay.";
                 default:
