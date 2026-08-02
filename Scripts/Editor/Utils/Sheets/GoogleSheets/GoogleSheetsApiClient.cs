@@ -11,8 +11,29 @@ using Google.Apis.Sheets.v4.Data;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
-    internal sealed class GoogleSheetsApiClient : IDisposable
+    internal interface IGoogleSheetsApiClient : IDisposable
     {
+        Task<List<GoogleSheetSnapshot>> ReadSpreadsheetAsync(string spreadsheetId, CancellationToken ct);
+        Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
+            string spreadsheetId,
+            IReadOnlyList<string> titles,
+            CancellationToken ct);
+        Task<BatchUpdateSpreadsheetResponse> BatchUpdateAsync(
+            string spreadsheetId,
+            BatchUpdateSpreadsheetRequest body,
+            CancellationToken ct);
+        Task BatchWriteValuesAsync(string spreadsheetId, IReadOnlyList<ValueRange> ranges, CancellationToken ct);
+        Task BatchClearValuesAsync(string spreadsheetId, IReadOnlyList<string> ranges, CancellationToken ct);
+        Task<List<List<List<string>>>> ReadRangesAsync(
+            string spreadsheetId,
+            IReadOnlyList<string> ranges,
+            CancellationToken ct);
+    }
+
+    internal sealed class GoogleSheetsApiClient : IGoogleSheetsApiClient
+    {
+        private const int MaxRangesPerBatch = 5000;
+        private const int MaxBatchPayloadCharacters = 1500000;
         private readonly SheetsService _service;
 
         private GoogleSheetsApiClient(SheetsService service)
@@ -83,38 +104,46 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             return snapshots;
         }
 
-        public async Task<GoogleSheetSnapshot> CreateSheetAsync(
+        public async Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
             string spreadsheetId,
-            string title,
+            IReadOnlyList<string> titles,
             CancellationToken ct)
         {
+            var result = new List<GoogleSheetSnapshot>();
+            if (titles == null || titles.Count == 0)
+                return result;
+
             var body = new BatchUpdateSpreadsheetRequest
             {
-                Requests = new List<Request>
+                Requests = titles.Select(title => new Request
                 {
-                    new Request
+                    AddSheet = new AddSheetRequest
                     {
-                        AddSheet = new AddSheetRequest
-                        {
-                            Properties = new SheetProperties { Title = title }
-                        }
+                        Properties = new SheetProperties { Title = title }
                     }
-                }
+                }).ToList()
             };
 
             var response = await BatchUpdateAsync(spreadsheetId, body, ct);
-            var properties = response.Replies?.FirstOrDefault()?.AddSheet?.Properties;
-            if (properties?.SheetId == null)
-                throw new InvalidOperationException($"Google Sheets did not return an ID for newly created sheet '{title}'.");
-
-            return new GoogleSheetSnapshot
+            for (var index = 0; index < titles.Count; index++)
             {
-                SheetId = properties.SheetId.Value,
-                Title = properties.Title ?? title,
-                ColumnCount = properties.GridProperties?.ColumnCount ?? 26,
-                RowCount = properties.GridProperties?.RowCount ?? 1000,
-                Values = new List<List<string>>()
-            };
+                var properties = response.Replies != null && index < response.Replies.Count
+                    ? response.Replies[index]?.AddSheet?.Properties
+                    : null;
+                if (properties?.SheetId == null)
+                    throw new InvalidOperationException($"Google Sheets did not return an ID for newly created sheet '{titles[index]}'.");
+
+                result.Add(new GoogleSheetSnapshot
+                {
+                    SheetId = properties.SheetId.Value,
+                    Title = properties.Title ?? titles[index],
+                    ColumnCount = properties.GridProperties?.ColumnCount ?? 26,
+                    RowCount = properties.GridProperties?.RowCount ?? 1000,
+                    Values = new List<List<string>>()
+                });
+            }
+
+            return result;
         }
 
         public Task<BatchUpdateSpreadsheetResponse> BatchUpdateAsync(
@@ -135,10 +164,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             if (ranges == null || ranges.Count == 0)
                 return;
 
-            const int chunkSize = 500;
-            for (var offset = 0; offset < ranges.Count; offset += chunkSize)
+            foreach (var chunk in ChunkValueRanges(ranges))
             {
-                var chunk = ranges.Skip(offset).Take(chunkSize).ToList();
                 var body = new BatchUpdateValuesRequest
                 {
                     ValueInputOption = "RAW",
@@ -158,12 +185,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             if (ranges == null || ranges.Count == 0)
                 return;
 
-            const int chunkSize = 500;
-            for (var offset = 0; offset < ranges.Count; offset += chunkSize)
+            foreach (var chunk in ChunkStrings(ranges))
             {
                 var body = new BatchClearValuesRequest
                 {
-                    Ranges = ranges.Skip(offset).Take(chunkSize).ToList()
+                    Ranges = chunk
                 };
                 await ExecuteWithRetryAsync(
                     () => _service.Spreadsheets.Values.BatchClear(body, spreadsheetId).ExecuteAsync(ct),
@@ -171,15 +197,35 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             }
         }
 
-        public async Task<List<List<string>>> ReadRangeAsync(
+        public async Task<List<List<List<string>>>> ReadRangesAsync(
             string spreadsheetId,
-            string range,
+            IReadOnlyList<string> ranges,
             CancellationToken ct)
         {
-            var response = await ExecuteWithRetryAsync(
-                () => _service.Spreadsheets.Values.Get(spreadsheetId, range).ExecuteAsync(ct),
-                ct);
-            return ToStringRows(response.Values);
+            var result = new List<List<List<string>>>();
+            if (ranges == null || ranges.Count == 0)
+                return result;
+
+            foreach (var chunk in ChunkStrings(ranges))
+            {
+                var response = await ExecuteWithRetryAsync(() =>
+                {
+                    var request = _service.Spreadsheets.Values.BatchGet(spreadsheetId);
+                    request.Ranges = chunk;
+                    request.MajorDimension = SpreadsheetsResource.ValuesResource.BatchGetRequest.MajorDimensionEnum.ROWS;
+                    return request.ExecuteAsync(ct);
+                }, ct);
+
+                for (var index = 0; index < chunk.Count; index++)
+                {
+                    var values = response.ValueRanges != null && index < response.ValueRanges.Count
+                        ? response.ValueRanges[index]?.Values
+                        : null;
+                    result.Add(ToStringRows(values));
+                }
+            }
+
+            return result;
         }
 
         public void Dispose()
@@ -190,6 +236,70 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         public static string QuoteTitle(string title)
         {
             return "'" + (title ?? string.Empty).Replace("'", "''") + "'";
+        }
+
+        private static IEnumerable<List<ValueRange>> ChunkValueRanges(IReadOnlyList<ValueRange> ranges)
+        {
+            var chunk = new List<ValueRange>();
+            var estimatedSize = 0;
+            foreach (var range in ranges)
+            {
+                var itemSize = EstimateSize(range);
+                if (chunk.Count > 0
+                    && (chunk.Count >= MaxRangesPerBatch
+                        || estimatedSize + itemSize > MaxBatchPayloadCharacters))
+                {
+                    yield return chunk;
+                    chunk = new List<ValueRange>();
+                    estimatedSize = 0;
+                }
+
+                chunk.Add(range);
+                estimatedSize += itemSize;
+            }
+
+            if (chunk.Count > 0)
+                yield return chunk;
+        }
+
+        private static IEnumerable<List<string>> ChunkStrings(IReadOnlyList<string> values)
+        {
+            var chunk = new List<string>();
+            var estimatedSize = 0;
+            foreach (var value in values)
+            {
+                var itemSize = (value?.Length ?? 0) + 16;
+                if (chunk.Count > 0
+                    && (chunk.Count >= MaxRangesPerBatch
+                        || estimatedSize + itemSize > MaxBatchPayloadCharacters))
+                {
+                    yield return chunk;
+                    chunk = new List<string>();
+                    estimatedSize = 0;
+                }
+
+                chunk.Add(value);
+                estimatedSize += itemSize;
+            }
+
+            if (chunk.Count > 0)
+                yield return chunk;
+        }
+
+        private static int EstimateSize(ValueRange range)
+        {
+            var size = (range?.Range?.Length ?? 0) + 64;
+            if (range?.Values == null)
+                return size;
+
+            foreach (var row in range.Values)
+            {
+                if (row == null)
+                    continue;
+                foreach (var value in row)
+                    size += (Convert.ToString(value, CultureInfo.InvariantCulture)?.Length ?? 0) + 8;
+            }
+            return size;
         }
 
         private static void ReadMetadata(IList<DeveloperMetadata> metadata, GoogleSheetSnapshot snapshot)
@@ -252,7 +362,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
         private static async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, CancellationToken ct)
         {
-            const int maxAttempts = 5;
             for (var attempt = 0; ; attempt++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -260,13 +369,21 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 {
                     return await operation();
                 }
-                catch (GoogleApiException e) when (attempt + 1 < maxAttempts && IsTransient(e.HttpStatusCode))
+                catch (GoogleApiException e) when (CanRetry(e.HttpStatusCode, attempt))
                 {
                     var jitter = new Random(unchecked(Environment.TickCount * 31 + attempt)).Next(0, 500);
-                    var delay = Math.Min(8000, (1 << attempt) * 1000) + jitter;
+                    var delay = e.HttpStatusCode == (HttpStatusCode)429
+                        ? Math.Min(60000, (attempt + 1) * 15000) + jitter
+                        : Math.Min(8000, (1 << attempt) * 1000) + jitter;
                     await Task.Delay(delay, ct);
                 }
             }
+        }
+
+        private static bool CanRetry(HttpStatusCode statusCode, int completedAttempts)
+        {
+            var maxAttempts = statusCode == (HttpStatusCode)429 ? 7 : 5;
+            return completedAttempts + 1 < maxAttempts && IsTransient(statusCode);
         }
 
         private static bool IsTransient(HttpStatusCode statusCode)

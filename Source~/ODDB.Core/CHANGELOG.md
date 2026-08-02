@@ -2,6 +2,16 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## v2.7.1 — 2026-08-02
+
+### fix(sheets): batch spreadsheet-wide export requests
+
+- Aggregated sheet creation, structural changes, value writes, clears, and header verification across every exported table.
+- Reduced a 27-table first export from roughly 81 write requests to 3 write requests under the normal payload limit.
+- Preserved existing cell formatting by continuing to use value-only updates and format-only copies for appended rows.
+- Added payload-aware request chunking and longer quota-specific retries for HTTP 429 responses.
+- ODDB.Core runtime APIs and database serialization are unchanged.
+
 ## v2.7.0 — 2026-08-02
 
 ### feat(sheets): add configurable Google OAuth sign-in

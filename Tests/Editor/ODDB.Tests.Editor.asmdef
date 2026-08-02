@@ -16,7 +16,8 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "ODDB.Core.dll",
-        "Newtonsoft.Json.dll"
+        "Newtonsoft.Json.dll",
+        "Google.Apis.Sheets.v4.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

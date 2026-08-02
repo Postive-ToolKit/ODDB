@@ -52,67 +52,97 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             using (var client = await GoogleSheetsApiClient.CreateAsync(ct))
             {
-                var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
-                EnsureNoDuplicateTableMetadata(snapshots);
-
-                var pending = new List<PendingSheetSync>();
-                foreach (var desired in desiredSheets.Where(sheet => sheet != null))
-                {
-                    var current = FindSnapshot(snapshots, desired.ID);
-                    if (current == null)
-                    {
-                        current = new GoogleSheetSnapshot
-                        {
-                            SheetId = -1,
-                            Title = CreateUniqueTitle(desired, snapshots.Select(item => item.Title)),
-                            ColumnCount = 26,
-                            RowCount = 1000,
-                            TableId = desired.ID,
-                            Values = new List<List<string>>()
-                        };
-                    }
-
-                    pending.Add(new PendingSheetSync
-                    {
-                        Desired = desired,
-                        Current = current,
-                        ColumnPlan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, current)
-                    });
-                }
-
-                ConfirmDestructiveChanges(pending);
-
-                for (var index = 0; index < pending.Count; index++)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var item = pending[index];
-                    progress?.Report(pending.Count == 0 ? 1f : (float)index / pending.Count);
-
-                    if (item.Current.SheetId < 0)
-                    {
-                        item.Current = await client.CreateSheetAsync(
-                            spreadsheetId,
-                            item.Current.Title,
-                            ct);
-                        item.Current.TableId = item.Desired.ID;
-                        item.ColumnPlan = GoogleSheetSyncPlanner.BuildColumnPlan(item.Desired, item.Current);
-                    }
-
-                    await ApplySheetAsync(client, spreadsheetId, item, ct);
-                }
-
-                progress?.Report(1f);
+                await SaveCoreAsync(desiredSheets, progress, ct, client, spreadsheetId);
             }
         }
 
-        private static async Task ApplySheetAsync(
-            GoogleSheetsApiClient client,
-            string spreadsheetId,
-            PendingSheetSync pending,
-            CancellationToken ct)
+        internal static async Task SaveCoreAsync(
+            IReadOnlyList<SheetInfo> desiredSheets,
+            IProgress<float> progress,
+            CancellationToken ct,
+            IGoogleSheetsApiClient client,
+            string spreadsheetId)
         {
-            var valuePlan = BuildValuePlan(pending.Desired, pending.Current, pending.ColumnPlan.ManagedColumnCount);
-            var structuralRequests = BuildStructuralRequests(pending, valuePlan);
+            if (desiredSheets == null) throw new ArgumentNullException(nameof(desiredSheets));
+            if (client == null) throw new ArgumentNullException(nameof(client));
+            if (string.IsNullOrWhiteSpace(spreadsheetId)) throw new ArgumentException("Spreadsheet ID is required.", nameof(spreadsheetId));
+
+            var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
+            EnsureNoDuplicateTableMetadata(snapshots);
+
+            var pending = new List<PendingSheetSync>();
+            var reservedTitles = new List<string>(snapshots.Select(item => item.Title));
+            foreach (var desired in desiredSheets.Where(sheet => sheet != null))
+            {
+                var current = FindSnapshot(snapshots, desired.ID);
+                if (current == null)
+                {
+                    var title = CreateUniqueTitle(desired, reservedTitles);
+                    reservedTitles.Add(title);
+                    current = new GoogleSheetSnapshot
+                    {
+                        SheetId = -1,
+                        Title = title,
+                        ColumnCount = 26,
+                        RowCount = 1000,
+                        TableId = desired.ID,
+                        Values = new List<List<string>>()
+                    };
+                }
+
+                pending.Add(new PendingSheetSync
+                {
+                    Desired = desired,
+                    Current = current,
+                    ColumnPlan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, current)
+                });
+            }
+
+            ConfirmDestructiveChanges(pending);
+            var missing = pending.Where(item => item.Current.SheetId < 0).ToList();
+            if (missing.Count > 0)
+            {
+                var created = await client.CreateSheetsAsync(
+                    spreadsheetId,
+                    missing.Select(item => item.Current.Title).ToList(),
+                    ct);
+                if (created.Count != missing.Count)
+                    throw new InvalidOperationException("Google Sheets did not return every newly created sheet.");
+
+                for (var index = 0; index < missing.Count; index++)
+                {
+                    missing[index].Current = created[index];
+                    missing[index].Current.TableId = missing[index].Desired.ID;
+                    missing[index].ColumnPlan = GoogleSheetSyncPlanner.BuildColumnPlan(
+                        missing[index].Desired,
+                        missing[index].Current);
+                }
+            }
+
+            var structuralRequests = new List<Request>();
+            var writes = new List<ValueRange>();
+            var clears = new List<string>();
+            var verifications = new List<HeaderVerification>();
+            for (var index = 0; index < pending.Count; index++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var item = pending[index];
+                var valuePlan = BuildValuePlan(
+                    item.Desired,
+                    item.Current,
+                    item.ColumnPlan.ManagedColumnCount);
+                structuralRequests.AddRange(BuildStructuralRequests(item, valuePlan));
+                writes.AddRange(valuePlan.Writes);
+                clears.AddRange(valuePlan.Clears);
+                verifications.Add(new HeaderVerification
+                {
+                    Desired = item.Desired,
+                    Title = item.Current.Title,
+                    ManagedColumnCount = item.ColumnPlan.ManagedColumnCount
+                });
+                progress?.Report(pending.Count == 0 ? 0.4f : 0.4f * (index + 1f) / pending.Count);
+            }
+
             if (structuralRequests.Count > 0)
             {
                 await client.BatchUpdateAsync(
@@ -121,9 +151,52 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     ct);
             }
 
-            await client.BatchWriteValuesAsync(spreadsheetId, valuePlan.Writes, ct);
-            await client.BatchClearValuesAsync(spreadsheetId, valuePlan.Clears, ct);
-            await VerifyHeaderAsync(client, spreadsheetId, pending.Desired, pending.Current.Title, pending.ColumnPlan.ManagedColumnCount, ct);
+            progress?.Report(0.55f);
+            if (writes.Count > 0)
+                await client.BatchWriteValuesAsync(spreadsheetId, writes, ct);
+            progress?.Report(0.75f);
+            if (clears.Count > 0)
+                await client.BatchClearValuesAsync(spreadsheetId, clears, ct);
+            progress?.Report(0.85f);
+            await VerifyHeadersAsync(client, spreadsheetId, verifications, ct);
+            progress?.Report(1f);
+        }
+
+        private static async Task VerifyHeadersAsync(
+            IGoogleSheetsApiClient client,
+            string spreadsheetId,
+            IReadOnlyList<HeaderVerification> verifications,
+            CancellationToken ct)
+        {
+            if (verifications == null || verifications.Count == 0)
+                return;
+
+            var ranges = verifications.Select(item =>
+                $"{GoogleSheetsApiClient.QuoteTitle(item.Title)}!A1:{ToColumnName(item.ManagedColumnCount)}2").ToList();
+            var actualHeaders = await client.ReadRangesAsync(spreadsheetId, ranges, ct);
+            if (actualHeaders.Count != verifications.Count)
+                throw new InvalidOperationException("Google Sheets did not return every header verification range.");
+
+            for (var index = 0; index < verifications.Count; index++)
+            {
+                var verification = verifications[index];
+                var actual = actualHeaders[index];
+                for (var row = 0; row < 2; row++)
+                {
+                    var expectedRow = GetPaddedRow(
+                        verification.Desired.Values,
+                        row,
+                        verification.ManagedColumnCount);
+                    for (var column = 0; column < verification.ManagedColumnCount; column++)
+                    {
+                        if (!string.Equals(GetCell(actual, row, column), expectedRow[column], StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException(
+                                $"Google Sheet verification failed for '{verification.Title}' at row {row + 1}, column {column + 1}.");
+                        }
+                    }
+                }
+            }
         }
 
         private static List<Request> BuildStructuralRequests(PendingSheetSync pending, ValueSyncPlan valuePlan)
@@ -184,36 +257,35 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 });
             }
 
-            if ((pending.Current.Values?.Count ?? 0) >= 3)
+            if ((pending.Current.Values?.Count ?? 0) >= 3 && valuePlan.NewRowNumbers.Count > 0)
             {
-                foreach (var rowNumber in valuePlan.NewRowNumbers)
+                var firstRowNumber = valuePlan.NewRowNumbers[0];
+                var lastRowNumber = valuePlan.NewRowNumbers[valuePlan.NewRowNumbers.Count - 1];
+                var targetStart = firstRowNumber - 1;
+                requests.Add(new Request
                 {
-                    var targetStart = rowNumber - 1;
-                    requests.Add(new Request
+                    CopyPaste = new CopyPasteRequest
                     {
-                        CopyPaste = new CopyPasteRequest
+                        Source = new GridRange
                         {
-                            Source = new GridRange
-                            {
-                                SheetId = sheetId,
-                                StartRowIndex = targetStart - 1,
-                                EndRowIndex = targetStart,
-                                StartColumnIndex = 0,
-                                EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
-                            },
-                            Destination = new GridRange
-                            {
-                                SheetId = sheetId,
-                                StartRowIndex = targetStart,
-                                EndRowIndex = targetStart + 1,
-                                StartColumnIndex = 0,
-                                EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
-                            },
-                            PasteType = "PASTE_FORMAT",
-                            PasteOrientation = "NORMAL"
-                        }
-                    });
-                }
+                            SheetId = sheetId,
+                            StartRowIndex = targetStart - 1,
+                            EndRowIndex = targetStart,
+                            StartColumnIndex = 0,
+                            EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
+                        },
+                        Destination = new GridRange
+                        {
+                            SheetId = sheetId,
+                            StartRowIndex = targetStart,
+                            EndRowIndex = lastRowNumber,
+                            StartColumnIndex = 0,
+                            EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
+                        },
+                        PasteType = "PASTE_FORMAT",
+                        PasteOrientation = "NORMAL"
+                    }
+                });
             }
 
             if (!pending.Current.HasTableMetadata)
@@ -337,30 +409,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     result.Add(rowId, index + 1);
             }
             return result;
-        }
-
-        private static async Task VerifyHeaderAsync(
-            GoogleSheetsApiClient client,
-            string spreadsheetId,
-            SheetInfo desired,
-            string title,
-            int managedColumnCount,
-            CancellationToken ct)
-        {
-            var range = $"{GoogleSheetsApiClient.QuoteTitle(title)}!A1:{ToColumnName(managedColumnCount)}2";
-            var actual = await client.ReadRangeAsync(spreadsheetId, range, ct);
-            for (var row = 0; row < 2; row++)
-            {
-                var expectedRow = GetPaddedRow(desired.Values, row, managedColumnCount);
-                for (var column = 0; column < managedColumnCount; column++)
-                {
-                    if (!string.Equals(GetCell(actual, row, column), expectedRow[column], StringComparison.Ordinal))
-                    {
-                        throw new InvalidOperationException(
-                            $"Google Sheet verification failed for '{title}' at row {row + 1}, column {column + 1}.");
-                    }
-                }
-            }
         }
 
         private static Request CreateSheetMetadata(int sheetId, string key, string value)
@@ -588,6 +636,13 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             public List<string> Clears { get; } = new List<string>();
             public List<int> NewRowNumbers { get; } = new List<int>();
             public int RequiredRowCount { get; set; }
+        }
+
+        private sealed class HeaderVerification
+        {
+            public SheetInfo Desired;
+            public string Title;
+            public int ManagedColumnCount;
         }
     }
 }
