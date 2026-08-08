@@ -52,7 +52,13 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             using (var client = await GoogleSheetsApiClient.CreateAsync(ct))
             {
-                await SaveCoreAsync(desiredSheets, progress, ct, client, spreadsheetId);
+                await SaveCoreAsync(
+                    desiredSheets,
+                    progress,
+                    ct,
+                    client,
+                    spreadsheetId,
+                    GoogleSheetsBindingStore.LoadDefault());
             }
         }
 
@@ -61,7 +67,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             IProgress<float> progress,
             CancellationToken ct,
             IGoogleSheetsApiClient client,
-            string spreadsheetId)
+            string spreadsheetId,
+            IGoogleSheetsBindingStore bindingStore = null)
         {
             if (desiredSheets == null) throw new ArgumentNullException(nameof(desiredSheets));
             if (client == null) throw new ArgumentNullException(nameof(client));
@@ -74,7 +81,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             var reservedTitles = new List<string>(snapshots.Select(item => item.Title));
             foreach (var desired in desiredSheets.Where(sheet => sheet != null))
             {
-                var current = FindSnapshot(snapshots, desired.ID);
+                var current = FindSnapshot(
+                    snapshots,
+                    desired.ID,
+                    spreadsheetId,
+                    bindingStore);
                 if (current == null)
                 {
                     var title = CreateUniqueTitle(desired, reservedTitles);
@@ -113,6 +124,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 {
                     missing[index].Current = created[index];
                     missing[index].Current.TableId = missing[index].Desired.ID;
+                    bindingStore?.Upsert(
+                        spreadsheetId,
+                        missing[index].Desired.ID,
+                        missing[index].Current.SheetId,
+                        missing[index].Current.Title);
                     missing[index].ColumnPlan = GoogleSheetSyncPlanner.BuildColumnPlan(
                         missing[index].Desired,
                         missing[index].Current);
@@ -121,7 +137,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             var structuralRequests = new List<Request>();
             var writes = new List<ValueRange>();
-            var clears = new List<string>();
             var verifications = new List<HeaderVerification>();
             for (var index = 0; index < pending.Count; index++)
             {
@@ -133,7 +148,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     item.ColumnPlan.ManagedColumnCount);
                 structuralRequests.AddRange(BuildStructuralRequests(item, valuePlan));
                 writes.AddRange(valuePlan.Writes);
-                clears.AddRange(valuePlan.Clears);
                 verifications.Add(new HeaderVerification
                 {
                     Desired = item.Desired,
@@ -154,9 +168,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             progress?.Report(0.55f);
             if (writes.Count > 0)
                 await client.BatchWriteValuesAsync(spreadsheetId, writes, ct);
-            progress?.Report(0.75f);
-            if (clears.Count > 0)
-                await client.BatchClearValuesAsync(spreadsheetId, clears, ct);
             progress?.Report(0.85f);
             await VerifyHeadersAsync(client, spreadsheetId, verifications, ct);
             progress?.Report(1f);
@@ -244,7 +255,24 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 }
             }
 
-            if (valuePlan.RequiredRowCount > pending.Current.RowCount)
+            foreach (var deletion in valuePlan.RowDeletions)
+            {
+                requests.Add(new Request
+                {
+                    DeleteDimension = new DeleteDimensionRequest
+                    {
+                        Range = new DimensionRange
+                        {
+                            SheetId = sheetId,
+                            Dimension = "ROWS",
+                            StartIndex = deletion.StartRowNumber - 1,
+                            EndIndex = deletion.EndRowNumber
+                        }
+                    }
+                });
+            }
+
+            if (valuePlan.RequiredRowCount > valuePlan.ProjectedGridRowCount)
             {
                 requests.Add(new Request
                 {
@@ -252,12 +280,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     {
                         SheetId = sheetId,
                         Dimension = "ROWS",
-                        Length = valuePlan.RequiredRowCount - pending.Current.RowCount
+                        Length = valuePlan.RequiredRowCount - valuePlan.ProjectedGridRowCount
                     }
                 });
             }
 
-            if ((pending.Current.Values?.Count ?? 0) >= 3 && valuePlan.NewRowNumbers.Count > 0)
+            if (valuePlan.HasFormatSourceRow && valuePlan.NewRowNumbers.Count > 0)
             {
                 var firstRowNumber = valuePlan.NewRowNumbers[0];
                 var lastRowNumber = valuePlan.NewRowNumbers[valuePlan.NewRowNumbers.Count - 1];
@@ -336,9 +364,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 Values = headerRows
             });
 
-            var existingRows = ReadExistingRows(current.Values);
             var incomingIds = new HashSet<string>(StringComparer.Ordinal);
-            var nextRowNumber = Math.Max((current.Values?.Count ?? 0) + 1, 3);
+            var incomingRows = new List<IncomingRow>();
 
             for (var rowIndex = 2; rowIndex < desired.Values.Count; rowIndex++)
             {
@@ -349,10 +376,36 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 if (!incomingIds.Add(rowId))
                     throw new InvalidOperationException($"Sheet '{desired.Name}' contains duplicate row ID '{rowId}'.");
 
+                incomingRows.Add(new IncomingRow { Row = row, RowId = rowId });
+            }
+
+            var existingRows = ReadExistingRows(current.Values);
+            var deletedRowNumbers = existingRows
+                .Where(pair => !incomingIds.Contains(pair.Key))
+                .Select(pair => pair.Value)
+                .OrderBy(rowNumber => rowNumber)
+                .ToList();
+            plan.RowDeletions.AddRange(BuildRowDeletionRanges(deletedRowNumbers));
+
+            var projectedUsedRowCount = Math.Max(
+                2,
+                (current.Values?.Count ?? 0) - deletedRowNumbers.Count);
+            var nextRowNumber = Math.Max(projectedUsedRowCount + 1, 3);
+            plan.HasFormatSourceRow = projectedUsedRowCount >= 3;
+
+            foreach (var incoming in incomingRows)
+            {
+                var row = incoming.Row;
+                var rowId = incoming.RowId;
+
                 if (!existingRows.TryGetValue(rowId, out var targetRowNumber))
                 {
                     targetRowNumber = nextRowNumber++;
                     plan.NewRowNumbers.Add(targetRowNumber);
+                }
+                else
+                {
+                    targetRowNumber -= deletedRowNumbers.Count(deleted => deleted < targetRowNumber);
                 }
 
                 plan.Writes.Add(SingleRowRange(
@@ -362,25 +415,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     GetPaddedRow(row, managedColumnCount)));
             }
 
-            foreach (var pair in existingRows)
-            {
-                if (incomingIds.Contains(pair.Key))
-                    continue;
-
-                plan.Writes.Add(new ValueRange
-                {
-                    Range = $"{quotedTitle}!A{pair.Value}",
-                    MajorDimension = "ROWS",
-                    Values = new List<IList<object>>
-                    {
-                        new List<object> { GoogleSheetConfig.REMOVED_ROW_MARKER }
-                    }
-                });
-                if (managedColumnCount > 2)
-                    plan.Clears.Add($"{quotedTitle}!C{pair.Value}:{lastColumn}{pair.Value}");
-            }
-
             plan.RequiredRowCount = Math.Max(2, nextRowNumber - 1);
+            plan.ProjectedGridRowCount = Math.Max(1, current.RowCount - deletedRowNumbers.Count);
 
             return plan;
         }
@@ -407,8 +443,37 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
                 if (!result.ContainsKey(rowId))
                     result.Add(rowId, index + 1);
+                else
+                    throw new InvalidOperationException($"Google Sheet contains duplicate row ID '{rowId}'.");
             }
             return result;
+        }
+
+        private static IEnumerable<RowDeletionRange> BuildRowDeletionRanges(IReadOnlyList<int> sortedRowNumbers)
+        {
+            if (sortedRowNumbers == null || sortedRowNumbers.Count == 0)
+                yield break;
+
+            var ranges = new List<RowDeletionRange>();
+            var start = sortedRowNumbers[0];
+            var end = start;
+            for (var index = 1; index < sortedRowNumbers.Count; index++)
+            {
+                var rowNumber = sortedRowNumbers[index];
+                if (rowNumber == end + 1)
+                {
+                    end = rowNumber;
+                    continue;
+                }
+
+                ranges.Add(new RowDeletionRange(start, end));
+                start = rowNumber;
+                end = rowNumber;
+            }
+            ranges.Add(new RowDeletionRange(start, end));
+
+            for (var index = ranges.Count - 1; index >= 0; index--)
+                yield return ranges[index];
         }
 
         private static Request CreateSheetMetadata(int sheetId, string key, string value)
@@ -498,21 +563,59 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             return builder.ToString();
         }
 
-        private static GoogleSheetSnapshot FindSnapshot(IEnumerable<GoogleSheetSnapshot> snapshots, string tableId)
+        private static GoogleSheetSnapshot FindSnapshot(
+            IReadOnlyList<GoogleSheetSnapshot> snapshots,
+            string tableId,
+            string spreadsheetId,
+            IGoogleSheetsBindingStore bindingStore)
         {
             var metadataMatches = snapshots
                 .Where(item => item.HasTableMetadata && item.TableId == tableId)
                 .ToList();
             if (metadataMatches.Count > 1)
                 throw new InvalidOperationException($"Multiple Google Sheet tabs contain metadata for ODDB table ID '{tableId}'.");
-            if (metadataMatches.Count == 1)
-                return metadataMatches[0];
 
-            return snapshots.FirstOrDefault(item =>
+            if (bindingStore != null
+                && bindingStore.TryGet(spreadsheetId, tableId, out var binding))
+            {
+                var bound = snapshots.FirstOrDefault(item => item.SheetId == binding.sheetId);
+                if (bound != null)
+                {
+                    if (bound.HasTableMetadata
+                        && !string.Equals(bound.TableId, tableId, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Local binding for ODDB table '{tableId}' points to Google Sheet ID '{bound.SheetId}', " +
+                            $"but that sheet belongs to table '{bound.TableId}'.");
+                    }
+
+                    if (metadataMatches.Count == 1 && metadataMatches[0].SheetId != bound.SheetId)
+                    {
+                        throw new InvalidOperationException(
+                            $"ODDB table '{tableId}' is locally bound to Google Sheet ID '{bound.SheetId}', " +
+                            $"but spreadsheet metadata points to Sheet ID '{metadataMatches[0].SheetId}'.");
+                    }
+
+                    bindingStore.Upsert(spreadsheetId, tableId, bound.SheetId, bound.Title);
+                    return bound;
+                }
+            }
+
+            if (metadataMatches.Count == 1)
+            {
+                var metadataMatch = metadataMatches[0];
+                bindingStore?.Upsert(spreadsheetId, tableId, metadataMatch.SheetId, metadataMatch.Title);
+                return metadataMatch;
+            }
+
+            var legacy = snapshots.FirstOrDefault(item =>
                 !item.HasTableMetadata
                 && (item.TableId == tableId
                     || item.Title.EndsWith("_" + tableId, StringComparison.Ordinal))
                 && IsOddbSheet(item));
+            if (legacy != null)
+                bindingStore?.Upsert(spreadsheetId, tableId, legacy.SheetId, legacy.Title);
+            return legacy;
         }
 
         private static void ResolveLegacyTableIds(IEnumerable<GoogleSheetSnapshot> snapshots)
@@ -633,9 +736,29 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private sealed class ValueSyncPlan
         {
             public List<ValueRange> Writes { get; } = new List<ValueRange>();
-            public List<string> Clears { get; } = new List<string>();
+            public List<RowDeletionRange> RowDeletions { get; } = new List<RowDeletionRange>();
             public List<int> NewRowNumbers { get; } = new List<int>();
             public int RequiredRowCount { get; set; }
+            public int ProjectedGridRowCount { get; set; }
+            public bool HasFormatSourceRow { get; set; }
+        }
+
+        private sealed class IncomingRow
+        {
+            public List<string> Row;
+            public string RowId;
+        }
+
+        private sealed class RowDeletionRange
+        {
+            public RowDeletionRange(int startRowNumber, int endRowNumber)
+            {
+                StartRowNumber = startRowNumber;
+                EndRowNumber = endRowNumber;
+            }
+
+            public int StartRowNumber { get; }
+            public int EndRowNumber { get; }
         }
 
         private sealed class HeaderVerification

@@ -33,8 +33,11 @@ OAuth client credentials are encrypted before they are serialized into `ODDBEdit
 
 - Select `Google Sheets` from the ODDB Editor Import or Export menu.
 - The first export detects legacy Apps Script tabs and attaches ODDB metadata.
+- Export bindings from ODDB table IDs to numeric Google `sheetId` values are stored per Spreadsheet ID in `UserSettings/ODDBGoogleSheetsBindings.json`. This is project-local state and contains neither assets nor OAuth credentials.
+- If the local binding file is missing or damaged, ODDB rebuilds it from existing sheet metadata, preventing duplicate tabs. Renaming a tab does not change its numeric `sheetId` binding.
 - Removing an ODDB-managed field physically deletes its Google Sheet column on the next export.
 - ODDB asks for confirmation before deletion. User-managed columns and `#` comment rows are preserved.
-- Removed rows continue to be marked with `#REMOVED`.
+- Removing an ODDB row physically deletes the corresponding Google Sheet row on the next export. Existing `#REMOVED` rows are cleaned up by the same rule.
+- Deleting the entire row also deletes values in user-managed columns on that row. Use Google Sheets version history if recovery is required.
 
 Field names currently identify managed columns. Renaming a field is treated as deleting the old column and adding a new one, so custom formatting on that column might not be preserved.

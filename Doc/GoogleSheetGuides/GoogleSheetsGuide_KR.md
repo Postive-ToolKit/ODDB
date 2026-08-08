@@ -33,8 +33,11 @@ OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화
 
 - ODDB Editor의 Import/Export 메뉴에서 `Google Sheets`를 선택합니다.
 - 최초 Export 시 기존 Apps Script 형식의 탭을 감지해 ODDB metadata를 추가합니다.
+- Export로 연결된 Table과 Google Sheet의 숫자 `sheetId`는 Spreadsheet ID별로 `UserSettings/ODDBGoogleSheetsBindings.json`에 저장됩니다. 이 파일은 프로젝트 로컬 설정이며 에셋이나 OAuth 자격 증명을 포함하지 않습니다.
+- 로컬 바인딩이 없거나 손상되면 기존 Google Sheet의 ODDB metadata에서 자동 복구하므로 기존 탭이 중복 생성되지 않습니다. 사용자가 탭 이름을 변경해도 동일한 `sheetId` 연결이 유지됩니다.
 - ODDB에서 제거된 관리 컬럼은 다음 Export에서 실제 Google Sheet 컬럼으로 삭제됩니다.
 - 삭제 전 확인 창이 표시되며, 사용자 관리 컬럼과 `#` 주석 행은 보존됩니다.
-- 제거된 행은 기존 동작과 동일하게 `#REMOVED`로 표시됩니다.
+- ODDB에서 제거된 행은 다음 Export에서 실제 Google Sheet 행으로 삭제됩니다. 기존 `#REMOVED` 행도 같은 규칙으로 정리됩니다.
+- 행 전체가 삭제되므로 해당 행의 사용자 관리 컬럼 값도 함께 삭제됩니다. 필요한 경우 Google Sheets 버전 기록에서 복구할 수 있습니다.
 
 필드명은 컬럼 식별자로 사용됩니다. 필드명 변경은 기존 컬럼 삭제와 새 컬럼 추가로 처리되므로 해당 컬럼의 수동 서식은 유지되지 않을 수 있습니다.

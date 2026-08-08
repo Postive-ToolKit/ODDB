@@ -174,12 +174,12 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
-        public async Task SaveCoreAsync_MarksRemovedRowsAndBatchesValueClear()
+        public async Task SaveCoreAsync_DeletesRemovedRowsPhysically()
         {
             var current = ManagedSnapshot(
                 new[] { "#NAME", "ID", "Value" },
                 new[] { "#TYPE", "ID", "string" },
-                new[] { "Old", "old", "before" });
+                new[] { GoogleSheetConfig.REMOVED_ROW_MARKER, "old", "before" });
             var desired = new SheetInfo("Items", "item")
             {
                 Values = Rows(
@@ -199,13 +199,261 @@ namespace TeamODD.ODDB.Tests.Editor
                 client,
                 "spreadsheet-id");
 
-            Assert.That(client.BatchUpdateCallCount, Is.Zero);
+            Assert.That(client.BatchUpdateCallCount, Is.EqualTo(1));
             Assert.That(client.BatchWriteCallCount, Is.EqualTo(1));
-            Assert.That(client.BatchClearCallCount, Is.EqualTo(1));
-            Assert.That(client.ClearedRanges, Is.EqualTo(new[] { "'Items_item'!C3:C3" }));
+            Assert.That(client.BatchClearCallCount, Is.Zero);
+            var deletion = client.StructuralRequests.Single(request =>
+                request.DeleteDimension?.Range?.Dimension == "ROWS");
+            Assert.That(deletion.DeleteDimension.Range.StartIndex, Is.EqualTo(2));
+            Assert.That(deletion.DeleteDimension.Range.EndIndex, Is.EqualTo(3));
             Assert.That(client.WrittenRanges.Any(range =>
-                range.Range == "'Items_item'!A3"
-                && Convert.ToString(range.Values[0][0]) == GoogleSheetConfig.REMOVED_ROW_MARKER), Is.True);
+                range.Values != null
+                && range.Values.SelectMany(row => row).Any(value =>
+                    Convert.ToString(value) == GoogleSheetConfig.REMOVED_ROW_MARKER)), Is.False);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_RecalculatesSurvivorRowsAfterPhysicalDeletion()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" },
+                new[] { "A", "a", "old-a" },
+                new[] { "B", "b", "old-b" },
+                new[] { "C", "c", "old-c" });
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "A", "a", "new-a" },
+                    new[] { "C", "c", "new-c" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var deletion = client.StructuralRequests.Single(request =>
+                request.DeleteDimension?.Range?.Dimension == "ROWS");
+            Assert.That(deletion.DeleteDimension.Range.StartIndex, Is.EqualTo(3));
+            Assert.That(deletion.DeleteDimension.Range.EndIndex, Is.EqualTo(4));
+            Assert.That(client.WrittenRanges.Any(range => range.Range == "'Items_item'!A4:C4"), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range == "'Items_item'!A5:C5"), Is.False);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_GroupsContiguousRowDeletesAndOrdersRangesDescending()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" },
+                new[] { "A", "a", "a" },
+                new[] { "B", "b", "b" },
+                new[] { "C", "c", "c" },
+                new[] { "D", "d", "d" },
+                new[] { "E", "e", "e" });
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "A", "a", "a" },
+                    new[] { "C", "c", "c" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var deletions = client.StructuralRequests
+                .Where(request => request.DeleteDimension?.Range?.Dimension == "ROWS")
+                .Select(request => request.DeleteDimension.Range)
+                .ToList();
+            Assert.That(deletions, Has.Count.EqualTo(2));
+            Assert.That(deletions[0].StartIndex, Is.EqualTo(5));
+            Assert.That(deletions[0].EndIndex, Is.EqualTo(7));
+            Assert.That(deletions[1].StartIndex, Is.EqualTo(3));
+            Assert.That(deletions[1].EndIndex, Is.EqualTo(4));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_PreservesCommentRowsWhileDeletingManagedRows()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" },
+                new[] { "A", "a", "a" },
+                new[] { "# Designer note", "note", "keep this row" },
+                new[] { "B", "b", "b" });
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "A", "a", "a" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var deletion = client.StructuralRequests.Single(request =>
+                request.DeleteDimension?.Range?.Dimension == "ROWS");
+            Assert.That(deletion.DeleteDimension.Range.StartIndex, Is.EqualTo(4));
+            Assert.That(deletion.DeleteDimension.Range.EndIndex, Is.EqualTo(5));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_RestoresLegacyRemovedRowWhenIdReturns()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" },
+                new[] { GoogleSheetConfig.REMOVED_ROW_MARKER, "old", "" });
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "Restored", "old", "value" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            Assert.That(client.StructuralRequests.Any(request =>
+                request.DeleteDimension?.Range?.Dimension == "ROWS"), Is.False);
+            Assert.That(client.WrittenRanges.Any(range => range.Range == "'Items_item'!A3:C3"), Is.True);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_UsesBoundSheetIdAfterSheetRename()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" },
+                new[] { "A", "a", "old" });
+            current.Title = "Renamed By Designer";
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "A", "a", "new" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+            var bindings = new RecordingBindingStore();
+            bindings.Upsert("spreadsheet-id", "item", current.SheetId, "Old Title");
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id", bindings);
+
+            Assert.That(client.CreateSheetsCallCount, Is.Zero);
+            Assert.That(client.WrittenRanges.All(range =>
+                range.Range.StartsWith("'Renamed By Designer'!", StringComparison.Ordinal)), Is.True);
+            Assert.That(bindings.Get("spreadsheet-id", "item").lastKnownTitle, Is.EqualTo("Renamed By Designer"));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_AdoptsMetadataWhenLocalBindingIsMissing()
+        {
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" });
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+            var bindings = new RecordingBindingStore();
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id", bindings);
+
+            Assert.That(bindings.Get("spreadsheet-id", "item").sheetId, Is.EqualTo(current.SheetId));
+            Assert.That(client.CreateSheetsCallCount, Is.Zero);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_ReplacesMissingBoundSheetWithNewSheet()
+        {
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+            var bindings = new RecordingBindingStore();
+            bindings.Upsert("spreadsheet-id", "item", 999, "Deleted Sheet");
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id", bindings);
+
+            Assert.That(client.CreateSheetsCallCount, Is.EqualTo(1));
+            Assert.That(bindings.Get("spreadsheet-id", "item").sheetId, Is.EqualTo(1000));
+        }
+
+        [Test]
+        public void SaveCoreAsync_RejectsBindingThatConflictsWithRemoteMetadata()
+        {
+            var bound = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" });
+            bound.HasTableMetadata = false;
+            bound.TableId = string.Empty;
+            var metadata = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Value" },
+                new[] { "#TYPE", "ID", "string" });
+            metadata.SheetId = 11;
+            metadata.Title = "Metadata Sheet";
+            var desired = new SheetInfo("Items", "item")
+            {
+                Values = Rows(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" })
+            };
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { bound, metadata }
+            };
+            var bindings = new RecordingBindingStore();
+            bindings.Upsert("spreadsheet-id", "item", bound.SheetId, bound.Title);
+
+            Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await GoogleSheetsSyncService.SaveCoreAsync(
+                    new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id", bindings));
         }
 
         private static GoogleSheetSnapshot Snapshot(params string[][] rows)
@@ -325,6 +573,44 @@ namespace TeamODD.ODDB.Tests.Editor
 
             public void Dispose()
             {
+            }
+        }
+
+        private sealed class RecordingBindingStore : IGoogleSheetsBindingStore
+        {
+            private readonly Dictionary<string, GoogleSheetBinding> _bindings =
+                new Dictionary<string, GoogleSheetBinding>(StringComparer.Ordinal);
+
+            public bool TryGet(string spreadsheetId, string tableId, out GoogleSheetBinding binding)
+            {
+                if (_bindings.TryGetValue(Key(spreadsheetId, tableId), out var found))
+                {
+                    binding = found.Clone();
+                    return true;
+                }
+
+                binding = null;
+                return false;
+            }
+
+            public void Upsert(string spreadsheetId, string tableId, int sheetId, string lastKnownTitle)
+            {
+                _bindings[Key(spreadsheetId, tableId)] = new GoogleSheetBinding
+                {
+                    tableId = tableId,
+                    sheetId = sheetId,
+                    lastKnownTitle = lastKnownTitle
+                };
+            }
+
+            public GoogleSheetBinding Get(string spreadsheetId, string tableId)
+            {
+                return _bindings[Key(spreadsheetId, tableId)];
+            }
+
+            private static string Key(string spreadsheetId, string tableId)
+            {
+                return spreadsheetId + "\n" + tableId;
             }
         }
     }

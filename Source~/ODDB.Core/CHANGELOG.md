@@ -2,6 +2,17 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## v2.7.2 — 2026-08-08
+
+### feat(sheets): persist sheet bindings and delete removed rows
+
+- Added project-local `tableId` to Google `sheetId` bindings under `UserSettings`, isolated by Spreadsheet ID.
+- Existing developer metadata and legacy sheet titles automatically bootstrap or repair missing local bindings.
+- Removed rows are now physically deleted in descending, grouped row ranges instead of being retained as `#REMOVED` data.
+- Legacy `#REMOVED` rows are deleted on export or restored in place when the same row ID returns.
+- Preserved spreadsheet-wide batching, surviving row formatting, user-managed columns, and read-only Import behavior.
+- ODDB.Core runtime APIs and database serialization are unchanged.
+
 ## v2.7.1 — 2026-08-02
 
 ### fix(sheets): batch spreadsheet-wide export requests
