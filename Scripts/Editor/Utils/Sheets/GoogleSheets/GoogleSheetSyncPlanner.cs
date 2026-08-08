@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
@@ -26,59 +27,18 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             var desired = ReadDesiredColumns(desiredSheet);
             var current = ReadCurrentColumns(currentSheet);
-            var result = new GoogleSheetColumnSyncPlan { ManagedColumnCount = desired.Count };
+            var result = new GoogleSheetColumnSyncPlan();
 
-            for (var targetIndex = 0; targetIndex < desired.Count; targetIndex++)
-            {
-                var desiredSlot = desired[targetIndex];
-                var existingIndex = FindByKey(current, desiredSlot.Key, targetIndex);
-                if (existingIndex < 0)
-                {
-                    var inserted = new ColumnSlot
-                    {
-                        Key = desiredSlot.Key,
-                        DisplayName = desiredSlot.DisplayName,
-                        Managed = true,
-                        HasMetadata = false
-                    };
-                    if (targetIndex < current.Count && !current[targetIndex].Managed && current[targetIndex].Reusable)
-                    {
-                        current[targetIndex] = inserted;
-                    }
-                    else
-                    {
-                        current.Insert(targetIndex, inserted);
-                        result.Operations.Add(new GoogleSheetColumnOperation
-                        {
-                            Kind = GoogleSheetColumnOperationKind.Insert,
-                            ToIndex = targetIndex,
-                            ColumnKey = inserted.Key,
-                            DisplayName = inserted.DisplayName
-                        });
-                    }
-                    continue;
-                }
+            var desiredKeys = new HashSet<string>();
+            foreach (var slot in desired)
+                desiredKeys.Add(slot.Key);
 
-                if (existingIndex != targetIndex)
-                {
-                    var moved = current[existingIndex];
-                    current.RemoveAt(existingIndex);
-                    current.Insert(targetIndex, moved);
-                    result.Operations.Add(new GoogleSheetColumnOperation
-                    {
-                        Kind = GoogleSheetColumnOperationKind.Move,
-                        FromIndex = existingIndex,
-                        ToIndex = targetIndex,
-                        ColumnKey = moved.Key,
-                        DisplayName = moved.DisplayName
-                    });
-                }
-            }
-
-            for (var index = current.Count - 1; index >= desired.Count; index--)
+            // Remove only ODDB-owned columns that no longer exist. User columns are
+            // physical anchors and are never moved or deleted by this pass.
+            for (var index = current.Count - 1; index >= 0; index--)
             {
                 var slot = current[index];
-                if (!slot.Managed)
+                if (!slot.Managed || desiredKeys.Contains(slot.Key))
                     continue;
 
                 result.Operations.Add(new GoogleSheetColumnOperation
@@ -92,15 +52,86 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 current.RemoveAt(index);
             }
 
+            for (var logicalIndex = 0; logicalIndex < desired.Count; logicalIndex++)
+            {
+                var desiredSlot = desired[logicalIndex];
+                var existingIndex = FindByKey(current, desiredSlot.Key, 0);
+
+                // The two system columns retain their fixed A/B positions because row
+                // identity lookup depends on them. Field columns after B may be sparse.
+                if (logicalIndex < 2)
+                {
+                    if (existingIndex < 0)
+                    {
+                        var inserted = CreateManagedSlot(desiredSlot);
+                        current.Insert(logicalIndex, inserted);
+                        result.Operations.Add(InsertOperation(logicalIndex, inserted));
+                        existingIndex = logicalIndex;
+                    }
+                    else if (existingIndex != logicalIndex)
+                    {
+                        var moved = current[existingIndex];
+                        current.RemoveAt(existingIndex);
+                        current.Insert(logicalIndex, moved);
+                        result.Operations.Add(new GoogleSheetColumnOperation
+                        {
+                            Kind = GoogleSheetColumnOperationKind.Move,
+                            FromIndex = existingIndex,
+                            ToIndex = logicalIndex,
+                            ColumnKey = moved.Key,
+                            DisplayName = moved.DisplayName
+                        });
+                        existingIndex = logicalIndex;
+                    }
+                }
+                else if (existingIndex < 0)
+                {
+                    var previousPhysical = result.ManagedColumnIndices[logicalIndex - 1];
+                    var nextExisting = FindNextDesiredColumn(
+                        current,
+                        desired,
+                        logicalIndex + 1,
+                        previousPhysical + 1);
+                    var searchEnd = nextExisting >= 0 ? nextExisting : current.Count;
+                    existingIndex = FindReusable(current, previousPhysical + 1, searchEnd);
+                    var inserted = CreateManagedSlot(desiredSlot);
+                    if (existingIndex >= 0)
+                    {
+                        current[existingIndex] = inserted;
+                    }
+                    else if (nextExisting >= 0)
+                    {
+                        existingIndex = nextExisting;
+                        current.Insert(existingIndex, inserted);
+                        result.Operations.Add(InsertOperation(existingIndex, inserted));
+                    }
+                    else
+                    {
+                        existingIndex = current.Count;
+                        current.Add(inserted);
+                        result.Operations.Add(new GoogleSheetColumnOperation
+                        {
+                            Kind = GoogleSheetColumnOperationKind.Append,
+                            ToIndex = existingIndex,
+                            ColumnKey = inserted.Key,
+                            DisplayName = inserted.DisplayName
+                        });
+                    }
+                }
+
+                result.ManagedColumnIndices.Add(existingIndex);
+            }
+
             for (var index = 0; index < desired.Count; index++)
             {
-                var slot = current[index];
+                var physicalIndex = result.ManagedColumnIndices[index];
+                var slot = current[physicalIndex];
                 if (slot.HasMetadata)
                     continue;
 
                 result.MetadataWrites.Add(new GoogleSheetColumnMetadataWrite
                 {
-                    ColumnIndex = index,
+                    ColumnIndex = physicalIndex,
                     ColumnKey = desired[index].Key
                 });
             }
@@ -119,59 +150,203 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                                        GetCell(currentSheet.Values[0], 0),
                                        SheetConfig.GROUP_MARKER,
                                        StringComparison.Ordinal);
-            var currentManagedCount = currentIsGrouped
-                ? GroupedSheetCodec.GetManagedColumnCount(new SheetInfo(currentSheet.Title, currentSheet.TableId)
-                {
-                    Values = currentSheet.Values
-                })
-                : 0;
+            var result = new GoogleSheetColumnSyncPlan();
+            var physicalCount = Math.Max(
+                Math.Max(1, currentSheet.ColumnCount),
+                currentSheet.Values == null
+                    ? 0
+                    : currentSheet.Values.Where(row => row != null).Select(row => row.Count).DefaultIfEmpty(0).Max());
+            var protectedColumns = currentIsGrouped
+                ? ReadGroupedProtectedColumns(currentSheet.Values)
+                : new HashSet<int>();
+            var protectedFlags = Enumerable.Range(0, physicalCount)
+                .Select(protectedColumns.Contains)
+                .ToList();
 
-            var result = new GoogleSheetColumnSyncPlan { ManagedColumnCount = desiredCount };
-            if (!currentIsGrouped)
+            if (currentIsGrouped)
             {
-                for (var index = Math.Max(0, currentSheet.ColumnCount); index < desiredCount; index++)
+                var compactCurrent = new SheetInfo(currentSheet.Title, currentSheet.TableId)
                 {
-                    result.Operations.Add(new GoogleSheetColumnOperation
-                    {
-                        Kind = GoogleSheetColumnOperationKind.Insert,
-                        ToIndex = index,
-                        ColumnKey = "grouped:" + index,
-                        DisplayName = "Grouped column " + (index + 1)
-                    });
-                }
-                return result;
-            }
-
-            if (desiredCount > currentManagedCount)
-            {
-                for (var index = currentManagedCount; index < desiredCount; index++)
+                    Values = CompactGroupedValues(currentSheet.Values)
+                };
+                var currentManagedCount = GroupedSheetCodec.GetManagedColumnCount(compactCurrent);
+                var currentManagedPhysicalIndices = Enumerable.Range(0, physicalCount)
+                    .Where(index => !protectedFlags[index])
+                    .Take(currentManagedCount)
+                    .ToList();
+                for (var logicalIndex = currentManagedPhysicalIndices.Count - 1;
+                     logicalIndex >= desiredCount;
+                     logicalIndex--)
                 {
-                    result.Operations.Add(new GoogleSheetColumnOperation
-                    {
-                        Kind = GoogleSheetColumnOperationKind.Insert,
-                        ToIndex = index,
-                        ColumnKey = "grouped:" + index,
-                        DisplayName = "Grouped column " + (index + 1)
-                    });
-                }
-            }
-            else
-            {
-                for (var index = currentManagedCount - 1; index >= desiredCount; index--)
-                {
-                    var displayName = "Grouped column " + (index + 1);
+                    var physicalIndex = currentManagedPhysicalIndices[logicalIndex];
+                    var displayName = "Grouped column " + (logicalIndex + 1);
                     result.Operations.Add(new GoogleSheetColumnOperation
                     {
                         Kind = GoogleSheetColumnOperationKind.Delete,
-                        FromIndex = index,
-                        ColumnKey = "grouped:" + index,
+                        FromIndex = physicalIndex,
+                        ColumnKey = "grouped:" + logicalIndex,
                         DisplayName = displayName
                     });
                     result.DeletedColumnNames.Add(displayName);
+                    protectedFlags.RemoveAt(physicalIndex);
+                    physicalCount--;
                 }
             }
 
+            for (var physicalIndex = 0;
+                 physicalIndex < physicalCount && result.ManagedColumnIndices.Count < desiredCount;
+                 physicalIndex++)
+            {
+                if (!protectedFlags[physicalIndex])
+                    result.ManagedColumnIndices.Add(physicalIndex);
+            }
+
+            while (result.ManagedColumnIndices.Count < desiredCount)
+            {
+                var logicalIndex = result.ManagedColumnIndices.Count;
+                result.ManagedColumnIndices.Add(physicalCount);
+                result.Operations.Add(new GoogleSheetColumnOperation
+                {
+                    Kind = GoogleSheetColumnOperationKind.Append,
+                    ToIndex = physicalCount,
+                    ColumnKey = "grouped:" + logicalIndex,
+                    DisplayName = "Grouped column " + (logicalIndex + 1)
+                });
+                physicalCount++;
+            }
+
             return result;
+        }
+
+        internal static List<List<string>> CompactGroupedValues(IReadOnlyList<List<string>> values)
+        {
+            if (values == null)
+                return new List<List<string>>();
+
+            var protectedColumns = ReadGroupedProtectedColumns(values);
+            var result = new List<List<string>>(values.Count);
+            foreach (var row in values)
+            {
+                var compact = new List<string>();
+                if (row != null)
+                {
+                    for (var columnIndex = 0; columnIndex < row.Count; columnIndex++)
+                    {
+                        if (!protectedColumns.Contains(columnIndex))
+                            compact.Add(row[columnIndex] ?? string.Empty);
+                    }
+                }
+                result.Add(compact);
+            }
+            return result;
+        }
+
+        private static HashSet<int> ReadGroupedProtectedColumns(IReadOnlyList<List<string>> values)
+        {
+            var result = new HashSet<int>();
+            if (values == null)
+                return result;
+            var managedBoundary = 0;
+
+            for (var rowIndex = 0; rowIndex < values.Count; rowIndex++)
+            {
+                var nameRow = values[rowIndex];
+                var marker = GetCell(nameRow, 0);
+                if (IsGroupedStructuralMarker(marker))
+                    managedBoundary = Math.Max(managedBoundary, LastNonEmptyColumn(nameRow) + 1);
+
+                if (!string.Equals(marker, SheetConfig.ROW_NAME_MARKER, StringComparison.Ordinal))
+                    continue;
+
+                for (var columnIndex = 2; columnIndex < nameRow.Count; columnIndex++)
+                {
+                    var name = GetCell(nameRow, columnIndex);
+                    if (!string.IsNullOrEmpty(name)
+                        && name.StartsWith(SheetConfig.IGNORE_PREFIX, StringComparison.Ordinal))
+                    {
+                        result.Add(columnIndex);
+                    }
+                }
+            }
+
+            var maxWidth = values.Where(row => row != null).Select(row => row.Count).DefaultIfEmpty(0).Max();
+            for (var columnIndex = managedBoundary; columnIndex < maxWidth; columnIndex++)
+            {
+                if (values.Any(row => !string.IsNullOrEmpty(GetCell(row, columnIndex))))
+                    result.Add(columnIndex);
+            }
+
+            return result;
+        }
+
+        private static bool IsGroupedStructuralMarker(string marker)
+        {
+            return string.Equals(marker, SheetConfig.GROUP_MARKER, StringComparison.Ordinal)
+                   || string.Equals(marker, SheetConfig.TABLE_MARKER, StringComparison.Ordinal)
+                   || string.Equals(marker, SheetConfig.ROW_NAME_MARKER, StringComparison.Ordinal)
+                   || string.Equals(marker, SheetConfig.ROW_TYPE_MARKER, StringComparison.Ordinal)
+                   || string.Equals(marker, SheetConfig.TABLE_END_MARKER, StringComparison.Ordinal)
+                   || string.Equals(marker, SheetConfig.GROUP_END_MARKER, StringComparison.Ordinal);
+        }
+
+        private static int LastNonEmptyColumn(IReadOnlyList<string> row)
+        {
+            if (row == null)
+                return -1;
+            for (var index = row.Count - 1; index >= 0; index--)
+            {
+                if (!string.IsNullOrEmpty(GetCell(row, index)))
+                    return index;
+            }
+            return -1;
+        }
+
+        private static ColumnSlot CreateManagedSlot(ColumnSlot desired)
+        {
+            return new ColumnSlot
+            {
+                Key = desired.Key,
+                DisplayName = desired.DisplayName,
+                Managed = true,
+                HasMetadata = false
+            };
+        }
+
+        private static GoogleSheetColumnOperation InsertOperation(int index, ColumnSlot slot)
+        {
+            return new GoogleSheetColumnOperation
+            {
+                Kind = GoogleSheetColumnOperationKind.Insert,
+                ToIndex = index,
+                ColumnKey = slot.Key,
+                DisplayName = slot.DisplayName
+            };
+        }
+
+        private static int FindReusable(IReadOnlyList<ColumnSlot> columns, int startIndex, int endIndex)
+        {
+            for (var index = Math.Max(0, startIndex); index < Math.Min(endIndex, columns.Count); index++)
+            {
+                if (!columns[index].Managed && columns[index].Reusable)
+                    return index;
+            }
+            return -1;
+        }
+
+        private static int FindNextDesiredColumn(
+            IReadOnlyList<ColumnSlot> current,
+            IReadOnlyList<ColumnSlot> desired,
+            int desiredStartIndex,
+            int physicalStartIndex)
+        {
+            var best = -1;
+            for (var index = desiredStartIndex; index < desired.Count; index++)
+            {
+                var physicalIndex = FindByKey(current, desired[index].Key, physicalStartIndex);
+                if (physicalIndex >= 0 && (best < 0 || physicalIndex < best))
+                    best = physicalIndex;
+            }
+            return best;
         }
 
         private static List<ColumnSlot> ReadDesiredColumns(SheetInfo sheet)

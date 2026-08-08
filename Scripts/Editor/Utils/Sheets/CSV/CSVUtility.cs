@@ -56,7 +56,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
 
                     try
                     {
-                        ExportSingleSheetToCSV(baseDirectory, sheetInfo);
+                        ExportSingleSheetToCSV(
+                            baseDirectory,
+                            CsvSheetViewTypeMetadata.PrepareForExport(sheetInfo, database));
                         savedCount++;
 
                         Debug.Log($"✅ CSV Save Success: {fileName} - {sheetInfo.RowCount} rows");
@@ -71,7 +73,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
                 if (allWritesSucceeded
                     && ODDBEditorSettings.Setting.SheetLayoutMode == SheetLayoutMode.GroupByRootView)
                 {
-                    CsvSheetBackend.RemoveMovedTablesFromOtherGroups(baseDirectory, sheetList);
+                    CsvSheetBackend.RemoveMovedTablesFromOtherGroups(baseDirectory, sheetList, database);
                 }
                 else if (!allWritesSucceeded)
                 {
@@ -137,9 +139,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
                     return;
                 }
 
+                // Restore the stable View IDs before grouped files are unpacked so
+                // every logical table reaches the existing validator in canonical form.
+                var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
+                foreach (var sheet in sheetList)
+                    CsvSheetViewTypeMetadata.RestoreForImport(sheet, database);
+
                 // Save sheets to database
                 var logicalSheets = GroupedSheetCodec.UnpackAll(sheetList);
-                if (ODDBEditorRuntime.UseCase?.DataBase is ODDatabase database)
+                if (database != null)
                 {
                     logicalSheets = new List<SheetInfo>(SheetLayoutPlanner.FilterImportedSheets(
                         logicalSheets,

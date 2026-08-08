@@ -16,7 +16,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         Task<List<GoogleSheetSnapshot>> ReadSpreadsheetAsync(string spreadsheetId, CancellationToken ct);
         Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
             string spreadsheetId,
-            IReadOnlyList<string> titles,
+            IReadOnlyList<GoogleSheetCreateSpec> sheets,
             CancellationToken ct);
         Task<BatchUpdateSpreadsheetResponse> BatchUpdateAsync(
             string spreadsheetId,
@@ -216,39 +216,48 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
         public async Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
             string spreadsheetId,
-            IReadOnlyList<string> titles,
+            IReadOnlyList<GoogleSheetCreateSpec> sheets,
             CancellationToken ct)
         {
             var result = new List<GoogleSheetSnapshot>();
-            if (titles == null || titles.Count == 0)
+            if (sheets == null || sheets.Count == 0)
                 return result;
 
             var body = new BatchUpdateSpreadsheetRequest
             {
-                Requests = titles.Select(title => new Request
+                Requests = sheets.Select(spec => new Request
                 {
                     AddSheet = new AddSheetRequest
                     {
-                        Properties = new SheetProperties { Title = title }
+                        Properties = new SheetProperties
+                        {
+                            Title = spec.Title,
+                            GridProperties = new GridProperties
+                            {
+                                ColumnCount = Math.Max(1, spec.ColumnCount),
+                                RowCount = Math.Max(1, spec.RowCount)
+                            }
+                        }
                     }
                 }).ToList()
             };
 
             var response = await BatchUpdateAsync(spreadsheetId, body, ct);
-            for (var index = 0; index < titles.Count; index++)
+            for (var index = 0; index < sheets.Count; index++)
             {
+                var spec = sheets[index];
                 var properties = response.Replies != null && index < response.Replies.Count
                     ? response.Replies[index]?.AddSheet?.Properties
                     : null;
                 if (properties?.SheetId == null)
-                    throw new InvalidOperationException($"Google Sheets did not return an ID for newly created sheet '{titles[index]}'.");
+                    throw new InvalidOperationException($"Google Sheets did not return an ID for newly created sheet '{spec.Title}'.");
 
                 result.Add(new GoogleSheetSnapshot
                 {
                     SheetId = properties.SheetId.Value,
-                    Title = properties.Title ?? titles[index],
-                    ColumnCount = properties.GridProperties?.ColumnCount ?? 26,
-                    RowCount = properties.GridProperties?.RowCount ?? 1000,
+                    Title = properties.Title ?? spec.Title,
+                    ColumnCount = properties.GridProperties?.ColumnCount ?? Math.Max(1, spec.ColumnCount),
+                    RowCount = properties.GridProperties?.RowCount ?? Math.Max(1, spec.RowCount),
                     Values = new List<List<string>>()
                 });
             }

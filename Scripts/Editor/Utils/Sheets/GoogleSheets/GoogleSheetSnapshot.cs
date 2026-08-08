@@ -2,6 +2,13 @@ using System.Collections.Generic;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
+    internal sealed class GoogleSheetCreateSpec
+    {
+        public string Title { get; set; }
+        public int ColumnCount { get; set; }
+        public int RowCount { get; set; }
+    }
+
     internal sealed class GoogleSheetSnapshot
     {
         public int SheetId { get; set; }

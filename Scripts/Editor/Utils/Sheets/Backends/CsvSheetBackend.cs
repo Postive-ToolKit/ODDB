@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Utils.Sheets.CSV;
 using TeamODD.ODDB.Editors.UI.Progress;
 using TeamODD.ODDB.Editors.Settings;
+using TeamODD.ODDB.Runtime;
 using UnityEditor;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
@@ -49,6 +50,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             // by the selected descendant Table ID.
             var files = Directory.GetFiles(directory, "*.csv");
             var result = new List<SheetInfo>(files.Length);
+            var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
             if (files.Length == 0)
             {
                 ReportStage(progress, "No matching CSV files found.", 1f);
@@ -61,7 +63,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 var value = (i + 1f) / files.Length;
                 ReportStage(progress, $"Reading CSV ({i + 1}/{files.Length}): {fileName}", value);
                 if (CSVUtility.TryImportSingleSheet(files[i], out var sheet))
+                {
+                    CsvSheetViewTypeMetadata.RestoreForImport(sheet, database);
                     result.Add(sheet);
+                }
             }
             return Task.FromResult<IReadOnlyList<SheetInfo>>(result);
         }
@@ -85,6 +90,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             // The use case already selected the exact physical sheets to export.
             // Re-filtering by TargetTableId would discard a grouped root-View sheet.
             var filtered = FilterSheets(sheets, ExportScope.EntireDatabase);
+            var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
             if (filtered.Count == 0)
             {
                 ReportStage(progress, "No sheets to write.", 1f);
@@ -95,16 +101,19 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 ct.ThrowIfCancellationRequested();
                 var value = (i + 1f) / filtered.Count;
                 ReportStage(progress, $"Writing CSV ({i + 1}/{filtered.Count}): {filtered[i]?.Name}", value);
-                CSVUtility.ExportSingleSheetToCSV(directory, filtered[i]);
+                CSVUtility.ExportSingleSheetToCSV(
+                    directory,
+                    CsvSheetViewTypeMetadata.PrepareForExport(filtered[i], database));
             }
             if (ODDBEditorSettings.Setting.SheetLayoutMode == SheetLayoutMode.GroupByRootView)
-                RemoveMovedTablesFromOtherGroups(directory, filtered);
+                RemoveMovedTablesFromOtherGroups(directory, filtered, database);
             return Task.CompletedTask;
         }
 
         internal static void RemoveMovedTablesFromOtherGroups(
             string directory,
-            IReadOnlyList<SheetInfo> exportedSheets)
+            IReadOnlyList<SheetInfo> exportedSheets,
+            ODDatabase database = null)
         {
             var exportedTableIds = new HashSet<string>(StringComparer.Ordinal);
             var exportedPhysicalIds = new HashSet<string>(StringComparer.Ordinal);
@@ -130,11 +139,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             foreach (var path in Directory.GetFiles(directory, "*.csv"))
             {
                 if (!CSVUtility.TryImportSingleSheet(path, out var existing)
-                    || !GroupedSheetCodec.IsGrouped(existing)
                     || exportedPhysicalIds.Contains(existing.ID))
                 {
                     continue;
                 }
+
+                CsvSheetViewTypeMetadata.RestoreForImport(existing, database);
+                if (!GroupedSheetCodec.IsGrouped(existing))
+                    continue;
 
                 var tables = GroupedSheetCodec.Unpack(existing);
                 var remaining = tables
@@ -145,7 +157,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
                 CSVUtility.ExportSingleSheetToCSV(
                     directory,
-                    GroupedSheetCodec.Pack(existing.Name, existing.ID, remaining));
+                    CsvSheetViewTypeMetadata.PrepareForExport(
+                        GroupedSheetCodec.Pack(existing.Name, existing.ID, remaining),
+                        database));
             }
         }
 

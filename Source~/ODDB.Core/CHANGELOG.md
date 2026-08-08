@@ -2,7 +2,7 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
-## Unreleased
+## v2.8.0 — 2026-08-08
 
 ### feat(sheets): group descendant tables by root View
 
@@ -12,6 +12,9 @@ This source is versioned with the Unity package under `Source~/ODDB.Core`. The t
 - Grouped imports are unpacked before existing validation, diff preview, backup, and table application logic.
 - Generalized local Google bindings from table IDs to physical sheet keys with automatic version 1 migration.
 - Displayed Google Sheets View-reference types by View name while storing the stable View ID in the type cell note, with legacy ID and name-based import fallbacks.
+- Added portable CSV `#VIEW_ID` metadata rows so readable View names retain stable ID bindings across renames without relying on cell notes.
+- Created new Google tabs at their exact required grid size and expanded existing tabs only when additional row or column capacity is required.
+- Preserved interleaved `#NAME` comment columns through sparse logical-to-physical column mapping, including grouped sheets, without writing empty values or formats into user-owned columns.
 - Added color-coded Google Sheets marker rows for grouped layouts while leaving user-managed columns untouched.
 - Added an explicit Unity Console success log after Ctrl+S finishes saving the ODDB database and prevented backup rotation from leaving orphaned Unity `.meta` files.
 - Restored the Generated Code Path text field and Browse button in IMGUI-based settings inspectors.

@@ -31,7 +31,7 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
-        public void LegacyRemovedMarker_IsMovedOutThenPhysicallyDeleted()
+        public void LegacyRemovedMarker_IsPhysicallyDeletedWithoutMovingUserColumns()
         {
             var current = Snapshot(
                 new[] { "#NAME", "ID", "#REMOVED Old", "Keep" },
@@ -42,7 +42,6 @@ namespace TeamODD.ODDB.Tests.Editor
 
             var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, current);
 
-            Assert.That(plan.Operations.Any(operation => operation.Kind == GoogleSheetColumnOperationKind.Move), Is.True);
             Assert.That(plan.Operations.Any(operation =>
                 operation.Kind == GoogleSheetColumnOperationKind.Delete
                 && operation.DisplayName == "Old"), Is.True);
@@ -64,6 +63,7 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(plan.Operations.Any(operation =>
                 operation.Kind == GoogleSheetColumnOperationKind.Delete
                 && operation.DisplayName == "Designer Notes"), Is.False);
+            Assert.That(plan.ManagedColumnIndices, Is.EqualTo(new[] { 0, 1, 3 }));
         }
 
         [Test]
@@ -86,7 +86,7 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
-        public void RenamedField_IsInsertPlusDeleteWithoutStableFieldId()
+        public void RenamedField_IsAppendPlusDeleteWithoutStableFieldId()
         {
             var current = Snapshot(
                 new[] { "#NAME", "ID", "OldName" },
@@ -97,12 +97,12 @@ namespace TeamODD.ODDB.Tests.Editor
 
             var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, current);
 
-            Assert.That(plan.Operations.Any(operation => operation.Kind == GoogleSheetColumnOperationKind.Insert), Is.True);
+            Assert.That(plan.Operations.Any(operation => operation.Kind == GoogleSheetColumnOperationKind.Append), Is.True);
             Assert.That(plan.Operations.Any(operation => operation.Kind == GoogleSheetColumnOperationKind.Delete), Is.True);
         }
 
         [Test]
-        public void GroupedSheetWiderSchema_InsertsBeforeTrailingUserColumn()
+        public void GroupedSheetWiderSchema_SkipsTrailingUserColumn()
         {
             var currentPhysical = GroupedSheetCodec.Pack(
                 "ItemView",
@@ -120,13 +120,12 @@ namespace TeamODD.ODDB.Tests.Editor
 
             var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, GroupedSnapshot(currentPhysical));
 
-            var insertion = plan.Operations.Single(operation =>
-                operation.Kind == GoogleSheetColumnOperationKind.Insert);
-            Assert.That(insertion.ToIndex, Is.EqualTo(4));
+            Assert.That(plan.ManagedColumnIndices, Is.EqualTo(new[] { 0, 1, 2, 3, 5 }));
+            Assert.That(plan.Operations.Any(operation => operation.Kind == GoogleSheetColumnOperationKind.Delete), Is.False);
         }
 
         [Test]
-        public void GroupedSheetNarrowerSchema_DeletesManagedBoundaryColumn()
+        public void GroupedSheetNarrowerSchema_DeletesOnlyManagedBoundaryColumn()
         {
             var currentPhysical = GroupedSheetCodec.Pack(
                 "ItemView",
@@ -144,9 +143,113 @@ namespace TeamODD.ODDB.Tests.Editor
 
             var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, GroupedSnapshot(currentPhysical));
 
-            var deletion = plan.Operations.Single(operation =>
-                operation.Kind == GoogleSheetColumnOperationKind.Delete);
-            Assert.That(deletion.FromIndex, Is.EqualTo(4));
+            Assert.That(plan.Operations.Count(operation => operation.Kind == GoogleSheetColumnOperationKind.Delete), Is.EqualTo(1));
+            Assert.That(plan.ManagedColumnIndices, Is.EqualTo(new[] { 0, 1, 2, 3 }));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_PreservesInterleavedCommentColumnAndAppendsWhenNeeded()
+        {
+            var current = Snapshot(
+                new[] { "#NAME", "ID", "#Designer Notes", "Value" },
+                new[] { "#TYPE", "ID", "", "string" },
+                new[] { "", "row", "keep this", "old" });
+            current.ColumnCount = 4;
+            current.RowCount = 3;
+            current.TableId = "item";
+            current.HasTableMetadata = true;
+            current.HasSchemaVersionMetadata = true;
+            current.ColumnKeys[0] = GoogleSheetConfig.SYSTEM_NAME_COLUMN_KEY;
+            current.ColumnKeys[1] = GoogleSheetConfig.SYSTEM_ID_COLUMN_KEY;
+            current.ColumnKeys[3] = GoogleSheetConfig.FIELD_COLUMN_PREFIX + "Value";
+            var desired = Sheet(
+                new[] { "#NAME", "ID", "Value", "Grade" },
+                new[] { "#TYPE", "ID", "string", "int" },
+                new[] { "", "row", "new", "5" });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>>
+                {
+                    Rows(
+                        new[] { "#NAME", "ID", "#Designer Notes", "Value", "Grade" },
+                        new[] { "#TYPE", "ID", "", "string", "int" })
+                }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            Assert.That(client.StructuralRequests.Any(request =>
+                request.AppendDimension?.Dimension == "COLUMNS"
+                && request.AppendDimension.Length == 1), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range == "'Items_item'!A1:B2"), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range == "'Items_item'!D1:E2"), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range.Contains("C")), Is.False);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_CreatesSheetAtExactRequiredGridSize()
+        {
+            var desired = Sheet(
+                new[] { "#NAME", "ID", "Value", "Grade" },
+                new[] { "#TYPE", "ID", "string", "int" },
+                new[] { "", "one", "A", "1" },
+                new[] { "", "two", "B", "2" },
+                new[] { "", "three", "C", "3" });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            Assert.That(client.CreatedSpecs, Has.Count.EqualTo(1));
+            Assert.That(client.CreatedSpecs[0].ColumnCount, Is.EqualTo(4));
+            Assert.That(client.CreatedSpecs[0].RowCount, Is.EqualTo(5));
+            Assert.That(client.StructuralRequests.Any(request => request.AppendDimension != null), Is.False);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_GroupedSheetWritesAroundInterleavedCommentColumn()
+        {
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[]
+                {
+                    Sheet(
+                        new[] { "#NAME", "ID", "Value" },
+                        new[] { "#TYPE", "ID", "string" },
+                        new[] { "", "weapon", "Sword" })
+                });
+            var current = GroupedSnapshot(desired);
+            foreach (var row in current.Values)
+                row.Insert(Math.Min(2, row.Count), string.Empty);
+            var nameRow = current.Values.Single(row => row[0] == SheetConfig.ROW_NAME_MARKER);
+            nameRow[2] = "#Designer Notes";
+            var dataRow = current.Values.Single(row => row.Count > 1 && row[1] == "weapon");
+            dataRow[2] = "keep this";
+            current.ColumnCount = current.Values.Max(row => row.Count);
+            current.RowCount = current.Values.Count;
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>>
+                {
+                    Rows(
+                        new[] { "#ODDB_GROUP", "item-view", "", "ItemView", "1" },
+                        new[] { "#TABLE", "item", "", "Items" })
+                }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            Assert.That(client.WrittenRanges.Any(range => range.Range.StartsWith("'ItemView_item-view'!A1:B")), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range.StartsWith("'ItemView_item-view'!D1:")), Is.True);
+            Assert.That(client.WrittenRanges.Any(range => range.Range.Contains("!C")), Is.False);
         }
 
         [Test]
@@ -923,6 +1026,7 @@ namespace TeamODD.ODDB.Tests.Editor
             public List<GoogleSheetSnapshot> Snapshots { get; set; } = new List<GoogleSheetSnapshot>();
             public List<List<List<string>>> VerificationResults { get; set; } = new List<List<List<string>>>();
             public List<string> CreatedTitles { get; } = new List<string>();
+            public List<GoogleSheetCreateSpec> CreatedSpecs { get; } = new List<GoogleSheetCreateSpec>();
             public List<Request> StructuralRequests { get; } = new List<Request>();
             public List<ValueRange> WrittenRanges { get; } = new List<ValueRange>();
             public List<string> ClearedRanges { get; } = new List<string>();
@@ -940,17 +1044,18 @@ namespace TeamODD.ODDB.Tests.Editor
 
             public Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
                 string spreadsheetId,
-                IReadOnlyList<string> titles,
+                IReadOnlyList<GoogleSheetCreateSpec> sheets,
                 CancellationToken ct)
             {
                 CreateSheetsCallCount++;
-                CreatedTitles.AddRange(titles);
-                return Task.FromResult(titles.Select((title, index) => new GoogleSheetSnapshot
+                CreatedTitles.AddRange(sheets.Select(spec => spec.Title));
+                CreatedSpecs.AddRange(sheets);
+                return Task.FromResult(sheets.Select((spec, index) => new GoogleSheetSnapshot
                 {
                     SheetId = 1000 + index,
-                    Title = title,
-                    ColumnCount = 26,
-                    RowCount = 1000,
+                    Title = spec.Title,
+                    ColumnCount = spec.ColumnCount,
+                    RowCount = spec.RowCount,
                     Values = new List<List<string>>()
                 }).ToList());
             }

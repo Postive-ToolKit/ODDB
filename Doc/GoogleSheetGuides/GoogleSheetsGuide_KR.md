@@ -40,6 +40,8 @@ OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화
 - 로컬 바인딩이 없거나 손상되면 기존 Google Sheet의 ODDB metadata에서 자동 복구하므로 기존 탭이 중복 생성되지 않습니다. 사용자가 탭 이름을 변경해도 동일한 `sheetId` 연결이 유지됩니다.
 - ODDB에서 제거된 관리 컬럼은 다음 Export에서 실제 Google Sheet 컬럼으로 삭제됩니다.
 - 삭제 전 확인 창이 표시되며, 사용자 관리 컬럼과 `#` 주석 행은 보존됩니다.
+- 새 Google 탭은 Google Sheets 기본값인 1,000행 × 26열 대신 실제 Export 데이터에 필요한 행과 열 크기로 생성됩니다. 기존 탭은 공간이 부족할 때만 확장합니다.
+- `#NAME` 헤더가 `#`으로 시작하는 컬럼(예: `#Designer Notes`)은 사용자 관리 컬럼입니다. ODDB는 해당 물리 컬럼에 아무 값도 쓰지 않고 다음 사용 가능한 컬럼에 관리 필드를 기록하며, 재사용할 공간이 없을 때만 새 컬럼을 추가합니다.
 - ODDB에서 제거된 행은 다음 Export에서 실제 Google Sheet 행으로 삭제됩니다. 기존 `#REMOVED` 행도 같은 규칙으로 정리됩니다.
 - 행 전체가 삭제되므로 해당 행의 사용자 관리 컬럼 값도 함께 삭제됩니다. 필요한 경우 Google Sheets 버전 기록에서 복구할 수 있습니다.
 
@@ -49,9 +51,9 @@ OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화
 
 - `ItemView` 아래의 `WeaponItem`, `CurrencyItem` 같은 Table은 `ItemView` 탭 하나에 `#TABLE`/`#END_TABLE` 블록으로 기록됩니다.
 - 각 블록은 독립적인 `#NAME`과 `#TYPE` 행을 가지므로 서로 다른 필드 구성을 사용할 수 있습니다.
-- Google Sheets의 View 참조 타입은 `View-ItemData`처럼 읽기 쉬운 View 이름으로 표시되고, 안정적인 연결 ID는 해당 타입 셀의 `ODDB View ID: ...` 노트에 저장됩니다. View 이름이 바뀌어도 노트 ID로 연결을 복구하며, 노트가 없으면 표시된 이름으로 가져옵니다. CSV는 셀 노트를 지원하지 않으므로 기존 ID 기반 타입 표현을 유지합니다.
+- Google Sheets의 View 참조 타입은 `View-ItemData`처럼 읽기 쉬운 View 이름으로 표시되고, 안정적인 연결 ID는 해당 타입 셀의 `ODDB View ID: ...` 노트에 저장됩니다. View 이름이 바뀌어도 노트 ID로 연결을 복구하며, 노트가 없으면 표시된 이름으로 가져옵니다. CSV도 같은 표시 이름을 사용하고 각 `#TYPE` 바로 아래의 `#VIEW_ID` 행에 안정적인 ID를 저장합니다.
 - Google Sheets에서는 `#ODDB_GROUP`/`#END_GROUP` 행을 하늘색, `#TABLE`/`#NAME`/`#TYPE` 행을 회색, `#END_TABLE` 행을 부드러운 붉은색으로 표시하며 모두 흰색 굵은 글자를 사용합니다. 서식은 ODDB 관리 컬럼 범위에만 적용됩니다.
 - 선택한 Table만 Export해도 같은 Root View의 모든 형제 Table을 함께 내보내 기존 블록 손실을 방지합니다.
 - Table의 부모 View가 바뀌면 새 그룹에 추가하고 이전 ODDB 그룹에서는 해당 블록을 제거합니다.
 - 기존 Table별 탭과 그룹 탭이 동시에 존재하면 현재 `Sheet Layout Mode`에 맞는 데이터를 우선 사용합니다.
-- 그룹 밖에 사용자가 추가한 행과 관리 컬럼 오른쪽의 사용자 컬럼은 보존됩니다.
+- 그룹 밖에 사용자가 추가한 행과 사용자 컬럼은 물론, 관리 컬럼 사이에 명시적으로 추가한 주석 컬럼도 보존됩니다.

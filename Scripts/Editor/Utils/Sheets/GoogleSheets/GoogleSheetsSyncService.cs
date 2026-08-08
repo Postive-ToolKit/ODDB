@@ -30,9 +30,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
                     GoogleSheetViewTypeNotes.RestoreForImport(snapshot, database);
 
+                    var values = snapshot.Values;
+                    if (values != null
+                        && values.Count > 0
+                        && string.Equals(GetCell(values, 0, 0), SheetConfig.GROUP_MARKER, StringComparison.Ordinal))
+                    {
+                        values = GoogleSheetSyncPlanner.CompactGroupedValues(values);
+                    }
+
                     result.Add(new SheetInfo(GetDisplayName(snapshot.Title, snapshot.TableId), snapshot.TableId)
                     {
-                        Values = snapshot.Values
+                        Values = values
                     });
                 }
 
@@ -116,8 +124,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     {
                         SheetId = -1,
                         Title = title,
-                        ColumnCount = 26,
-                        RowCount = 1000,
+                        ColumnCount = GetRequiredColumnCount(desired),
+                        RowCount = GetRequiredRowCount(desired),
                         TableId = desired.ID,
                         Values = new List<List<string>>()
                     };
@@ -137,7 +145,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             {
                 var created = await client.CreateSheetsAsync(
                     spreadsheetId,
-                    missing.Select(item => item.Current.Title).ToList(),
+                    missing.Select(item => new GoogleSheetCreateSpec
+                    {
+                        Title = item.Current.Title,
+                        ColumnCount = GetRequiredColumnCount(item.Desired),
+                        RowCount = GetRequiredRowCount(item.Desired)
+                    }).ToList(),
                     ct);
                 if (created.Count != missing.Count)
                     throw new InvalidOperationException("Google Sheets did not return every newly created sheet.");
@@ -167,14 +180,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 var valuePlan = BuildValuePlan(
                     item.Desired,
                     item.Current,
-                    item.ColumnPlan.ManagedColumnCount);
+                    item.ColumnPlan);
                 structuralRequests.AddRange(BuildStructuralRequests(item, valuePlan));
                 writes.AddRange(valuePlan.Writes);
                 verifications.Add(new HeaderVerification
                 {
                     Desired = item.Desired,
                     Title = item.Current.Title,
-                    ManagedColumnCount = item.ColumnPlan.ManagedColumnCount
+                    ManagedColumnIndices = item.ColumnPlan.ManagedColumnIndices.ToList()
                 });
                 progress?.Report(pending.Count == 0 ? 0.4f : 0.4f * (index + 1f) / pending.Count);
             }
@@ -235,7 +248,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
                 var physical = new SheetInfo(snapshot.Title, snapshot.TableId)
                 {
-                    Values = snapshot.Values ?? new List<List<string>>()
+                    Values = GoogleSheetSyncPlanner.CompactGroupedValues(snapshot.Values)
                 };
                 if (!GroupedSheetCodec.IsGrouped(physical))
                     continue;
@@ -270,7 +283,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 return;
 
             var ranges = verifications.Select(item =>
-                $"{GoogleSheetsApiClient.QuoteTitle(item.Title)}!A1:{ToColumnName(item.ManagedColumnCount)}2").ToList();
+                $"{GoogleSheetsApiClient.QuoteTitle(item.Title)}!A1:{ToColumnName(item.ManagedColumnIndices.Max() + 1)}2").ToList();
             var actualHeaders = await client.ReadRangesAsync(spreadsheetId, ranges, ct);
             if (actualHeaders.Count != verifications.Count)
                 throw new InvalidOperationException("Google Sheets did not return every header verification range.");
@@ -281,16 +294,20 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 var actual = actualHeaders[index];
                 for (var row = 0; row < 2; row++)
                 {
-                    var expectedRow = GetPaddedRow(
-                        verification.Desired.Values,
-                        row,
-                        verification.ManagedColumnCount);
-                    for (var column = 0; column < verification.ManagedColumnCount; column++)
+                    for (var logicalColumn = 0;
+                         logicalColumn < verification.ManagedColumnIndices.Count;
+                         logicalColumn++)
                     {
-                        if (!string.Equals(GetCell(actual, row, column), expectedRow[column], StringComparison.Ordinal))
+                        var physicalColumn = verification.ManagedColumnIndices[logicalColumn];
+                        var expected = GetCell(
+                            verification.Desired.Values != null && row < verification.Desired.Values.Count
+                                ? verification.Desired.Values[row]
+                                : null,
+                            logicalColumn);
+                        if (!string.Equals(GetCell(actual, row, physicalColumn), expected, StringComparison.Ordinal))
                         {
                             throw new InvalidOperationException(
-                                $"Google Sheet verification failed for '{verification.Title}' at row {row + 1}, column {column + 1}.");
+                                $"Google Sheet verification failed for '{verification.Title}' at row {row + 1}, column {physicalColumn + 1}.");
                         }
                     }
                 }
@@ -329,6 +346,17 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                             {
                                 Range = ColumnRange(sheetId, operation.ToIndex),
                                 InheritFromBefore = operation.ToIndex > 0
+                            }
+                        });
+                        break;
+                    case GoogleSheetColumnOperationKind.Append:
+                        requests.Add(new Request
+                        {
+                            AppendDimension = new AppendDimensionRequest
+                            {
+                                SheetId = sheetId,
+                                Dimension = "COLUMNS",
+                                Length = 1
                             }
                         });
                         break;
@@ -411,30 +439,33 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 var firstRowNumber = valuePlan.NewRowNumbers[0];
                 var lastRowNumber = valuePlan.NewRowNumbers[valuePlan.NewRowNumbers.Count - 1];
                 var targetStart = firstRowNumber - 1;
-                requests.Add(new Request
+                foreach (var segment in GetManagedColumnSegments(pending.ColumnPlan.ManagedColumnIndices))
                 {
-                    CopyPaste = new CopyPasteRequest
+                    requests.Add(new Request
                     {
-                        Source = new GridRange
+                        CopyPaste = new CopyPasteRequest
                         {
-                            SheetId = sheetId,
-                            StartRowIndex = targetStart - 1,
-                            EndRowIndex = targetStart,
-                            StartColumnIndex = 0,
-                            EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
-                        },
-                        Destination = new GridRange
-                        {
-                            SheetId = sheetId,
-                            StartRowIndex = targetStart,
-                            EndRowIndex = lastRowNumber,
-                            StartColumnIndex = 0,
-                            EndColumnIndex = pending.ColumnPlan.ManagedColumnCount
-                        },
-                        PasteType = "PASTE_FORMAT",
-                        PasteOrientation = "NORMAL"
-                    }
-                });
+                            Source = new GridRange
+                            {
+                                SheetId = sheetId,
+                                StartRowIndex = targetStart - 1,
+                                EndRowIndex = targetStart,
+                                StartColumnIndex = segment.PhysicalStart,
+                                EndColumnIndex = segment.PhysicalStart + segment.Count
+                            },
+                            Destination = new GridRange
+                            {
+                                SheetId = sheetId,
+                                StartRowIndex = targetStart,
+                                EndRowIndex = lastRowNumber,
+                                StartColumnIndex = segment.PhysicalStart,
+                                EndColumnIndex = segment.PhysicalStart + segment.Count
+                            },
+                            PasteType = "PASTE_FORMAT",
+                            PasteOrientation = "NORMAL"
+                        }
+                    });
+                }
             }
 
             foreach (var pair in pending.Desired.CellNotes)
@@ -442,7 +473,16 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 if (!string.IsNullOrEmpty(pair.Value)
                     && pair.Value.StartsWith(GoogleSheetViewTypeNotes.NotePrefix, StringComparison.Ordinal))
                 {
-                    requests.Add(CreateCellNoteRequest(sheetId, pair.Key, pair.Value));
+                    if (pair.Key.ColumnIndex >= 0
+                        && pair.Key.ColumnIndex < pending.ColumnPlan.ManagedColumnIndices.Count)
+                    {
+                        requests.Add(CreateCellNoteRequest(
+                            sheetId,
+                            new SheetCellAddress(
+                                pair.Key.RowIndex,
+                                pending.ColumnPlan.ManagedColumnIndices[pair.Key.ColumnIndex]),
+                            pair.Value));
+                    }
                 }
             }
 
@@ -451,7 +491,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 requests.AddRange(CreateGroupedRowFormatRequests(
                     sheetId,
                     pending.Desired,
-                    pending.ColumnPlan.ManagedColumnCount));
+                    pending.ColumnPlan.ManagedColumnIndices));
             }
 
             if (!pending.Current.HasTableMetadata)
@@ -508,7 +548,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private static IEnumerable<Request> CreateGroupedRowFormatRequests(
             int sheetId,
             SheetInfo sheet,
-            int managedColumnCount)
+            IReadOnlyList<int> managedColumnIndices)
         {
             var managedRowCount = GroupedSheetCodec.GetManagedRowCount(sheet);
             var runStyle = GroupedRowStyle.None;
@@ -523,12 +563,16 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
                 if (runStyle != GroupedRowStyle.None)
                 {
-                    yield return CreateGroupedRowFormatRequest(
-                        sheetId,
-                        runStart,
-                        rowIndex,
-                        managedColumnCount,
-                        runStyle);
+                    foreach (var segment in GetManagedColumnSegments(managedColumnIndices))
+                    {
+                        yield return CreateGroupedRowFormatRequest(
+                            sheetId,
+                            runStart,
+                            rowIndex,
+                            segment.PhysicalStart,
+                            segment.Count,
+                            runStyle);
+                    }
                 }
 
                 runStyle = style;
@@ -558,7 +602,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             int sheetId,
             int startRowIndex,
             int endRowIndex,
-            int managedColumnCount,
+            int startColumnIndex,
+            int columnCount,
             GroupedRowStyle style)
         {
             return new Request
@@ -570,8 +615,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                         SheetId = sheetId,
                         StartRowIndex = startRowIndex,
                         EndRowIndex = endRowIndex,
-                        StartColumnIndex = 0,
-                        EndColumnIndex = managedColumnCount
+                        StartColumnIndex = startColumnIndex,
+                        EndColumnIndex = startColumnIndex + columnCount
                     },
                     Cell = new CellData
                     {
@@ -624,25 +669,19 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private static ValueSyncPlan BuildValuePlan(
             SheetInfo desired,
             GoogleSheetSnapshot current,
-            int managedColumnCount)
+            GoogleSheetColumnSyncPlan columnPlan)
         {
             if (GroupedSheetCodec.IsGrouped(desired))
-                return BuildGroupedValuePlan(desired, current, managedColumnCount);
+                return BuildGroupedValuePlan(desired, current, columnPlan);
 
             var plan = new ValueSyncPlan();
             var quotedTitle = GoogleSheetsApiClient.QuoteTitle(current.Title);
-            var lastColumn = ToColumnName(managedColumnCount);
-            var headerRows = new List<IList<object>>
-            {
-                ToObjectRow(GetPaddedRow(desired.Values, 0, managedColumnCount)),
-                ToObjectRow(GetPaddedRow(desired.Values, 1, managedColumnCount))
-            };
-            plan.Writes.Add(new ValueRange
-            {
-                Range = $"{quotedTitle}!A1:{lastColumn}2",
-                MajorDimension = "ROWS",
-                Values = headerRows
-            });
+            AddMappedRows(
+                plan.Writes,
+                quotedTitle,
+                1,
+                desired.Values.Take(2).ToList(),
+                columnPlan.ManagedColumnIndices);
 
             var incomingIds = new HashSet<string>(StringComparer.Ordinal);
             var incomingRows = new List<IncomingRow>();
@@ -688,11 +727,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     targetRowNumber -= deletedRowNumbers.Count(deleted => deleted < targetRowNumber);
                 }
 
-                plan.Writes.Add(SingleRowRange(
+                AddMappedRows(
+                    plan.Writes,
                     quotedTitle,
                     targetRowNumber,
-                    lastColumn,
-                    GetPaddedRow(row, managedColumnCount)));
+                    new List<List<string>> { row },
+                    columnPlan.ManagedColumnIndices);
             }
 
             plan.RequiredRowCount = Math.Max(2, nextRowNumber - 1);
@@ -704,7 +744,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private static ValueSyncPlan BuildGroupedValuePlan(
             SheetInfo desired,
             GoogleSheetSnapshot current,
-            int managedColumnCount)
+            GoogleSheetColumnSyncPlan columnPlan)
         {
             var plan = new ValueSyncPlan();
             GroupedSheetCodec.Unpack(desired);
@@ -714,7 +754,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             var currentSheet = new SheetInfo(current.Title, current.TableId)
             {
-                Values = current.Values ?? new List<List<string>>()
+                Values = GoogleSheetSyncPlanner.CompactGroupedValues(current.Values)
             };
             var currentIsGrouped = GroupedSheetCodec.IsGrouped(currentSheet);
             if (currentIsGrouped)
@@ -737,21 +777,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             }
 
             var quotedTitle = GoogleSheetsApiClient.QuoteTitle(current.Title);
-            var lastColumn = ToColumnName(managedColumnCount);
-            var values = new List<IList<object>>(desiredRowCount);
-            for (var rowIndex = 0; rowIndex < desiredRowCount; rowIndex++)
-            {
-                values.Add(ToObjectRow(GetPaddedRow(
-                    desired.Values,
-                    rowIndex,
-                    managedColumnCount)));
-            }
-            plan.Writes.Add(new ValueRange
-            {
-                Range = $"{quotedTitle}!A1:{lastColumn}{desiredRowCount}",
-                MajorDimension = "ROWS",
-                Values = values
-            });
+            AddMappedRows(
+                plan.Writes,
+                quotedTitle,
+                1,
+                desired.Values,
+                columnPlan.ManagedColumnIndices);
 
             plan.RequiredRowCount = desiredRowCount;
             plan.ProjectedGridRowCount = currentIsGrouped
@@ -845,30 +876,65 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             };
         }
 
-        private static ValueRange SingleRowRange(string quotedTitle, int rowNumber, string lastColumn, List<string> row)
+        private static void AddMappedRows(
+            ICollection<ValueRange> output,
+            string quotedTitle,
+            int startRowNumber,
+            IReadOnlyList<List<string>> rows,
+            IReadOnlyList<int> managedColumnIndices)
         {
-            return new ValueRange
+            if (output == null) throw new ArgumentNullException(nameof(output));
+            if (rows == null || rows.Count == 0)
+                return;
+
+            foreach (var segment in GetManagedColumnSegments(managedColumnIndices))
             {
-                Range = $"{quotedTitle}!A{rowNumber}:{lastColumn}{rowNumber}",
-                MajorDimension = "ROWS",
-                Values = new List<IList<object>> { ToObjectRow(row) }
-            };
+                var values = new List<IList<object>>(rows.Count);
+                foreach (var row in rows)
+                {
+                    var cells = new List<string>(segment.Count);
+                    for (var offset = 0; offset < segment.Count; offset++)
+                        cells.Add(GetCell(row, segment.LogicalStart + offset));
+                    values.Add(ToObjectRow(cells));
+                }
+
+                var endRowNumber = startRowNumber + rows.Count - 1;
+                var startColumn = ToColumnName(segment.PhysicalStart + 1);
+                var endColumn = ToColumnName(segment.PhysicalStart + segment.Count);
+                output.Add(new ValueRange
+                {
+                    Range = $"{quotedTitle}!{startColumn}{startRowNumber}:{endColumn}{endRowNumber}",
+                    MajorDimension = "ROWS",
+                    Values = values
+                });
+            }
         }
 
-        private static List<string> GetPaddedRow(IReadOnlyList<List<string>> rows, int rowIndex, int width)
+        private static IEnumerable<ManagedColumnSegment> GetManagedColumnSegments(
+            IReadOnlyList<int> managedColumnIndices)
         {
-            var source = rows != null && rowIndex >= 0 && rowIndex < rows.Count
-                ? rows[rowIndex]
-                : null;
-            return GetPaddedRow(source, width);
-        }
+            if (managedColumnIndices == null || managedColumnIndices.Count == 0)
+                yield break;
 
-        private static List<string> GetPaddedRow(IReadOnlyList<string> source, int width)
-        {
-            var result = new List<string>(width);
-            for (var index = 0; index < width; index++)
-                result.Add(GetCell(source, index));
-            return result;
+            var logicalStart = 0;
+            var physicalStart = managedColumnIndices[0];
+            var count = 1;
+            for (var logicalIndex = 1; logicalIndex < managedColumnIndices.Count; logicalIndex++)
+            {
+                if (managedColumnIndices[logicalIndex]
+                    == managedColumnIndices[logicalIndex - 1] + 1)
+                {
+                    count++;
+                    continue;
+                }
+
+                yield return new ManagedColumnSegment(logicalStart, physicalStart, count);
+                logicalStart = logicalIndex;
+                physicalStart = managedColumnIndices[logicalIndex];
+                count = 1;
+            }
+
+            yield return new ManagedColumnSegment(logicalStart, physicalStart, count);
         }
 
         private static IList<object> ToObjectRow(IEnumerable<string> row)
@@ -902,6 +968,24 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 value /= 26;
             }
             return builder.ToString();
+        }
+
+        private static int GetRequiredColumnCount(SheetInfo sheet)
+        {
+            var width = sheet?.Values == null
+                ? 0
+                : sheet.Values.Where(row => row != null).Select(row => row.Count).DefaultIfEmpty(0).Max();
+            if (sheet?.CellNotes != null && sheet.CellNotes.Count > 0)
+                width = Math.Max(width, sheet.CellNotes.Keys.Max(address => address.ColumnIndex + 1));
+            return Math.Max(1, width);
+        }
+
+        private static int GetRequiredRowCount(SheetInfo sheet)
+        {
+            var height = sheet?.Values?.Count ?? 0;
+            if (sheet?.CellNotes != null && sheet.CellNotes.Count > 0)
+                height = Math.Max(height, sheet.CellNotes.Keys.Max(address => address.RowIndex + 1));
+            return Math.Max(1, height);
         }
 
         private static GoogleSheetSnapshot FindSnapshot(
@@ -1145,7 +1229,21 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             public SheetInfo Desired;
             public string Title;
-            public int ManagedColumnCount;
+            public List<int> ManagedColumnIndices;
+        }
+
+        private readonly struct ManagedColumnSegment
+        {
+            public readonly int LogicalStart;
+            public readonly int PhysicalStart;
+            public readonly int Count;
+
+            public ManagedColumnSegment(int logicalStart, int physicalStart, int count)
+            {
+                LogicalStart = logicalStart;
+                PhysicalStart = physicalStart;
+                Count = count;
+            }
         }
     }
 }

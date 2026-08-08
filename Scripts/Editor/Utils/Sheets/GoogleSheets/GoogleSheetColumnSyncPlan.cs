@@ -5,6 +5,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
     internal enum GoogleSheetColumnOperationKind
     {
         Insert,
+        Append,
         Move,
         Delete
     }
@@ -26,7 +27,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
     internal sealed class GoogleSheetColumnSyncPlan
     {
-        public int ManagedColumnCount { get; set; }
+        public List<int> ManagedColumnIndices { get; } = new List<int>();
         public List<GoogleSheetColumnOperation> Operations { get; } = new List<GoogleSheetColumnOperation>();
         public List<GoogleSheetColumnMetadataWrite> MetadataWrites { get; } = new List<GoogleSheetColumnMetadataWrite>();
         public List<string> DeletedColumnNames { get; } = new List<string>();

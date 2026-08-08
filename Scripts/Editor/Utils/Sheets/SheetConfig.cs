@@ -12,6 +12,7 @@
 
         public const string ROW_NAME_MARKER = "#NAME";
         public const string ROW_TYPE_MARKER = "#TYPE";
+        public const string ROW_VIEW_ID_MARKER = "#VIEW_ID";
         public const string ROW_COMMENT_PREFIX = "#";
         public const string LEGACY_HEADER_FIRST_CELL = "ID";
 

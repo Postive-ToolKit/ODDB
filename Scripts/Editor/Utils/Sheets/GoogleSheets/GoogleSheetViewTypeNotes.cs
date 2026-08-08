@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Interfaces;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
@@ -34,7 +33,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                         if (!SheetViewTypeReference.TryParse(row[columnIndex], out var viewKey))
                             continue;
 
-                        var view = FindView(database, viewKey);
+                        var view = SheetViewTypeResolver.FindView(database, viewKey);
                         var viewId = view?.ID.ToString() ?? viewKey;
                         var viewName = string.IsNullOrWhiteSpace(view?.Name) ? viewId : view.Name;
                         row[columnIndex] = SheetViewTypeReference.ToDisplayValue(viewName);
@@ -65,31 +64,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     var address = new SheetCellAddress(rowIndex, columnIndex);
                     snapshot.CellNotes.TryGetValue(address, out var note);
                     var notedId = TryReadViewId(note);
-                    var notedView = FindView(database, notedId);
-                    var displayedView = FindView(database, displayedKey);
-
-                    string resolvedId;
-                    if (notedView != null
-                        && (string.Equals(displayedKey, notedView.ID.ToString(), StringComparison.Ordinal)
-                            || string.Equals(displayedKey, notedView.Name, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        resolvedId = notedView.ID.ToString();
-                    }
-                    else if (displayedView != null)
-                    {
-                        resolvedId = displayedView.ID.ToString();
-                    }
-                    else if (!string.IsNullOrEmpty(notedId))
-                    {
-                        // The display name may be stale after a local rename. The note
-                        // remains the stable connection in that case.
-                        resolvedId = notedId;
-                    }
-                    else
-                    {
-                        resolvedId = displayedKey;
-                    }
-
+                    var resolvedId = SheetViewTypeResolver.ResolveImportId(
+                        database,
+                        displayedKey,
+                        notedId);
                     row[columnIndex] = SheetViewTypeReference.ToLegacyValue(resolvedId);
                 }
             }
@@ -122,16 +100,6 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                    && note.StartsWith(NotePrefix, StringComparison.Ordinal)
                 ? note.Substring(NotePrefix.Length).Trim()
                 : string.Empty;
-        }
-
-        private static IView FindView(ODDatabase database, string idOrName)
-        {
-            if (database == null || string.IsNullOrWhiteSpace(idOrName))
-                return null;
-            return database.GetAll().FirstOrDefault(view =>
-                view != null
-                && (string.Equals(view.ID.ToString(), idOrName, StringComparison.Ordinal)
-                    || string.Equals(view.Name, idOrName, StringComparison.OrdinalIgnoreCase)));
         }
     }
 }
