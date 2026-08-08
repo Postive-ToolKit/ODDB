@@ -21,16 +21,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
                 ResolveLegacyTableIds(snapshots);
                 var result = new List<SheetInfo>();
-                var seenIds = new HashSet<string>(StringComparer.Ordinal);
+                var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
 
                 foreach (var snapshot in snapshots)
                 {
                     if (!IsOddbSheet(snapshot) || string.IsNullOrEmpty(snapshot.TableId))
                         continue;
-                    if (!scope.All && snapshot.TableId != scope.TargetTableId)
-                        continue;
-                    if (!seenIds.Add(snapshot.TableId))
-                        throw new InvalidOperationException($"Multiple Google Sheet tabs map to ODDB table ID '{snapshot.TableId}'.");
+
+                    GoogleSheetViewTypeNotes.RestoreForImport(snapshot, database);
 
                     result.Add(new SheetInfo(GetDisplayName(snapshot.Title, snapshot.TableId), snapshot.TableId)
                     {
@@ -49,6 +47,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             if (desiredSheets == null) throw new ArgumentNullException(nameof(desiredSheets));
             var spreadsheetId = GetSpreadsheetId();
+            var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
 
             using (var client = await GoogleSheetsApiClient.CreateAsync(ct))
             {
@@ -58,7 +57,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     ct,
                     client,
                     spreadsheetId,
-                    GoogleSheetsBindingStore.LoadDefault());
+                    GoogleSheetsBindingStore.LoadDefault(),
+                    ODDBEditorSettings.Setting.SheetLayoutMode == SheetLayoutMode.GroupByRootView,
+                    database);
             }
         }
 
@@ -68,18 +69,39 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             CancellationToken ct,
             IGoogleSheetsApiClient client,
             string spreadsheetId,
-            IGoogleSheetsBindingStore bindingStore = null)
+            IGoogleSheetsBindingStore bindingStore = null,
+            bool reconcileGroupedMembership = false,
+            ODDatabase database = null)
         {
             if (desiredSheets == null) throw new ArgumentNullException(nameof(desiredSheets));
             if (client == null) throw new ArgumentNullException(nameof(client));
             if (string.IsNullOrWhiteSpace(spreadsheetId)) throw new ArgumentException("Spreadsheet ID is required.", nameof(spreadsheetId));
 
             var snapshots = await client.ReadSpreadsheetAsync(spreadsheetId, ct);
+            ResolveLegacyTableIds(snapshots);
+            database = database ?? ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
+            foreach (var snapshot in snapshots)
+                GoogleSheetViewTypeNotes.RestoreForImport(snapshot, database);
             EnsureNoDuplicateTableMetadata(snapshots);
+            var reconciledDesiredSheets = ReconcileGroupedMembership(
+                desiredSheets,
+                snapshots,
+                reconcileGroupedMembership);
+            var effectiveDesiredSheets = GoogleSheetViewTypeNotes.PrepareForExport(
+                reconciledDesiredSheets,
+                database);
+            var duplicateDesiredSheet = effectiveDesiredSheets
+                .GroupBy(sheet => sheet.ID, StringComparer.Ordinal)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateDesiredSheet != null)
+            {
+                throw new InvalidOperationException(
+                    $"Multiple exported sheets use the same logical sheet ID '{duplicateDesiredSheet.Key}'.");
+            }
 
             var pending = new List<PendingSheetSync>();
             var reservedTitles = new List<string>(snapshots.Select(item => item.Title));
-            foreach (var desired in desiredSheets.Where(sheet => sheet != null))
+            foreach (var desired in effectiveDesiredSheets)
             {
                 var current = FindSnapshot(
                     snapshots,
@@ -173,6 +195,71 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             progress?.Report(1f);
         }
 
+        private static IReadOnlyList<SheetInfo> ReconcileGroupedMembership(
+            IReadOnlyList<SheetInfo> desiredSheets,
+            IReadOnlyList<GoogleSheetSnapshot> snapshots,
+            bool force)
+        {
+            var desired = desiredSheets.Where(sheet => sheet != null).ToList();
+            if (!force && !desired.Any(GroupedSheetCodec.IsGrouped))
+                return desired;
+
+            var exportedTableIds = new HashSet<string>(StringComparer.Ordinal);
+            var desiredPhysicalIds = new HashSet<string>(
+                desired.Select(sheet => sheet.ID),
+                StringComparer.Ordinal);
+            foreach (var sheet in desired)
+            {
+                if (GroupedSheetCodec.IsGrouped(sheet))
+                {
+                    foreach (var table in GroupedSheetCodec.Unpack(sheet))
+                        exportedTableIds.Add(table.ID);
+                }
+                else if (!string.IsNullOrEmpty(sheet.ID))
+                {
+                    exportedTableIds.Add(sheet.ID);
+                }
+            }
+
+            if (exportedTableIds.Count == 0)
+                return desired;
+
+            foreach (var snapshot in snapshots ?? Array.Empty<GoogleSheetSnapshot>())
+            {
+                if (snapshot == null
+                    || string.IsNullOrEmpty(snapshot.TableId)
+                    || desiredPhysicalIds.Contains(snapshot.TableId))
+                {
+                    continue;
+                }
+
+                var physical = new SheetInfo(snapshot.Title, snapshot.TableId)
+                {
+                    Values = snapshot.Values ?? new List<List<string>>()
+                };
+                if (!GroupedSheetCodec.IsGrouped(physical))
+                    continue;
+
+                var tables = GroupedSheetCodec.Unpack(physical);
+                var remaining = tables
+                    .Where(table => !exportedTableIds.Contains(table.ID))
+                    .ToList();
+                if (remaining.Count == tables.Count)
+                    continue;
+
+                var groupName = GetCell(physical.Values[0], 2);
+                if (string.IsNullOrEmpty(groupName))
+                    groupName = GetDisplayName(snapshot.Title, snapshot.TableId);
+                desired.Add(GroupedSheetCodec.Pack(
+                    groupName,
+                    snapshot.TableId,
+                    remaining));
+                desiredPhysicalIds.Add(snapshot.TableId);
+            }
+
+            return desired;
+        }
+
         private static async Task VerifyHeadersAsync(
             IGoogleSheetsApiClient client,
             string spreadsheetId,
@@ -214,6 +301,22 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             var requests = new List<Request>();
             var sheetId = pending.Current.SheetId;
+
+            // Clear ODDB-owned notes before dimensions move. Desired notes are
+            // written again after every row/column operation at final addresses.
+            foreach (var pair in pending.Current.CellNotes)
+            {
+                if (string.IsNullOrEmpty(pair.Value)
+                    || !pair.Value.StartsWith(GoogleSheetViewTypeNotes.NotePrefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                requests.Add(CreateCellNoteRequest(
+                    sheetId,
+                    pair.Key,
+                    null));
+            }
 
             foreach (var operation in pending.ColumnPlan.Operations)
             {
@@ -272,6 +375,24 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 });
             }
 
+            foreach (var insertion in valuePlan.RowInsertions)
+            {
+                requests.Add(new Request
+                {
+                    InsertDimension = new InsertDimensionRequest
+                    {
+                        Range = new DimensionRange
+                        {
+                            SheetId = sheetId,
+                            Dimension = "ROWS",
+                            StartIndex = insertion.StartRowNumber - 1,
+                            EndIndex = insertion.StartRowNumber - 1 + insertion.Count
+                        },
+                        InheritFromBefore = insertion.StartRowNumber > 1
+                    }
+                });
+            }
+
             if (valuePlan.RequiredRowCount > valuePlan.ProjectedGridRowCount)
             {
                 requests.Add(new Request
@@ -316,6 +437,23 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 });
             }
 
+            foreach (var pair in pending.Desired.CellNotes)
+            {
+                if (!string.IsNullOrEmpty(pair.Value)
+                    && pair.Value.StartsWith(GoogleSheetViewTypeNotes.NotePrefix, StringComparison.Ordinal))
+                {
+                    requests.Add(CreateCellNoteRequest(sheetId, pair.Key, pair.Value));
+                }
+            }
+
+            if (GroupedSheetCodec.IsGrouped(pending.Desired))
+            {
+                requests.AddRange(CreateGroupedRowFormatRequests(
+                    sheetId,
+                    pending.Desired,
+                    pending.ColumnPlan.ManagedColumnCount));
+            }
+
             if (!pending.Current.HasTableMetadata)
                 requests.Add(CreateSheetMetadata(sheetId, GoogleSheetConfig.TABLE_ID_METADATA_KEY, pending.Desired.ID));
             if (!pending.Current.HasSchemaVersionMetadata)
@@ -344,11 +482,153 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             return requests;
         }
 
+        private static Request CreateCellNoteRequest(
+            int sheetId,
+            SheetCellAddress address,
+            string note)
+        {
+            return new Request
+            {
+                RepeatCell = new RepeatCellRequest
+                {
+                    Range = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartRowIndex = address.RowIndex,
+                        EndRowIndex = address.RowIndex + 1,
+                        StartColumnIndex = address.ColumnIndex,
+                        EndColumnIndex = address.ColumnIndex + 1
+                    },
+                    Cell = new CellData { Note = note },
+                    Fields = "note"
+                }
+            };
+        }
+
+        private static IEnumerable<Request> CreateGroupedRowFormatRequests(
+            int sheetId,
+            SheetInfo sheet,
+            int managedColumnCount)
+        {
+            var managedRowCount = GroupedSheetCodec.GetManagedRowCount(sheet);
+            var runStyle = GroupedRowStyle.None;
+            var runStart = 0;
+            for (var rowIndex = 0; rowIndex <= managedRowCount; rowIndex++)
+            {
+                var style = rowIndex < managedRowCount
+                    ? GetGroupedRowStyle(GetCell(sheet.Values, rowIndex, 0))
+                    : GroupedRowStyle.None;
+                if (style == runStyle)
+                    continue;
+
+                if (runStyle != GroupedRowStyle.None)
+                {
+                    yield return CreateGroupedRowFormatRequest(
+                        sheetId,
+                        runStart,
+                        rowIndex,
+                        managedColumnCount,
+                        runStyle);
+                }
+
+                runStyle = style;
+                runStart = rowIndex;
+            }
+        }
+
+        private static GroupedRowStyle GetGroupedRowStyle(string marker)
+        {
+            if (string.Equals(marker, SheetConfig.GROUP_MARKER, StringComparison.Ordinal)
+                || string.Equals(marker, SheetConfig.GROUP_END_MARKER, StringComparison.Ordinal))
+                return GroupedRowStyle.Group;
+            if (string.Equals(marker, SheetConfig.TABLE_MARKER, StringComparison.Ordinal)
+                || string.Equals(marker, SheetConfig.ROW_NAME_MARKER, StringComparison.Ordinal)
+                || string.Equals(marker, SheetConfig.ROW_TYPE_MARKER, StringComparison.Ordinal))
+            {
+                return GroupedRowStyle.Metadata;
+            }
+            if (string.Equals(marker, SheetConfig.TABLE_END_MARKER, StringComparison.Ordinal))
+            {
+                return GroupedRowStyle.End;
+            }
+            return GroupedRowStyle.None;
+        }
+
+        private static Request CreateGroupedRowFormatRequest(
+            int sheetId,
+            int startRowIndex,
+            int endRowIndex,
+            int managedColumnCount,
+            GroupedRowStyle style)
+        {
+            return new Request
+            {
+                RepeatCell = new RepeatCellRequest
+                {
+                    Range = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartRowIndex = startRowIndex,
+                        EndRowIndex = endRowIndex,
+                        StartColumnIndex = 0,
+                        EndColumnIndex = managedColumnCount
+                    },
+                    Cell = new CellData
+                    {
+                        UserEnteredFormat = new CellFormat
+                        {
+                            BackgroundColorStyle = new ColorStyle
+                            {
+                                RgbColor = BackgroundColor(style)
+                            },
+                            TextFormat = new TextFormat
+                            {
+                                Bold = true,
+                                ForegroundColor = Rgb(1f, 1f, 1f)
+                            }
+                        }
+                    },
+                    Fields = "userEnteredFormat.backgroundColorStyle," +
+                             "userEnteredFormat.textFormat.foregroundColor," +
+                             "userEnteredFormat.textFormat.bold"
+                }
+            };
+        }
+
+        private static Color BackgroundColor(GroupedRowStyle style)
+        {
+            switch (style)
+            {
+                case GroupedRowStyle.Group:
+                    return Rgb(0.29f, 0.64f, 0.89f); // Sky blue
+                case GroupedRowStyle.Metadata:
+                    return Rgb(0.38f, 0.41f, 0.46f); // Neutral gray
+                case GroupedRowStyle.End:
+                    return Rgb(0.79f, 0.42f, 0.42f); // Soft red
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(style), style, null);
+            }
+        }
+
+        private static Color Rgb(float red, float green, float blue)
+        {
+            return new Color
+            {
+                Red = red,
+                Green = green,
+                Blue = blue,
+                Alpha = 1f
+            };
+        }
+
         private static ValueSyncPlan BuildValuePlan(
             SheetInfo desired,
             GoogleSheetSnapshot current,
             int managedColumnCount)
         {
+            if (GroupedSheetCodec.IsGrouped(desired))
+                return BuildGroupedValuePlan(desired, current, managedColumnCount);
+
             var plan = new ValueSyncPlan();
             var quotedTitle = GoogleSheetsApiClient.QuoteTitle(current.Title);
             var lastColumn = ToColumnName(managedColumnCount);
@@ -418,6 +698,67 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             plan.RequiredRowCount = Math.Max(2, nextRowNumber - 1);
             plan.ProjectedGridRowCount = Math.Max(1, current.RowCount - deletedRowNumbers.Count);
 
+            return plan;
+        }
+
+        private static ValueSyncPlan BuildGroupedValuePlan(
+            SheetInfo desired,
+            GoogleSheetSnapshot current,
+            int managedColumnCount)
+        {
+            var plan = new ValueSyncPlan();
+            GroupedSheetCodec.Unpack(desired);
+            var desiredRowCount = desired.Values?.Count ?? 0;
+            if (desiredRowCount == 0)
+                throw new InvalidOperationException($"Grouped sheet '{desired.Name}' has no managed rows.");
+
+            var currentSheet = new SheetInfo(current.Title, current.TableId)
+            {
+                Values = current.Values ?? new List<List<string>>()
+            };
+            var currentIsGrouped = GroupedSheetCodec.IsGrouped(currentSheet);
+            if (currentIsGrouped)
+                GroupedSheetCodec.Unpack(currentSheet);
+            var currentManagedRowCount = currentIsGrouped
+                ? GroupedSheetCodec.GetManagedRowCount(currentSheet)
+                : 0;
+
+            if (currentIsGrouped && desiredRowCount < currentManagedRowCount)
+            {
+                plan.RowDeletions.Add(new RowDeletionRange(
+                    desiredRowCount + 1,
+                    currentManagedRowCount));
+            }
+            else if (currentIsGrouped && desiredRowCount > currentManagedRowCount)
+            {
+                plan.RowInsertions.Add(new RowInsertionRange(
+                    currentManagedRowCount + 1,
+                    desiredRowCount - currentManagedRowCount));
+            }
+
+            var quotedTitle = GoogleSheetsApiClient.QuoteTitle(current.Title);
+            var lastColumn = ToColumnName(managedColumnCount);
+            var values = new List<IList<object>>(desiredRowCount);
+            for (var rowIndex = 0; rowIndex < desiredRowCount; rowIndex++)
+            {
+                values.Add(ToObjectRow(GetPaddedRow(
+                    desired.Values,
+                    rowIndex,
+                    managedColumnCount)));
+            }
+            plan.Writes.Add(new ValueRange
+            {
+                Range = $"{quotedTitle}!A1:{lastColumn}{desiredRowCount}",
+                MajorDimension = "ROWS",
+                Values = values
+            });
+
+            plan.RequiredRowCount = desiredRowCount;
+            plan.ProjectedGridRowCount = currentIsGrouped
+                ? current.RowCount
+                  - Math.Max(0, currentManagedRowCount - desiredRowCount)
+                  + Math.Max(0, desiredRowCount - currentManagedRowCount)
+                : current.RowCount;
             return plan;
         }
 
@@ -620,6 +961,21 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
         private static void ResolveLegacyTableIds(IEnumerable<GoogleSheetSnapshot> snapshots)
         {
+            var snapshotList = snapshots?.Where(snapshot => snapshot != null).ToList()
+                               ?? new List<GoogleSheetSnapshot>();
+            foreach (var snapshot in snapshotList)
+            {
+                if (snapshot.HasTableMetadata
+                    || GetCell(snapshot.Values, 0, 0) != SheetConfig.GROUP_MARKER)
+                {
+                    continue;
+                }
+
+                var groupId = GetCell(snapshot.Values, 0, 1);
+                if (!string.IsNullOrEmpty(groupId))
+                    snapshot.TableId = groupId;
+            }
+
             var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
             if (database == null)
                 return;
@@ -630,9 +986,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 .OrderByDescending(id => id.Length)
                 .ToList();
 
-            foreach (var snapshot in snapshots)
+            foreach (var snapshot in snapshotList)
             {
                 if (snapshot.HasTableMetadata || !IsOddbSheet(snapshot))
+                    continue;
+                if (GetCell(snapshot.Values, 0, 0) == SheetConfig.GROUP_MARKER)
                     continue;
                 var matched = knownIds.FirstOrDefault(id =>
                     snapshot.Title.EndsWith("_" + id, StringComparison.Ordinal));
@@ -644,7 +1002,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private static bool IsOddbSheet(GoogleSheetSnapshot snapshot)
         {
             return snapshot.HasTableMetadata
-                   || GetCell(snapshot.Values, 0, 0) == SheetConfig.ROW_NAME_MARKER;
+                   || GetCell(snapshot.Values, 0, 0) == SheetConfig.ROW_NAME_MARKER
+                   || GetCell(snapshot.Values, 0, 0) == SheetConfig.GROUP_MARKER;
         }
 
         private static void EnsureNoDuplicateTableMetadata(IEnumerable<GoogleSheetSnapshot> snapshots)
@@ -737,6 +1096,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             public List<ValueRange> Writes { get; } = new List<ValueRange>();
             public List<RowDeletionRange> RowDeletions { get; } = new List<RowDeletionRange>();
+            public List<RowInsertionRange> RowInsertions { get; } = new List<RowInsertionRange>();
             public List<int> NewRowNumbers { get; } = new List<int>();
             public int RequiredRowCount { get; set; }
             public int ProjectedGridRowCount { get; set; }
@@ -759,6 +1119,26 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 
             public int StartRowNumber { get; }
             public int EndRowNumber { get; }
+        }
+
+        private sealed class RowInsertionRange
+        {
+            public RowInsertionRange(int startRowNumber, int count)
+            {
+                StartRowNumber = startRowNumber;
+                Count = count;
+            }
+
+            public int StartRowNumber { get; }
+            public int Count { get; }
+        }
+
+        private enum GroupedRowStyle
+        {
+            None,
+            Group,
+            Metadata,
+            End
         }
 
         private sealed class HeaderVerification

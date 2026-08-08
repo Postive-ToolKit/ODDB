@@ -589,6 +589,7 @@ namespace TeamODD.ODDB.Editors.Window
             ODDBBackup.CreatePreSaveBackup(fullPath, PreSaveBackupKeep);
             _database.Save(fullPath);
             _commandProcessor.MarkSaved();
+            Debug.Log($"[ODDB] Database saved: {fullPath}");
         }
 
         public bool IsDirty => _commandProcessor.IsDirty;
@@ -675,7 +676,17 @@ namespace TeamODD.ODDB.Editors.Window
             try
             {
                 EditorApplication.LockReloadAssemblies();
-                var sheets = await backend.LoadAsync(ctx, progress, ct);
+                var physicalSheets = await backend.LoadAsync(ctx, progress, ct);
+                var scopedPhysicalSheets = SheetLayoutPlanner.FilterPhysicalSheetsForImport(
+                    physicalSheets,
+                    _database,
+                    scope,
+                    ODDBEditorSettings.Setting.SheetLayoutMode);
+                var unpackedSheets = GroupedSheetCodec.UnpackAll(scopedPhysicalSheets);
+                var sheets = SheetLayoutPlanner.FilterImportedSheets(
+                    unpackedSheets,
+                    _database,
+                    ODDBEditorSettings.Setting.SheetLayoutMode);
                 var validationReport = SheetImportValidator.Validate(sheets, scope, _database);
                 if (validationReport.Issues.Count > 0)
                 {
@@ -724,13 +735,14 @@ namespace TeamODD.ODDB.Editors.Window
 
         private IReadOnlyList<SheetInfo> CollectSheets(ExportScope scope)
         {
-            var converter = new ODDBSheetConverter();
-            if (scope.All) return converter.GetAllSheets();
-
-            if (_database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table table)
-                throw new InvalidOperationException(
-                    $"Table '{scope.TargetTableId}' not found in current database.");
-            return new List<SheetInfo> { converter.ExportTable(table) };
+            var converter = new ODDBSheetConverter(_database);
+            var layout = ODDBEditorSettings.Setting.SheetLayoutMode;
+            var logicalSheets = SheetLayoutPlanner.SelectLogicalSheetsForExport(
+                _database,
+                converter,
+                scope,
+                layout);
+            return SheetLayoutPlanner.Pack(logicalSheets, _database, layout);
         }
 
         private IReadOnlyList<SheetInfo> ApplySheetsToDatabase(

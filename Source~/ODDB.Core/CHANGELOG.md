@@ -2,6 +2,21 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## Unreleased
+
+### feat(sheets): group descendant tables by root View
+
+- Added an opt-in `GroupByRootView` layout for Google Sheets and CSV while preserving `PerTable` as the compatibility default.
+- Added versioned `#ODDB_GROUP` and `#TABLE` blocks so heterogeneous descendant tables share one physical sheet without sharing a schema.
+- Selected-table export now refreshes the entire root-View group and removes reparented table blocks from previous ODDB-managed groups.
+- Grouped imports are unpacked before existing validation, diff preview, backup, and table application logic.
+- Generalized local Google bindings from table IDs to physical sheet keys with automatic version 1 migration.
+- Displayed Google Sheets View-reference types by View name while storing the stable View ID in the type cell note, with legacy ID and name-based import fallbacks.
+- Added color-coded Google Sheets marker rows for grouped layouts while leaving user-managed columns untouched.
+- Added an explicit Unity Console success log after Ctrl+S finishes saving the ODDB database and prevented backup rotation from leaving orphaned Unity `.meta` files.
+- Restored the Generated Code Path text field and Browse button in IMGUI-based settings inspectors.
+- ODDB.Core runtime APIs and database serialization are unchanged.
+
 ## v2.7.2 — 2026-08-08
 
 ### feat(sheets): persist sheet bindings and delete removed rows

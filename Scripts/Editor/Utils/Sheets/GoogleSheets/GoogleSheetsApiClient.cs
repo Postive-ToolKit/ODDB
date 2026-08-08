@@ -34,6 +34,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
     {
         private const int MaxRangesPerBatch = 5000;
         private const int MaxBatchPayloadCharacters = 1500000;
+        private const int MaxNoteRangesPerGet = 200;
+        private const int MaxNoteRangeCharacters = 12000;
         private readonly SheetsService _service;
 
         private GoogleSheetsApiClient(SheetsService service)
@@ -101,7 +103,115 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     snapshots[index].TableId = TryReadLegacyTableId(snapshots[index].Title);
             }
 
+            await ReadCellNotesAsync(spreadsheetId, snapshots, ct);
+
             return snapshots;
+        }
+
+        private async Task ReadCellNotesAsync(
+            string spreadsheetId,
+            IReadOnlyList<GoogleSheetSnapshot> snapshots,
+            CancellationToken ct)
+        {
+            var ranges = new List<string>();
+            foreach (var snapshot in snapshots)
+            {
+                for (var rowIndex = 0; rowIndex < snapshot.Values.Count; rowIndex++)
+                {
+                    var row = snapshot.Values[rowIndex];
+                    if (row == null
+                        || row.Count <= 2
+                        || !string.Equals(row[0], SheetConfig.ROW_TYPE_MARKER, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var rowNumber = rowIndex + 1;
+                    // BatchGet trims trailing empty values. Every View type has a
+                    // non-empty value, so the returned row width is sufficient and
+                    // avoids scanning a potentially very wide designer grid.
+                    var lastColumn = row.Count;
+                    ranges.Add(
+                        $"{QuoteTitle(snapshot.Title)}!C{rowNumber}:{ToColumnName(lastColumn)}{rowNumber}");
+                }
+            }
+
+            if (ranges.Count == 0)
+                return;
+
+            foreach (var rangeChunk in ChunkNoteRanges(ranges))
+            {
+                var spreadsheet = await ExecuteWithRetryAsync(() =>
+                {
+                    var request = _service.Spreadsheets.Get(spreadsheetId);
+                    request.IncludeGridData = true;
+                    request.Ranges = rangeChunk;
+                    request.Fields = "sheets(properties(sheetId),data(startRow,startColumn,rowData(values(note))))";
+                    return request.ExecuteAsync(ct);
+                }, ct);
+
+                ApplyCellNotes(snapshots, spreadsheet);
+            }
+        }
+
+        private static IEnumerable<List<string>> ChunkNoteRanges(IReadOnlyList<string> ranges)
+        {
+            var current = new List<string>();
+            var characterCount = 0;
+            foreach (var range in ranges)
+            {
+                var length = range?.Length ?? 0;
+                if (current.Count > 0
+                    && (current.Count >= MaxNoteRangesPerGet
+                        || characterCount + length > MaxNoteRangeCharacters))
+                {
+                    yield return current;
+                    current = new List<string>();
+                    characterCount = 0;
+                }
+
+                current.Add(range);
+                characterCount += length;
+            }
+
+            if (current.Count > 0)
+                yield return current;
+        }
+
+        internal static void ApplyCellNotes(
+            IReadOnlyList<GoogleSheetSnapshot> snapshots,
+            Spreadsheet spreadsheet)
+        {
+            if (snapshots == null || spreadsheet == null)
+                return;
+            var bySheetId = snapshots.ToDictionary(snapshot => snapshot.SheetId);
+            foreach (var sheet in spreadsheet.Sheets ?? Array.Empty<Sheet>())
+            {
+                var sheetId = sheet.Properties?.SheetId;
+                if (sheetId == null || !bySheetId.TryGetValue(sheetId.Value, out var snapshot))
+                    continue;
+
+                foreach (var data in sheet.Data ?? Array.Empty<GridData>())
+                {
+                    var startRow = data.StartRow ?? 0;
+                    var startColumn = data.StartColumn ?? 0;
+                    var rows = data.RowData ?? Array.Empty<RowData>();
+                    for (var rowOffset = 0; rowOffset < rows.Count; rowOffset++)
+                    {
+                        var cells = rows[rowOffset]?.Values ?? Array.Empty<CellData>();
+                        for (var columnOffset = 0; columnOffset < cells.Count; columnOffset++)
+                        {
+                            var note = cells[columnOffset]?.Note;
+                            if (!string.IsNullOrEmpty(note))
+                            {
+                                snapshot.CellNotes[new SheetCellAddress(
+                                    startRow + rowOffset,
+                                    startColumn + columnOffset)] = note;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         public async Task<List<GoogleSheetSnapshot>> CreateSheetsAsync(
@@ -143,6 +253,22 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 });
             }
 
+            return result;
+        }
+
+        private static string ToColumnName(int oneBasedColumn)
+        {
+            if (oneBasedColumn <= 0)
+                throw new ArgumentOutOfRangeException(nameof(oneBasedColumn));
+
+            var result = string.Empty;
+            var value = oneBasedColumn;
+            while (value > 0)
+            {
+                value--;
+                result = (char)('A' + value % 26) + result;
+                value /= 26;
+            }
             return result;
         }
 

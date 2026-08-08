@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using TeamODD.ODDB.Runtime.Attributes;
+using TeamODD.ODDB.Editors.Utils.Sheets;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -89,6 +90,7 @@ namespace TeamODD.ODDB.Editors.Settings
         public bool DisableGoogleSheetExport => _disableGoogleSheetExport;
         public string GoogleSpreadsheetId => _googleSpreadsheetId;
         public bool ConfirmGoogleSheetColumnDeletion => _confirmGoogleSheetColumnDeletion;
+        public SheetLayoutMode SheetLayoutMode => _sheetLayoutMode;
 
         internal bool HasGoogleOAuthClientConfiguration =>
             TryGetGoogleOAuthClientConfiguration(out _, out _, out _);
@@ -185,6 +187,11 @@ namespace TeamODD.ODDB.Editors.Settings
         [SerializeField] private string _mcpServerHost = "127.0.0.1";
         [Tooltip("Log every MCP call to the Unity console.")]
         [SerializeField] private bool _mcpServerVerbose = false;
+
+        [Space(10)]
+        [Header("Sheet Import / Export")]
+        [Tooltip("PerTable keeps one CSV file or Google Sheet tab per table. GroupByRootView combines descendant tables into blocks under their top-most parent View.")]
+        [SerializeField] private SheetLayoutMode _sheetLayoutMode = SheetLayoutMode.PerTable;
 
         [Space(10)]
         [Header("Google Sheets Settings")]

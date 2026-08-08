@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NUnit.Framework;
 using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.Window;
@@ -52,6 +53,43 @@ namespace TeamODD.ODDB.Tests.Editor
             finally
             {
                 before.OnViewChanged -= handler;
+            }
+        }
+
+        [Test]
+        public void RotateBackups_RemovesExpiredUnityMetaFiles()
+        {
+            var directory = Path.Combine(
+                Path.GetTempPath(),
+                "ODDB-BackupRotationTests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            try
+            {
+                var original = Path.Combine(directory, "ODDB.bytes");
+                File.WriteAllText(original, "database");
+                var backups = new string[3];
+                for (var index = 0; index < backups.Length; index++)
+                {
+                    backups[index] = original + $".pre-save-20260808-00000{index}.bak";
+                    File.WriteAllText(backups[index], "backup");
+                    File.WriteAllText(backups[index] + ".meta", "meta");
+                    File.SetLastWriteTimeUtc(backups[index], DateTime.UtcNow.AddMinutes(index));
+                }
+
+                ODDBBackup.RotateBackups(original, 1, ".pre-save-*.bak");
+
+                Assert.That(File.Exists(backups[2]), Is.True);
+                Assert.That(File.Exists(backups[2] + ".meta"), Is.True);
+                for (var index = 0; index < 2; index++)
+                {
+                    Assert.That(File.Exists(backups[index]), Is.False);
+                    Assert.That(File.Exists(backups[index] + ".meta"), Is.False);
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
             }
         }
     }

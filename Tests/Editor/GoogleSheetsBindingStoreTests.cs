@@ -81,5 +81,22 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(reloaded.TryGet("spreadsheet", "item", out var binding), Is.True);
             Assert.That(binding.sheetId, Is.EqualTo(10));
         }
+
+        [Test]
+        public void Load_VersionOneBindingMigratesToGenericSheetKeyFormat()
+        {
+            Directory.CreateDirectory(_directory);
+            File.WriteAllText(_path,
+                "{\"version\":1,\"spreadsheets\":[{\"spreadsheetId\":\"spreadsheet\",\"tables\":[" +
+                "{\"tableId\":\"item\",\"sheetId\":10,\"lastKnownTitle\":\"Items\"}]}]}");
+
+            var store = GoogleSheetsBindingStore.Load(_path);
+            Assert.That(store.TryGet("spreadsheet", "item", out var migrated), Is.True);
+            Assert.That(migrated.sheetId, Is.EqualTo(10));
+
+            var json = File.ReadAllText(_path);
+            Assert.That(json, Does.Contain("\"version\": 2"));
+            Assert.That(json, Does.Contain("\"sheetKey\": \"item\""));
+        }
     }
 }

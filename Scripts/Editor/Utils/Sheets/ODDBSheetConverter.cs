@@ -112,6 +112,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 return false;
 
             var text = value.Trim();
+            if (SheetViewTypeReference.TryParse(text, out var viewParameter))
+            {
+                fieldType = new FieldType("view", viewParameter);
+                return true;
+            }
+
             var typeKey = text;
             var param = string.Empty;
 

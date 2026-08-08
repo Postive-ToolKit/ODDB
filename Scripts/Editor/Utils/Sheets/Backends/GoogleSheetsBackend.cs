@@ -65,7 +65,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             ReportStage(progress, "Loading data from Google Sheets...", 0.1f);
             var sheets = await ODDBGoogleSheetUtility.LoadSheetsAsync(ctx.Scope, ct);
             ReportStage(progress, "Parsing sheet data...", 0.7f);
-            var filtered = FilterSheets(sheets, ctx.Scope);
+            // Grouped physical tabs use their root View ID, so scope is applied only
+            // after the use case unpacks them back into table-level SheetInfo values.
+            var filtered = FilterSheets(sheets, ExportScope.EntireDatabase);
             ReportSheets(progress, filtered, "Processing downloaded sheet", 0.75f, 0.95f);
             return filtered;
         }
@@ -80,7 +82,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
             if (sheets == null) throw new ArgumentNullException(nameof(sheets));
 
             ReportStage(progress, "Preparing sheets for export...", 0.1f);
-            var filtered = FilterSheets(sheets, ctx.Scope);
+            // The use case already selected the physical sheet(s) for this export.
+            var filtered = FilterSheets(sheets, ExportScope.EntireDatabase);
             ReportSheets(progress, filtered, "Preparing sheet for upload", 0.15f, 0.45f);
             ReportStage(progress, $"Uploading {filtered.Count} sheet(s) to Google Sheets...", 0.5f);
             await ODDBGoogleSheetUtility.SaveSheetsAsync(filtered, progress, ct);

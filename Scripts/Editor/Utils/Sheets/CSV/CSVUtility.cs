@@ -6,6 +6,9 @@ using TeamODD.ODDB.Editors;
 using UnityEditor;
 using UnityEngine;
 using TeamODD.ODDB.Editors.Utils.Sheets;
+using TeamODD.ODDB.Editors.Utils.Sheets.Backends;
+using TeamODD.ODDB.Editors.Settings;
+using TeamODD.ODDB.Runtime;
 namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
 {
     public class CSVUtility
@@ -17,7 +20,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
             try
             {
                 var sheetConverter = new ODDBSheetConverter();
-                var sheetList = sheetConverter.GetAllSheets();
+                var logicalSheets = sheetConverter.GetAllSheets();
+                var database = ODDBEditorRuntime.UseCase?.DataBase as ODDatabase;
+                var sheetList = database == null
+                    ? logicalSheets
+                    : new List<SheetInfo>(SheetLayoutPlanner.Pack(
+                        logicalSheets,
+                        database,
+                        ODDBEditorSettings.Setting.SheetLayoutMode));
 
                 if (sheetList == null || sheetList.Count == 0)
                 {
@@ -36,27 +46,36 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
 
                 // 각 시트를 개별 CSV 파일로 저장
                 var savedCount = 0;
+                var allWritesSucceeded = true;
                 foreach (var sheetInfo in sheetList)
                 {
                     if (sheetInfo.IsEmpty)
                         continue;
 
-                    var csvContent = ConvertSheetInfoToCSV(sheetInfo);
                     var fileName = $"{sheetInfo.Name}_{sheetInfo.ID}.csv";
-                    var filePath = Path.Combine(baseDirectory, fileName);
 
                     try
                     {
-                        var utf8WithBom = new UTF8Encoding(true);
-                        File.WriteAllText(filePath, csvContent, utf8WithBom);
+                        ExportSingleSheetToCSV(baseDirectory, sheetInfo);
                         savedCount++;
 
                         Debug.Log($"✅ CSV Save Success: {fileName} - {sheetInfo.RowCount} rows");
                     }
                     catch (Exception e)
                     {
+                        allWritesSucceeded = false;
                         Debug.LogError($"❌ CSV Save Failed: {fileName} - {e.Message}");
                     }
+                }
+
+                if (allWritesSucceeded
+                    && ODDBEditorSettings.Setting.SheetLayoutMode == SheetLayoutMode.GroupByRootView)
+                {
+                    CsvSheetBackend.RemoveMovedTablesFromOtherGroups(baseDirectory, sheetList);
+                }
+                else if (!allWritesSucceeded)
+                {
+                    Debug.LogWarning("CSV group cleanup was skipped because one or more files failed to save.");
                 }
 
                 Debug.Log($"🎉 CSV Export Completed: {savedCount} files saved to {baseDirectory}");
@@ -119,10 +138,18 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
                 }
 
                 // Save sheets to database
+                var logicalSheets = GroupedSheetCodec.UnpackAll(sheetList);
+                if (ODDBEditorRuntime.UseCase?.DataBase is ODDatabase database)
+                {
+                    logicalSheets = new List<SheetInfo>(SheetLayoutPlanner.FilterImportedSheets(
+                        logicalSheets,
+                        database,
+                        ODDBEditorSettings.Setting.SheetLayoutMode));
+                }
                 var sheetConverter = new ODDBSheetConverter();
-                sheetConverter.SaveAllSheets(sheetList);
+                sheetConverter.SaveAllSheets(logicalSheets);
 
-                Debug.Log($"🎉 CSV Import Completed: {sheetList.Count} sheets imported successfully");
+                Debug.Log($"🎉 CSV Import Completed: {logicalSheets.Count} tables imported successfully");
             }
             catch (Exception e)
             {
@@ -145,8 +172,20 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.CSV
                 throw new ArgumentNullException(nameof(sheet));
 
             var csvContent = ConvertSheetInfoToCSV(sheet);
-            var fileName = $"{sheet.Name}_{sheet.ID}.csv";
-            var filePath = Path.Combine(directory, fileName);
+            var matchingPaths = Directory.Exists(directory)
+                ? Array.FindAll(Directory.GetFiles(directory, "*.csv"), path =>
+                    TryImportSingleSheet(path, out var existing)
+                    && string.Equals(existing.ID, sheet.ID, StringComparison.Ordinal))
+                : Array.Empty<string>();
+            if (matchingPaths.Length > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Multiple CSV files map to sheet ID '{sheet.ID}'. Remove the duplicate files before exporting.");
+            }
+
+            var filePath = matchingPaths.Length == 1
+                ? matchingPaths[0]
+                : Path.Combine(directory, $"{sheet.Name}_{sheet.ID}.csv");
             File.WriteAllText(filePath, csvContent, new UTF8Encoding(true));
         }
 

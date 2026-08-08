@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TeamODD.ODDB.Editors.Utils.Sheets.CSV;
 using TeamODD.ODDB.Editors.UI.Progress;
+using TeamODD.ODDB.Editors.Settings;
 using UnityEditor;
 
 namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
@@ -42,7 +44,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 throw new InvalidOperationException(
                     $"CsvSheetBackend.LoadAsync requires '{ParamDirectory}' pointing to an existing directory.");
 
-            var files = FilterFiles(Directory.GetFiles(directory, "*.csv"), ctx.Scope);
+            // Load every candidate and let the use case unpack grouped files before
+            // applying ExportScope. A grouped file is keyed by its root View ID, not
+            // by the selected descendant Table ID.
+            var files = Directory.GetFiles(directory, "*.csv");
             var result = new List<SheetInfo>(files.Length);
             if (files.Length == 0)
             {
@@ -77,7 +82,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
 
             Directory.CreateDirectory(directory);
 
-            var filtered = FilterSheets(sheets, ctx.Scope);
+            // The use case already selected the exact physical sheets to export.
+            // Re-filtering by TargetTableId would discard a grouped root-View sheet.
+            var filtered = FilterSheets(sheets, ExportScope.EntireDatabase);
             if (filtered.Count == 0)
             {
                 ReportStage(progress, "No sheets to write.", 1f);
@@ -90,7 +97,56 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Backends
                 ReportStage(progress, $"Writing CSV ({i + 1}/{filtered.Count}): {filtered[i]?.Name}", value);
                 CSVUtility.ExportSingleSheetToCSV(directory, filtered[i]);
             }
+            if (ODDBEditorSettings.Setting.SheetLayoutMode == SheetLayoutMode.GroupByRootView)
+                RemoveMovedTablesFromOtherGroups(directory, filtered);
             return Task.CompletedTask;
+        }
+
+        internal static void RemoveMovedTablesFromOtherGroups(
+            string directory,
+            IReadOnlyList<SheetInfo> exportedSheets)
+        {
+            var exportedTableIds = new HashSet<string>(StringComparer.Ordinal);
+            var exportedPhysicalIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var sheet in exportedSheets)
+            {
+                if (sheet == null)
+                    continue;
+                exportedPhysicalIds.Add(sheet.ID);
+                if (GroupedSheetCodec.IsGrouped(sheet))
+                {
+                    foreach (var table in GroupedSheetCodec.Unpack(sheet))
+                        exportedTableIds.Add(table.ID);
+                }
+                else if (!string.IsNullOrEmpty(sheet.ID))
+                {
+                    exportedTableIds.Add(sheet.ID);
+                }
+            }
+
+            if (exportedTableIds.Count == 0)
+                return;
+
+            foreach (var path in Directory.GetFiles(directory, "*.csv"))
+            {
+                if (!CSVUtility.TryImportSingleSheet(path, out var existing)
+                    || !GroupedSheetCodec.IsGrouped(existing)
+                    || exportedPhysicalIds.Contains(existing.ID))
+                {
+                    continue;
+                }
+
+                var tables = GroupedSheetCodec.Unpack(existing);
+                var remaining = tables
+                    .Where(table => !exportedTableIds.Contains(table.ID))
+                    .ToList();
+                if (remaining.Count == tables.Count)
+                    continue;
+
+                CSVUtility.ExportSingleSheetToCSV(
+                    directory,
+                    GroupedSheetCodec.Pack(existing.Name, existing.ID, remaining));
+            }
         }
 
         private static void ReportStage(IProgress<float> progress, string stage, float value)

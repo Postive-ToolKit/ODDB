@@ -47,7 +47,21 @@ namespace TeamODD.ODDB.Editors.Window
             Array.Sort(backups, (a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
             for (var i = keep; i < backups.Length; i++)
             {
-                try { File.Delete(backups[i]); } catch { /* best-effort rotation */ }
+                try
+                {
+                    File.Delete(backups[i]);
+
+                    // Backups can live under Assets, where Unity creates a sidecar
+                    // metadata file. Deleting only the backup leaves an orphaned
+                    // .meta entry and produces an Editor console error on refresh.
+                    var metaPath = backups[i] + ".meta";
+                    if (File.Exists(metaPath))
+                        File.Delete(metaPath);
+                }
+                catch
+                {
+                    // Best-effort rotation: backup cleanup must never block Save.
+                }
             }
         }
     }

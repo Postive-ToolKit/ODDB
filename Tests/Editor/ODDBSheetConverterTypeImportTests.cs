@@ -74,5 +74,28 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(table.TotalFields[0].Type.TypeKey, Is.EqualTo("string"));
             Assert.That(table.TotalFields[1].Type.TypeKey, Is.EqualTo("int"));
         }
+
+        [Test]
+        public void ApplySheetToTable_ResolvesCompactReadableViewTypeByName()
+        {
+            var database = new ODDatabase();
+            var referenced = database.Views.Create(new ODDBID("item-data-id"));
+            referenced.Name = "ItemData";
+            var table = (Table)database.Tables.Create(new ODDBID("owner"));
+            table.AddField(new Field("Item", new FieldType("string")));
+            var sheet = new SheetInfo("Owner", "owner")
+            {
+                Values = new List<List<string>>
+                {
+                    new List<string> { "#NAME", "ID", "Item" },
+                    new List<string> { "#TYPE", "ID", "View-ItemData" }
+                }
+            };
+
+            new ODDBSheetConverter(database).ApplySheetToTable(table, sheet);
+
+            Assert.That(table.TotalFields[0].Type.TypeKey, Is.EqualTo("view"));
+            Assert.That(table.TotalFields[0].Type.Param, Is.EqualTo("item-data-id"));
+        }
     }
 }

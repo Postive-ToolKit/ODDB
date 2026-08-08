@@ -21,6 +21,9 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             if (desiredSheet == null) throw new ArgumentNullException(nameof(desiredSheet));
             if (currentSheet == null) throw new ArgumentNullException(nameof(currentSheet));
 
+            if (GroupedSheetCodec.IsGrouped(desiredSheet))
+                return BuildGroupedColumnPlan(desiredSheet, currentSheet);
+
             var desired = ReadDesiredColumns(desiredSheet);
             var current = ReadCurrentColumns(currentSheet);
             var result = new GoogleSheetColumnSyncPlan { ManagedColumnCount = desired.Count };
@@ -100,6 +103,72 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     ColumnIndex = index,
                     ColumnKey = desired[index].Key
                 });
+            }
+
+            return result;
+        }
+
+        private static GoogleSheetColumnSyncPlan BuildGroupedColumnPlan(
+            SheetInfo desiredSheet,
+            GoogleSheetSnapshot currentSheet)
+        {
+            var desiredCount = GroupedSheetCodec.GetManagedColumnCount(desiredSheet);
+            var currentIsGrouped = currentSheet.Values != null
+                                   && currentSheet.Values.Count > 0
+                                   && string.Equals(
+                                       GetCell(currentSheet.Values[0], 0),
+                                       SheetConfig.GROUP_MARKER,
+                                       StringComparison.Ordinal);
+            var currentManagedCount = currentIsGrouped
+                ? GroupedSheetCodec.GetManagedColumnCount(new SheetInfo(currentSheet.Title, currentSheet.TableId)
+                {
+                    Values = currentSheet.Values
+                })
+                : 0;
+
+            var result = new GoogleSheetColumnSyncPlan { ManagedColumnCount = desiredCount };
+            if (!currentIsGrouped)
+            {
+                for (var index = Math.Max(0, currentSheet.ColumnCount); index < desiredCount; index++)
+                {
+                    result.Operations.Add(new GoogleSheetColumnOperation
+                    {
+                        Kind = GoogleSheetColumnOperationKind.Insert,
+                        ToIndex = index,
+                        ColumnKey = "grouped:" + index,
+                        DisplayName = "Grouped column " + (index + 1)
+                    });
+                }
+                return result;
+            }
+
+            if (desiredCount > currentManagedCount)
+            {
+                for (var index = currentManagedCount; index < desiredCount; index++)
+                {
+                    result.Operations.Add(new GoogleSheetColumnOperation
+                    {
+                        Kind = GoogleSheetColumnOperationKind.Insert,
+                        ToIndex = index,
+                        ColumnKey = "grouped:" + index,
+                        DisplayName = "Grouped column " + (index + 1)
+                    });
+                }
+            }
+            else
+            {
+                for (var index = currentManagedCount - 1; index >= desiredCount; index--)
+                {
+                    var displayName = "Grouped column " + (index + 1);
+                    result.Operations.Add(new GoogleSheetColumnOperation
+                    {
+                        Kind = GoogleSheetColumnOperationKind.Delete,
+                        FromIndex = index,
+                        ColumnKey = "grouped:" + index,
+                        DisplayName = displayName
+                    });
+                    result.DeletedColumnNames.Add(displayName);
+                }
             }
 
             return result;

@@ -24,8 +24,24 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 return report;
             }
 
+            var seenTableIds = new HashSet<string>(StringComparer.Ordinal);
             for (var i = 0; i < sheets.Count; i++)
-                ValidateSheet(sheets[i], scope, database, report);
+            {
+                var sheet = sheets[i];
+                if (sheet != null
+                    && (scope.All || string.Equals(sheet.ID, scope.TargetTableId, StringComparison.Ordinal))
+                    && !string.IsNullOrEmpty(sheet.ID)
+                    && !seenTableIds.Add(sheet.ID))
+                {
+                    report.Add(new SheetValidationIssue(
+                        SheetValidationSeverity.Error,
+                        sheet.Name,
+                        sheet.ID,
+                        -1,
+                        $"Table '{sheet.ID}' appears in more than one imported sheet or group."));
+                }
+                ValidateSheet(sheet, scope, database, report);
+            }
 
             return report;
         }

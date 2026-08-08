@@ -8,13 +8,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
 {
     internal interface IGoogleSheetsBindingStore
     {
-        bool TryGet(string spreadsheetId, string tableId, out GoogleSheetBinding binding);
-        void Upsert(string spreadsheetId, string tableId, int sheetId, string lastKnownTitle);
+        bool TryGet(string spreadsheetId, string sheetKey, out GoogleSheetBinding binding);
+        void Upsert(string spreadsheetId, string sheetKey, int sheetId, string lastKnownTitle);
     }
 
     [Serializable]
     internal sealed class GoogleSheetBinding
     {
+        public string sheetKey = string.Empty;
+        // Read-only migration field for version 1 files.
         public string tableId = string.Empty;
         public int sheetId;
         public string lastKnownTitle = string.Empty;
@@ -23,7 +25,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             return new GoogleSheetBinding
             {
-                tableId = tableId,
+                sheetKey = sheetKey,
                 sheetId = sheetId,
                 lastKnownTitle = lastKnownTitle
             };
@@ -33,7 +35,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
     internal sealed class GoogleSheetsBindingStore : IGoogleSheetsBindingStore
     {
         internal const string DefaultFilePath = "UserSettings/ODDBGoogleSheetsBindings.json";
-        private const int CurrentVersion = 1;
+        private const int CurrentVersion = 2;
 
         private readonly string _filePath;
         private readonly GoogleSheetsBindingPayload _payload;
@@ -64,8 +66,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                     return new GoogleSheetsBindingStore(filePath, CreateEmptyPayload());
 
                 var payload = JsonUtility.FromJson<GoogleSheetsBindingPayload>(json);
+                var requiresMigrationSave = payload != null && payload.version != CurrentVersion;
                 ValidateAndNormalize(payload);
-                return new GoogleSheetsBindingStore(filePath, payload);
+                var store = new GoogleSheetsBindingStore(filePath, payload);
+                if (requiresMigrationSave)
+                    store.Save();
+                return store;
             }
             catch (Exception e)
             {
@@ -74,12 +80,12 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             }
         }
 
-        public bool TryGet(string spreadsheetId, string tableId, out GoogleSheetBinding binding)
+        public bool TryGet(string spreadsheetId, string sheetKey, out GoogleSheetBinding binding)
         {
             binding = null;
             var spreadsheet = FindSpreadsheet(spreadsheetId);
-            var found = spreadsheet?.tables?.FirstOrDefault(item =>
-                item != null && string.Equals(item.tableId, tableId, StringComparison.Ordinal));
+            var found = spreadsheet?.sheets?.FirstOrDefault(item =>
+                item != null && string.Equals(item.sheetKey, sheetKey, StringComparison.Ordinal));
             if (found == null)
                 return false;
 
@@ -87,10 +93,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             return true;
         }
 
-        public void Upsert(string spreadsheetId, string tableId, int sheetId, string lastKnownTitle)
+        public void Upsert(string spreadsheetId, string sheetKey, int sheetId, string lastKnownTitle)
         {
             spreadsheetId = RequireValue(spreadsheetId, nameof(spreadsheetId));
-            tableId = RequireValue(tableId, nameof(tableId));
+            sheetKey = RequireValue(sheetKey, nameof(sheetKey));
             if (sheetId < 0)
                 throw new ArgumentOutOfRangeException(nameof(sheetId));
 
@@ -100,27 +106,27 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 spreadsheet = new GoogleSpreadsheetBinding
                 {
                     spreadsheetId = spreadsheetId,
-                    tables = new List<GoogleSheetBinding>()
+                    sheets = new List<GoogleSheetBinding>()
                 };
                 _payload.spreadsheets.Add(spreadsheet);
             }
 
-            var conflicting = spreadsheet.tables.FirstOrDefault(item =>
+            var conflicting = spreadsheet.sheets.FirstOrDefault(item =>
                 item != null
                 && item.sheetId == sheetId
-                && !string.Equals(item.tableId, tableId, StringComparison.Ordinal));
+                && !string.Equals(item.sheetKey, sheetKey, StringComparison.Ordinal));
             if (conflicting != null)
             {
                 throw new InvalidOperationException(
-                    $"Google Sheet ID '{sheetId}' is already bound to ODDB table '{conflicting.tableId}'.");
+                    $"Google Sheet ID '{sheetId}' is already bound to ODDB sheet key '{conflicting.sheetKey}'.");
             }
 
-            var existing = spreadsheet.tables.FirstOrDefault(item =>
-                item != null && string.Equals(item.tableId, tableId, StringComparison.Ordinal));
+            var existing = spreadsheet.sheets.FirstOrDefault(item =>
+                item != null && string.Equals(item.sheetKey, sheetKey, StringComparison.Ordinal));
             if (existing == null)
             {
-                existing = new GoogleSheetBinding { tableId = tableId };
-                spreadsheet.tables.Add(existing);
+                existing = new GoogleSheetBinding { sheetKey = sheetKey };
+                spreadsheet.sheets.Add(existing);
             }
             else if (existing.sheetId == sheetId
                 && string.Equals(existing.lastKnownTitle ?? string.Empty, lastKnownTitle ?? string.Empty, StringComparison.Ordinal))
@@ -177,6 +183,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         {
             if (payload == null)
                 throw new InvalidDataException("The binding file is empty or invalid.");
+            if (payload.version == 1)
+                MigrateVersionOne(payload);
             if (payload.version != CurrentVersion)
                 throw new InvalidDataException($"Unsupported Google Sheets binding version '{payload.version}'.");
 
@@ -189,20 +197,42 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 if (!spreadsheetIds.Add(spreadsheet.spreadsheetId))
                     throw new InvalidDataException($"Spreadsheet '{spreadsheet.spreadsheetId}' appears more than once in the binding file.");
 
-                spreadsheet.tables = spreadsheet.tables ?? new List<GoogleSheetBinding>();
-                var tableIds = new HashSet<string>(StringComparer.Ordinal);
+                spreadsheet.sheets = spreadsheet.sheets ?? new List<GoogleSheetBinding>();
+                var sheetKeys = new HashSet<string>(StringComparer.Ordinal);
                 var sheetIds = new HashSet<int>();
-                foreach (var table in spreadsheet.tables)
+                foreach (var sheet in spreadsheet.sheets)
                 {
-                    if (table == null || string.IsNullOrWhiteSpace(table.tableId) || table.sheetId < 0)
-                        throw new InvalidDataException($"Spreadsheet '{spreadsheet.spreadsheetId}' contains an invalid table binding.");
-                    if (!tableIds.Add(table.tableId))
-                        throw new InvalidDataException($"Table '{table.tableId}' appears more than once in the binding file.");
-                    if (!sheetIds.Add(table.sheetId))
-                        throw new InvalidDataException($"Sheet ID '{table.sheetId}' is bound more than once in spreadsheet '{spreadsheet.spreadsheetId}'.");
-                    table.lastKnownTitle = table.lastKnownTitle ?? string.Empty;
+                    if (sheet == null || string.IsNullOrWhiteSpace(sheet.sheetKey) || sheet.sheetId < 0)
+                        throw new InvalidDataException($"Spreadsheet '{spreadsheet.spreadsheetId}' contains an invalid sheet binding.");
+                    if (!sheetKeys.Add(sheet.sheetKey))
+                        throw new InvalidDataException($"Sheet key '{sheet.sheetKey}' appears more than once in the binding file.");
+                    if (!sheetIds.Add(sheet.sheetId))
+                        throw new InvalidDataException($"Sheet ID '{sheet.sheetId}' is bound more than once in spreadsheet '{spreadsheet.spreadsheetId}'.");
+                    sheet.lastKnownTitle = sheet.lastKnownTitle ?? string.Empty;
+                    sheet.tableId = string.Empty;
                 }
             }
+        }
+
+        private static void MigrateVersionOne(GoogleSheetsBindingPayload payload)
+        {
+            payload.spreadsheets = payload.spreadsheets ?? new List<GoogleSpreadsheetBinding>();
+            foreach (var spreadsheet in payload.spreadsheets)
+            {
+                if (spreadsheet == null)
+                    continue;
+                spreadsheet.sheets = spreadsheet.sheets ?? new List<GoogleSheetBinding>();
+                foreach (var legacy in spreadsheet.tables ?? new List<GoogleSheetBinding>())
+                {
+                    if (legacy == null)
+                        continue;
+                    legacy.sheetKey = legacy.tableId;
+                    legacy.tableId = string.Empty;
+                    spreadsheet.sheets.Add(legacy);
+                }
+                spreadsheet.tables = new List<GoogleSheetBinding>();
+            }
+            payload.version = CurrentVersion;
         }
 
         private static string RequireValue(string value, string parameterName)
@@ -224,6 +254,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         private sealed class GoogleSpreadsheetBinding
         {
             public string spreadsheetId = string.Empty;
+            public List<GoogleSheetBinding> sheets = new List<GoogleSheetBinding>();
+            // Read-only migration field for version 1 files.
             public List<GoogleSheetBinding> tables = new List<GoogleSheetBinding>();
         }
     }

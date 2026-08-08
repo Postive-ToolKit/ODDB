@@ -102,6 +102,96 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
+        public void GroupedSheetWiderSchema_InsertsBeforeTrailingUserColumn()
+        {
+            var currentPhysical = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "", "weapon", "Sword", "", "Designer note" }) });
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value", "Price", "Grade" },
+                    new[] { "#TYPE", "ID", "string", "int", "string" }) });
+
+            var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, GroupedSnapshot(currentPhysical));
+
+            var insertion = plan.Operations.Single(operation =>
+                operation.Kind == GoogleSheetColumnOperationKind.Insert);
+            Assert.That(insertion.ToIndex, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void GroupedSheetNarrowerSchema_DeletesManagedBoundaryColumn()
+        {
+            var currentPhysical = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value", "Price", "Grade" },
+                    new[] { "#TYPE", "ID", "string", "int", "string" },
+                    new[] { "", "weapon", "Sword", "100", "Rare", "Designer note" }) });
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" }) });
+
+            var plan = GoogleSheetSyncPlanner.BuildColumnPlan(desired, GroupedSnapshot(currentPhysical));
+
+            var deletion = plan.Operations.Single(operation =>
+                operation.Kind == GoogleSheetColumnOperationKind.Delete);
+            Assert.That(deletion.FromIndex, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void ApplyCellNotes_MapsGridOffsetsToSheetCoordinates()
+        {
+            var snapshot = Snapshot(
+                new[] { "#NAME", "ID", "Item" },
+                new[] { "#TYPE", "ID", "View-ItemData" });
+            var response = new Spreadsheet
+            {
+                Sheets = new List<Google.Apis.Sheets.v4.Data.Sheet>
+                {
+                    new Google.Apis.Sheets.v4.Data.Sheet
+                    {
+                        Properties = new SheetProperties { SheetId = snapshot.SheetId },
+                        Data = new List<GridData>
+                        {
+                            new GridData
+                            {
+                                StartRow = 1,
+                                StartColumn = 2,
+                                RowData = new List<RowData>
+                                {
+                                    new RowData
+                                    {
+                                        Values = new List<CellData>
+                                        {
+                                            new CellData { Note = "ODDB View ID: item-data-id" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            GoogleSheetsApiClient.ApplyCellNotes(new[] { snapshot }, response);
+
+            Assert.That(
+                snapshot.CellNotes[new SheetCellAddress(1, 2)],
+                Is.EqualTo("ODDB View ID: item-data-id"));
+        }
+
+        [Test]
         public async Task SaveCoreAsync_BatchesTwentySevenNewTablesAcrossSpreadsheet()
         {
             var desired = Enumerable.Range(0, 27)
@@ -456,6 +546,317 @@ namespace TeamODD.ODDB.Tests.Editor
                     new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id", bindings));
         }
 
+        [Test]
+        public async Task SaveCoreAsync_GroupedSheetShrinksManagedRowsAndWritesOneRange()
+        {
+            var currentPhysical = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[]
+                {
+                    Sheet(
+                        new[] { "#NAME", "ID", "Value" },
+                        new[] { "#TYPE", "ID", "string" },
+                        new[] { "", "weapon", "Sword" }),
+                    new SheetInfo("Currency", "currency")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" },
+                            new[] { "", "gold", "Gold" })
+                    }
+                });
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" },
+                    new[] { "", "weapon", "Sword" }) });
+            var current = GroupedSnapshot(currentPhysical);
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var deletion = client.StructuralRequests.Single(request =>
+                request.DeleteDimension?.Range?.Dimension == "ROWS");
+            Assert.That(deletion.DeleteDimension.Range.StartIndex, Is.EqualTo(desired.Values.Count));
+            Assert.That(deletion.DeleteDimension.Range.EndIndex, Is.EqualTo(currentPhysical.Values.Count));
+            Assert.That(client.WrittenRanges, Has.Count.EqualTo(1));
+            Assert.That(client.WrittenRanges[0].Range, Does.EndWith(desired.Values.Count.ToString()));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_GroupedSheetGrowsBeforeTrailingUserRows()
+        {
+            var currentPhysical = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[] { Sheet(
+                    new[] { "#NAME", "ID", "Value" },
+                    new[] { "#TYPE", "ID", "string" }) });
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[]
+                {
+                    Sheet(
+                        new[] { "#NAME", "ID", "Value" },
+                        new[] { "#TYPE", "ID", "string" }),
+                    new SheetInfo("Currency", "currency")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" })
+                    }
+                });
+            var current = GroupedSnapshot(currentPhysical);
+            current.Values.Add(new List<string> { "Designer notes below the managed group" });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var insertion = client.StructuralRequests.Single(request =>
+                request.InsertDimension?.Range?.Dimension == "ROWS");
+            Assert.That(insertion.InsertDimension.Range.StartIndex, Is.EqualTo(currentPhysical.Values.Count));
+            Assert.That(
+                insertion.InsertDimension.Range.EndIndex - insertion.InsertDimension.Range.StartIndex,
+                Is.EqualTo(desired.Values.Count - currentPhysical.Values.Count));
+            Assert.That(client.WrittenRanges, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_FormatsGroupedMarkerRows()
+        {
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[]
+                {
+                    new SheetInfo("Weapon", "weapon-item")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" },
+                            new[] { "", "sword", "Sword" })
+                    }
+                });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { GroupedSnapshot(desired) },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var formats = client.StructuralRequests
+                .Where(request => Convert.ToString(request.RepeatCell?.Fields)
+                    .Contains("userEnteredFormat"))
+                .Select(request => request.RepeatCell)
+                .ToList();
+            Assert.That(formats, Has.Count.EqualTo(4));
+
+            var group = formats.Single(format => format.Range.StartRowIndex == 0);
+            Assert.That(group.Range.EndRowIndex, Is.EqualTo(1));
+            AssertColor(group.Cell.UserEnteredFormat.BackgroundColorStyle.RgbColor, 0.29f, 0.64f, 0.89f);
+
+            var metadata = formats.Single(format => format.Range.StartRowIndex == 1);
+            Assert.That(metadata.Range.EndRowIndex, Is.EqualTo(4));
+            AssertColor(metadata.Cell.UserEnteredFormat.BackgroundColorStyle.RgbColor, 0.38f, 0.41f, 0.46f);
+
+            var end = formats.Single(format => format.Range.StartRowIndex == 5);
+            Assert.That(end.Range.EndRowIndex, Is.EqualTo(6));
+            AssertColor(end.Cell.UserEnteredFormat.BackgroundColorStyle.RgbColor, 0.79f, 0.42f, 0.42f);
+
+            var groupEnd = formats.Single(format => format.Range.StartRowIndex == 6);
+            Assert.That(groupEnd.Range.EndRowIndex, Is.EqualTo(7));
+            AssertColor(groupEnd.Cell.UserEnteredFormat.BackgroundColorStyle.RgbColor, 0.29f, 0.64f, 0.89f);
+
+            foreach (var format in formats)
+            {
+                Assert.That(format.Range.StartColumnIndex, Is.EqualTo(0));
+                Assert.That(format.Range.EndColumnIndex, Is.EqualTo(4));
+                Assert.That(format.Cell.UserEnteredFormat.TextFormat.Bold, Is.True);
+                AssertColor(
+                    format.Cell.UserEnteredFormat.TextFormat.ForegroundColor,
+                    1f,
+                    1f,
+                    1f);
+            }
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_ReparentedTableIsRemovedFromPreviousGroup()
+        {
+            var oldPhysical = GroupedSheetCodec.Pack(
+                "OldRoot",
+                "old-root",
+                new[]
+                {
+                    new SheetInfo("Weapon", "weapon-item")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" },
+                            new[] { "", "sword", "Sword" })
+                    }
+                });
+            var newPhysical = GroupedSheetCodec.Pack(
+                "NewRoot",
+                "new-root",
+                new[]
+                {
+                    new SheetInfo("Weapon", "weapon-item")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" },
+                            new[] { "", "sword", "Sword" })
+                    }
+                });
+            var oldSnapshot = GroupedSnapshot(oldPhysical);
+            oldSnapshot.TableId = "old-root";
+            oldSnapshot.Title = "OldRoot_old-root";
+            var emptyOld = GroupedSheetCodec.Pack("OldRoot", "old-root", Array.Empty<SheetInfo>());
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { oldSnapshot },
+                VerificationResults = new List<List<List<string>>>
+                {
+                    newPhysical.Values.Take(2).ToList(),
+                    emptyOld.Values.Take(2).ToList()
+                }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { newPhysical },
+                null,
+                CancellationToken.None,
+                client,
+                "spreadsheet-id",
+                null,
+                true);
+
+            Assert.That(client.CreateSheetsCallCount, Is.EqualTo(1));
+            Assert.That(client.WrittenRanges, Has.Count.EqualTo(2));
+            var oldGroupWrite = client.WrittenRanges.Single(range =>
+                range.Range.StartsWith("'OldRoot_old-root'!", StringComparison.Ordinal));
+            Assert.That(oldGroupWrite.Values.SelectMany(row => row).Any(value =>
+                string.Equals(Convert.ToString(value), "weapon-item", StringComparison.Ordinal)), Is.False);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_GroupMarkerRecoversRenamedTabWithoutMetadataOrBinding()
+        {
+            var desired = GroupedSheetCodec.Pack(
+                "ItemView",
+                "item-view",
+                new[]
+                {
+                    new SheetInfo("Weapon", "weapon-item")
+                    {
+                        Values = Rows(
+                            new[] { "#NAME", "ID", "Value" },
+                            new[] { "#TYPE", "ID", "string" })
+                    }
+                });
+            var current = GroupedSnapshot(desired);
+            current.Title = "Renamed by Designer";
+            current.TableId = string.Empty;
+            current.HasTableMetadata = false;
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            Assert.That(client.CreateSheetsCallCount, Is.Zero);
+            Assert.That(client.WrittenRanges.Single().Range, Does.StartWith("'Renamed by Designer'!"));
+            Assert.That(client.StructuralRequests.Any(request =>
+                request.CreateDeveloperMetadata?.DeveloperMetadata?.MetadataKey
+                == GoogleSheetConfig.TABLE_ID_METADATA_KEY), Is.True);
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_WritesStableViewIdAsCellNote()
+        {
+            var database = new TeamODD.ODDB.Runtime.ODDatabase();
+            var referenced = database.Views.Create(
+                new TeamODD.ODDB.Runtime.Utils.Converters.ODDBID("item-data-id"));
+            referenced.Name = "ItemData";
+            var desired = Sheet(
+                new[] { "#NAME", "ID", "Item" },
+                new[] { "#TYPE", "ID", "view - item-data-id" });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                VerificationResults = new List<List<List<string>>>
+                {
+                    Rows(
+                        new[] { "#NAME", "ID", "Item" },
+                        new[] { "#TYPE", "ID", "View-ItemData" })
+                }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired },
+                null,
+                CancellationToken.None,
+                client,
+                "spreadsheet-id",
+                null,
+                false,
+                database);
+
+            var noteRequest = client.StructuralRequests.Single(request =>
+                request.RepeatCell?.Cell?.Note == "ODDB View ID: item-data-id");
+            Assert.That(noteRequest.RepeatCell.Range.StartRowIndex, Is.EqualTo(1));
+            Assert.That(noteRequest.RepeatCell.Range.StartColumnIndex, Is.EqualTo(2));
+            Assert.That(client.WrittenRanges.Single().Values[1][2], Is.EqualTo("View-ItemData"));
+        }
+
+        [Test]
+        public async Task SaveCoreAsync_ClearsOnlyOddbOwnedCellNotes()
+        {
+            var desired = Sheet(
+                new[] { "#NAME", "ID", "Item" },
+                new[] { "#TYPE", "ID", "string" });
+            var current = ManagedSnapshot(
+                new[] { "#NAME", "ID", "Item" },
+                new[] { "#TYPE", "ID", "View-OldItem" });
+            current.ColumnKeys[2] = GoogleSheetConfig.FIELD_COLUMN_PREFIX + "Item";
+            current.CellNotes[new SheetCellAddress(1, 2)] = "ODDB View ID: old-item-id";
+            current.CellNotes[new SheetCellAddress(1, 3)] = "Designer note";
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                Snapshots = new List<GoogleSheetSnapshot> { current },
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var noteRequests = client.StructuralRequests
+                .Where(request => request.RepeatCell != null)
+                .ToList();
+            Assert.That(noteRequests, Has.Count.EqualTo(1));
+            Assert.That(noteRequests[0].RepeatCell.Range.StartColumnIndex, Is.EqualTo(2));
+            Assert.That(noteRequests[0].RepeatCell.Cell.Note, Is.Null);
+        }
+
         private static GoogleSheetSnapshot Snapshot(params string[][] rows)
         {
             return new GoogleSheetSnapshot
@@ -488,9 +889,33 @@ namespace TeamODD.ODDB.Tests.Editor
             return snapshot;
         }
 
+        private static GoogleSheetSnapshot GroupedSnapshot(SheetInfo grouped)
+        {
+            return new GoogleSheetSnapshot
+            {
+                SheetId = 10,
+                Title = "ItemView_item-view",
+                ColumnCount = Math.Max(26, GroupedSheetCodec.GetManagedColumnCount(grouped)),
+                RowCount = 1000,
+                TableId = grouped.ID,
+                HasTableMetadata = true,
+                HasSchemaVersionMetadata = true,
+                Values = grouped.Values.Select(row => new List<string>(row)).ToList()
+            };
+        }
+
         private static List<List<string>> Rows(params string[][] rows)
         {
             return rows.Select(row => row.ToList()).ToList();
+        }
+
+        private static void AssertColor(Color color, float red, float green, float blue)
+        {
+            Assert.That(color, Is.Not.Null);
+            Assert.That(color.Red, Is.EqualTo(red).Within(0.001f));
+            Assert.That(color.Green, Is.EqualTo(green).Within(0.001f));
+            Assert.That(color.Blue, Is.EqualTo(blue).Within(0.001f));
+            Assert.That(color.Alpha, Is.EqualTo(1f).Within(0.001f));
         }
 
         private sealed class RecordingGoogleSheetsApiClient : IGoogleSheetsApiClient
@@ -581,9 +1006,9 @@ namespace TeamODD.ODDB.Tests.Editor
             private readonly Dictionary<string, GoogleSheetBinding> _bindings =
                 new Dictionary<string, GoogleSheetBinding>(StringComparer.Ordinal);
 
-            public bool TryGet(string spreadsheetId, string tableId, out GoogleSheetBinding binding)
+            public bool TryGet(string spreadsheetId, string sheetKey, out GoogleSheetBinding binding)
             {
-                if (_bindings.TryGetValue(Key(spreadsheetId, tableId), out var found))
+                if (_bindings.TryGetValue(Key(spreadsheetId, sheetKey), out var found))
                 {
                     binding = found.Clone();
                     return true;
@@ -593,24 +1018,24 @@ namespace TeamODD.ODDB.Tests.Editor
                 return false;
             }
 
-            public void Upsert(string spreadsheetId, string tableId, int sheetId, string lastKnownTitle)
+            public void Upsert(string spreadsheetId, string sheetKey, int sheetId, string lastKnownTitle)
             {
-                _bindings[Key(spreadsheetId, tableId)] = new GoogleSheetBinding
+                _bindings[Key(spreadsheetId, sheetKey)] = new GoogleSheetBinding
                 {
-                    tableId = tableId,
+                    sheetKey = sheetKey,
                     sheetId = sheetId,
                     lastKnownTitle = lastKnownTitle
                 };
             }
 
-            public GoogleSheetBinding Get(string spreadsheetId, string tableId)
+            public GoogleSheetBinding Get(string spreadsheetId, string sheetKey)
             {
-                return _bindings[Key(spreadsheetId, tableId)];
+                return _bindings[Key(spreadsheetId, sheetKey)];
             }
 
-            private static string Key(string spreadsheetId, string tableId)
+            private static string Key(string spreadsheetId, string sheetKey)
             {
-                return spreadsheetId + "\n" + tableId;
+                return spreadsheetId + "\n" + sheetKey;
             }
         }
     }

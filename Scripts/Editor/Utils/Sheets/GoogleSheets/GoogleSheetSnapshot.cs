@@ -13,5 +13,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
         public bool HasSchemaVersionMetadata { get; set; }
         public List<List<string>> Values { get; set; } = new List<List<string>>();
         public Dictionary<int, string> ColumnKeys { get; } = new Dictionary<int, string>();
+        public Dictionary<SheetCellAddress, string> CellNotes { get; } =
+            new Dictionary<SheetCellAddress, string>();
     }
 }
