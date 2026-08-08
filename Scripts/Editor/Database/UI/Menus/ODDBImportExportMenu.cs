@@ -16,12 +16,12 @@ namespace TeamODD.ODDB.Editors.UI.Menus
         {
             menu.menu.AppendAction("CSV/All Tables",
                 _ => RunExport(useCase, ExportScope.EntireDatabase, new CsvSheetBackend()));
-            menu.menu.AppendAction("CSV/Selected Table",
+            menu.menu.AppendAction("CSV/Selected View or Table",
                 _ => RunExportSelected(useCase, new CsvSheetBackend()),
                 _ => SelectedStatus(useCase));
             menu.menu.AppendAction("Google Sheets/All Tables",
                 _ => RunExport(useCase, ExportScope.EntireDatabase, new GoogleSheetsBackend()));
-            menu.menu.AppendAction("Google Sheets/Selected Table",
+            menu.menu.AppendAction("Google Sheets/Selected View or Table",
                 _ => RunExportSelected(useCase, new GoogleSheetsBackend()),
                 _ => SelectedStatus(useCase));
         }
@@ -30,12 +30,12 @@ namespace TeamODD.ODDB.Editors.UI.Menus
         {
             menu.menu.AppendAction("CSV/All Tables",
                 _ => RunImport(useCase, ExportScope.EntireDatabase, new CsvSheetBackend()));
-            menu.menu.AppendAction("CSV/Selected Table",
+            menu.menu.AppendAction("CSV/Selected View or Table",
                 _ => RunImportSelected(useCase, new CsvSheetBackend()),
                 _ => SelectedStatus(useCase));
             menu.menu.AppendAction("Google Sheets/All Tables",
                 _ => RunImport(useCase, ExportScope.EntireDatabase, new GoogleSheetsBackend()));
-            menu.menu.AppendAction("Google Sheets/Selected Table",
+            menu.menu.AppendAction("Google Sheets/Selected View or Table",
                 _ => RunImportSelected(useCase, new GoogleSheetsBackend()),
                 _ => SelectedStatus(useCase));
         }
@@ -44,8 +44,21 @@ namespace TeamODD.ODDB.Editors.UI.Menus
         {
             if (string.IsNullOrEmpty(tableId) || useCase == null) return;
 
-            var capturedId = tableId;
-            var scope = ExportScope.SingleTable(capturedId);
+            AppendScopeContextMenu(menu, useCase, ExportScope.SingleTable(tableId));
+        }
+
+        public static void AppendViewContextMenu(GenericMenu menu, IODDBEditorUseCase useCase, string viewId)
+        {
+            if (string.IsNullOrEmpty(viewId) || useCase == null) return;
+
+            AppendScopeContextMenu(menu, useCase, ExportScope.ViewSubtree(viewId));
+        }
+
+        private static void AppendScopeContextMenu(
+            GenericMenu menu,
+            IODDBEditorUseCase useCase,
+            ExportScope scope)
+        {
 
             menu.AddItem(new GUIContent("Export/CSV"), false,
                 () => RunExport(useCase, scope, new CsvSheetBackend()));
@@ -59,29 +72,29 @@ namespace TeamODD.ODDB.Editors.UI.Menus
 
         private static DropdownMenuAction.Status SelectedStatus(IODDBEditorUseCase useCase)
         {
-            return useCase != null && useCase.TryGetSelectedTableId(out _)
+            return useCase != null && useCase.TryGetSelectedSheetScope(out _)
                 ? DropdownMenuAction.Status.Normal
                 : DropdownMenuAction.Status.Disabled;
         }
 
         private static void RunExportSelected(IODDBEditorUseCase useCase, ISheetBackend backend)
         {
-            if (!useCase.TryGetSelectedTableId(out var tableId))
+            if (!useCase.TryGetSelectedSheetScope(out var scope))
             {
-                EditorUtility.DisplayDialog("ODDB Export", "No table is currently selected.", "OK");
+                EditorUtility.DisplayDialog("ODDB Export", "No View or Table is currently selected.", "OK");
                 return;
             }
-            RunExport(useCase, ExportScope.SingleTable(tableId), backend);
+            RunExport(useCase, scope, backend);
         }
 
         private static void RunImportSelected(IODDBEditorUseCase useCase, ISheetBackend backend)
         {
-            if (!useCase.TryGetSelectedTableId(out var tableId))
+            if (!useCase.TryGetSelectedSheetScope(out var scope))
             {
-                EditorUtility.DisplayDialog("ODDB Import", "No table is currently selected.", "OK");
+                EditorUtility.DisplayDialog("ODDB Import", "No View or Table is currently selected.", "OK");
                 return;
             }
-            RunImport(useCase, ExportScope.SingleTable(tableId), backend);
+            RunImport(useCase, scope, backend);
         }
 
         private static async void RunExport(IODDBEditorUseCase useCase, ExportScope scope, ISheetBackend backend)

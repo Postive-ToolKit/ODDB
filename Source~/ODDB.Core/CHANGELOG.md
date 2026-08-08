@@ -2,6 +2,15 @@
 
 This source is versioned with the Unity package under `Source~/ODDB.Core`. The trailing `~` keeps Unity from importing the .NET project as Unity scripts.
 
+## Unreleased
+
+## v2.8.1 — 2026-08-09
+
+### feat(sheets): export and import selected View subtrees
+
+- Added View-aware Export/Import Selected so selecting a View processes all descendant Tables recursively while preserving root-group atomicity.
+- Aligned the embedded MCP server version with the Unity package version.
+
 ## v2.8.0 — 2026-08-08
 
 ### feat(sheets): group descendant tables by root View

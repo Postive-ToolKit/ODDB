@@ -54,6 +54,7 @@ Field names currently identify managed columns. Renaming a field is treated as d
 - Google Sheets displays View-reference types with readable names such as `View-ItemData` and stores the stable connection ID in an `ODDB View ID: ...` cell note. A renamed View is recovered through the note, while a missing note falls back to the displayed name. CSV uses the same readable type and stores the stable ID in a `#VIEW_ID` row directly below each `#TYPE` row.
 - In Google Sheets, `#ODDB_GROUP`/`#END_GROUP` rows use sky blue, `#TABLE`/`#NAME`/`#TYPE` rows use gray, and `#END_TABLE` rows use soft red; all marker rows use bold white text. Formatting is limited to ODDB-managed columns.
 - Exporting one selected table exports every sibling under the same root View, preventing accidental loss of sibling blocks.
+- Selecting a View enables Export/Import Selected for every descendant Table. Nested Views are traversed recursively; grouped exports refresh the complete root-View tab as one safe physical unit.
 - Reparenting a table adds it to the new group and removes its block from the previous ODDB-managed group.
 - When legacy per-table tabs and grouped tabs coexist, ODDB prefers data matching the active `Sheet Layout Mode`.
 - Rows below the managed group and user columns, including explicitly marked columns interleaved between managed columns, are preserved.

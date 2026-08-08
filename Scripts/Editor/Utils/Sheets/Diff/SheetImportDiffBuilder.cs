@@ -16,8 +16,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Diff
             if (sheets == null)
                 return report;
 
+            var targetIds = scope.All
+                ? null
+                : SheetLayoutPlanner.ResolveTargetTableIds(database, scope);
             foreach (var sheet in sheets)
-                report.AddSheet(BuildSheetDiff(sheet, scope, database));
+                report.AddSheet(BuildSheetDiff(sheet, scope, targetIds, database));
 
             return report;
         }
@@ -25,13 +28,14 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Diff
         private static SheetImportSheetDiff BuildSheetDiff(
             SheetInfo sheet,
             ExportScope scope,
+            ISet<string> targetIds,
             ODDatabase database)
         {
             if (sheet == null)
                 return new SheetImportSheetDiff(string.Empty, string.Empty, true, "Sheet is null.");
 
-            if (!scope.All && sheet.ID != scope.TargetTableId)
-                return new SheetImportSheetDiff(sheet.Name, sheet.ID, true, "Outside selected table scope.");
+            if (!scope.All && !targetIds.Contains(sheet.ID))
+                return new SheetImportSheetDiff(sheet.Name, sheet.ID, true, "Outside selected View or Table scope.");
 
             if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX))
                 return new SheetImportSheetDiff(sheet.Name, sheet.ID, true, "Ignored sheet.");

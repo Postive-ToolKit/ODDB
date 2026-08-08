@@ -169,6 +169,70 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
+        public void SelectedRootViewExport_IncludesAllDescendantTables()
+        {
+            var database = new ODDatabase();
+            var root = database.Views.Create(new ODDBID("item-view"));
+            var nested = database.Views.Create(new ODDBID("equipment-view"));
+            nested.ParentView = root;
+            var otherRoot = database.Views.Create(new ODDBID("quest-view"));
+
+            var weapon = (Table)database.Tables.Create(new ODDBID("weapon-item"));
+            weapon.ParentView = nested;
+            var currency = (Table)database.Tables.Create(new ODDBID("currency-item"));
+            currency.ParentView = root;
+            var quest = (Table)database.Tables.Create(new ODDBID("quest-item"));
+            quest.ParentView = otherRoot;
+
+            var selected = SheetLayoutPlanner.SelectLogicalSheetsForExport(
+                database,
+                new ODDBSheetConverter(database),
+                ExportScope.ViewSubtree("item-view"),
+                SheetLayoutMode.GroupByRootView);
+
+            Assert.That(
+                selected.Select(sheet => sheet.ID),
+                Is.EquivalentTo(new[] { "weapon-item", "currency-item" }));
+        }
+
+        [Test]
+        public void SelectedRootViewExport_PerTableIncludesOnlyDescendantTables()
+        {
+            var database = new ODDatabase();
+            var root = database.Views.Create(new ODDBID("item-view"));
+            var nested = database.Views.Create(new ODDBID("equipment-view"));
+            nested.ParentView = root;
+            var weapon = (Table)database.Tables.Create(new ODDBID("weapon-item"));
+            weapon.ParentView = nested;
+            var currency = (Table)database.Tables.Create(new ODDBID("currency-item"));
+            currency.ParentView = root;
+            database.Tables.Create(new ODDBID("settings"));
+
+            var selected = SheetLayoutPlanner.SelectLogicalSheetsForExport(
+                database,
+                new ODDBSheetConverter(database),
+                ExportScope.ViewSubtree("item-view"),
+                SheetLayoutMode.PerTable);
+
+            Assert.That(
+                selected.Select(sheet => sheet.ID),
+                Is.EquivalentTo(new[] { "weapon-item", "currency-item" }));
+        }
+
+        [Test]
+        public void EmptyViewScope_ThrowsClearError()
+        {
+            var database = new ODDatabase();
+            database.Views.Create(new ODDBID("empty-view"));
+
+            Assert.That(
+                () => SheetLayoutPlanner.ResolveTargetTableIds(
+                    database,
+                    ExportScope.ViewSubtree("empty-view")),
+                Throws.InvalidOperationException.With.Message.Contains("contains no descendant tables"));
+        }
+
+        [Test]
         public void Unpack_RejectsDuplicateTableIds()
         {
             var grouped = GroupedSheetCodec.Pack(
@@ -277,6 +341,63 @@ namespace TeamODD.ODDB.Tests.Editor
             var unpacked = GroupedSheetCodec.UnpackAll(scoped);
 
             Assert.That(unpacked.Select(sheet => sheet.ID), Is.EqualTo(new[] { "selected-table" }));
+        }
+
+        [Test]
+        public void SelectedRootViewImport_LoadsOnlyItsPhysicalGroup()
+        {
+            var database = new ODDatabase();
+            var selectedRoot = database.Views.Create(new ODDBID("selected-root"));
+            var first = (Table)database.Tables.Create(new ODDBID("first-table"));
+            first.ParentView = selectedRoot;
+            var second = (Table)database.Tables.Create(new ODDBID("second-table"));
+            second.ParentView = selectedRoot;
+
+            var selectedGroup = GroupedSheetCodec.Pack(
+                "Selected",
+                "selected-root",
+                new[]
+                {
+                    TableSheet("First", "first-table"),
+                    TableSheet("Second", "second-table")
+                });
+            var malformed = GroupedSheetCodec.Pack(
+                "Other",
+                "other-root",
+                new[] { TableSheet("Other", "other-table") });
+            malformed.Values.RemoveAt(malformed.Values.Count - 1);
+
+            var scoped = SheetLayoutPlanner.FilterPhysicalSheetsForImport(
+                new[] { malformed, selectedGroup },
+                database,
+                ExportScope.ViewSubtree("selected-root"),
+                SheetLayoutMode.GroupByRootView);
+            var unpacked = GroupedSheetCodec.UnpackAll(scoped);
+
+            Assert.That(
+                unpacked.Select(sheet => sheet.ID),
+                Is.EqualTo(new[] { "first-table", "second-table" }));
+        }
+
+        [Test]
+        public void ViewScopeValidator_RequiresEveryDescendantTable()
+        {
+            var database = new ODDatabase();
+            var root = database.Views.Create(new ODDBID("item-view"));
+            var first = (Table)database.Tables.Create(new ODDBID("first-table"));
+            first.ParentView = root;
+            var second = (Table)database.Tables.Create(new ODDBID("second-table"));
+            second.ParentView = root;
+
+            var report = SheetImportValidator.Validate(
+                new[] { TableSheet("First", "first-table") },
+                ExportScope.ViewSubtree("item-view"),
+                database);
+
+            Assert.That(report.HasErrors, Is.True);
+            Assert.That(
+                report.Issues.Any(issue => issue.Message.Contains("second-table")),
+                Is.True);
         }
 
         [Test]

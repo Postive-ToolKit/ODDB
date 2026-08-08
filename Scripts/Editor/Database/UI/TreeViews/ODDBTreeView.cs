@@ -294,12 +294,17 @@ namespace TeamODD.ODDB.Editors.UI
                 menu.AddSeparator(string.Empty);
                 ODDBImportExportMenu.AppendTableContextMenu(menu, _editorUseCase, capturedTableId);
             }
+            else if (_view is View contextView)
+            {
+                var capturedViewId = contextView.ID;
+                menu.AddSeparator(string.Empty);
+                ODDBImportExportMenu.AppendViewContextMenu(menu, _editorUseCase, capturedViewId);
+            }
 
             if (_view != null)
             {
                 var capturedViewId = _view.ID.ToString();
-                if (!(_view is Table))
-                    menu.AddSeparator(string.Empty);
+                menu.AddSeparator(string.Empty);
                 menu.AddItem(new GUIContent("Generate Code"), false, () =>
                     ODDBCodeGenMenu.RunGenerateSelection(new[] { capturedViewId }));
             }

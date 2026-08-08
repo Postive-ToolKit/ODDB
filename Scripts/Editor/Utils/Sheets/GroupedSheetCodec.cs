@@ -283,19 +283,43 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (scope.All)
                 return converter.GetAllSheets();
 
-            if (database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table selected)
-                throw new InvalidOperationException($"Table '{scope.TargetTableId}' not found in current database.");
+            var targetIds = ResolveTargetTableIds(database, scope);
+            if (targetIds.Count == 0)
+                throw new InvalidOperationException($"{scope} contains no descendant tables.");
 
-            if (mode == SheetLayoutMode.PerTable || FindRootView(selected) == null)
-                return new List<SheetInfo> { converter.ExportTable(selected) };
+            if (mode == SheetLayoutMode.PerTable)
+            {
+                return database.Tables.GetAll()
+                    .OfType<Table>()
+                    .Where(table => targetIds.Contains(table.ID.ToString()))
+                    .Select(converter.ExportTable)
+                    .ToList();
+            }
 
-            var rootId = FindRootView(selected).ID.ToString();
+            // A grouped tab is an atomic export unit. When a selected Table or nested
+            // View belongs to a root-View group, refresh every Table in that group so
+            // a partial export cannot remove sibling blocks from the physical sheet.
+            var rootIds = new HashSet<string>(StringComparer.Ordinal);
+            var standaloneIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var selected in database.Tables.GetAll().OfType<Table>()
+                         .Where(table => targetIds.Contains(table.ID.ToString())))
+            {
+                var root = FindRootView(selected);
+                if (root == null)
+                    standaloneIds.Add(selected.ID.ToString());
+                else
+                    rootIds.Add(root.ID.ToString());
+            }
+
             var result = new List<SheetInfo>();
             foreach (var candidate in database.Tables.GetAll().OfType<Table>())
             {
                 var candidateRoot = FindRootView(candidate);
-                if (candidateRoot != null && string.Equals(candidateRoot.ID.ToString(), rootId, StringComparison.Ordinal))
+                if ((candidateRoot != null && rootIds.Contains(candidateRoot.ID.ToString()))
+                    || (candidateRoot == null && standaloneIds.Contains(candidate.ID.ToString())))
+                {
                     result.Add(converter.ExportTable(candidate));
+                }
             }
             return result;
         }
@@ -363,30 +387,95 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (scope.All)
                 return physicalSheets.Where(sheet => sheet != null).ToList();
 
-            var rootId = database.Tables.Read(new ODDBID(scope.TargetTableId)) is Table table
-                ? FindRootView(table)?.ID.ToString()
-                : null;
+            var targetIds = ResolveTargetTableIds(database, scope);
+            var rootIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var table in database.Tables.GetAll().OfType<Table>()
+                         .Where(candidate => targetIds.Contains(candidate.ID.ToString())))
+            {
+                var rootId = FindRootView(table)?.ID.ToString();
+                if (!string.IsNullOrEmpty(rootId))
+                    rootIds.Add(rootId);
+            }
+
             var legacy = physicalSheets
                 .Where(sheet => sheet != null
                                 && !GroupedSheetCodec.IsGrouped(sheet)
-                                && string.Equals(sheet.ID, scope.TargetTableId, StringComparison.Ordinal))
+                                && targetIds.Contains(sheet.ID))
                 .ToList();
-            var grouped = string.IsNullOrEmpty(rootId)
-                ? new List<SheetInfo>()
-                : physicalSheets
-                    .Where(sheet => sheet != null
-                                    && GroupedSheetCodec.IsGrouped(sheet)
-                                    && string.Equals(
-                                        GroupedSheetCodec.GetGroupId(sheet),
-                                        rootId,
-                                        StringComparison.Ordinal))
-                    .ToList();
+            var grouped = physicalSheets
+                .Where(sheet => sheet != null
+                                && GroupedSheetCodec.IsGrouped(sheet)
+                                && rootIds.Contains(GroupedSheetCodec.GetGroupId(sheet)))
+                .ToList();
 
             if (mode == SheetLayoutMode.GroupByRootView && grouped.Count > 0)
-                return grouped;
+            {
+                var availableGroupIds = new HashSet<string>(
+                    grouped.Select(GroupedSheetCodec.GetGroupId),
+                    StringComparer.Ordinal);
+                var fallbackLegacy = legacy.Where(sheet =>
+                {
+                    if (database.Tables.Read(new ODDBID(sheet.ID)) is not Table table)
+                        return true;
+                    var rootId = FindRootView(table)?.ID.ToString();
+                    return string.IsNullOrEmpty(rootId) || !availableGroupIds.Contains(rootId);
+                });
+                return grouped.Concat(fallbackLegacy).ToList();
+            }
             if (legacy.Count > 0)
                 return legacy;
             return grouped;
+        }
+
+        internal static HashSet<string> ResolveTargetTableIds(ODDatabase database, ExportScope scope)
+        {
+            if (database == null) throw new ArgumentNullException(nameof(database));
+
+            if (scope.All)
+            {
+                return new HashSet<string>(
+                    database.Tables.GetAll().OfType<Table>().Select(table => table.ID.ToString()),
+                    StringComparer.Ordinal);
+            }
+
+            if (scope.IsSingleTable)
+            {
+                if (database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table)
+                    throw new InvalidOperationException($"Table '{scope.TargetTableId}' not found in current database.");
+                return new HashSet<string>(new[] { scope.TargetTableId }, StringComparer.Ordinal);
+            }
+
+            if (scope.IsViewSubtree)
+            {
+                if (database.Views.Read(new ODDBID(scope.TargetViewId)) is not View)
+                    throw new InvalidOperationException($"View '{scope.TargetViewId}' not found in current database.");
+
+                var result = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var table in database.Tables.GetAll().OfType<Table>())
+                {
+                    if (IsDescendantOf(table, scope.TargetViewId))
+                        result.Add(table.ID.ToString());
+                }
+                if (result.Count == 0)
+                    throw new InvalidOperationException(
+                        $"View '{scope.TargetViewId}' contains no descendant tables.");
+                return result;
+            }
+
+            throw new InvalidOperationException("Sheet scope has no target.");
+        }
+
+        private static bool IsDescendantOf(Table table, string ancestorViewId)
+        {
+            var current = table?.ParentView;
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            while (current != null && visited.Add(current.ID.ToString()))
+            {
+                if (string.Equals(current.ID.ToString(), ancestorViewId, StringComparison.Ordinal))
+                    return true;
+                current = current.ParentView;
+            }
+            return false;
         }
 
         internal static IView FindRootView(Table table)

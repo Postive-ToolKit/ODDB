@@ -54,6 +54,7 @@ OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화
 - Google Sheets의 View 참조 타입은 `View-ItemData`처럼 읽기 쉬운 View 이름으로 표시되고, 안정적인 연결 ID는 해당 타입 셀의 `ODDB View ID: ...` 노트에 저장됩니다. View 이름이 바뀌어도 노트 ID로 연결을 복구하며, 노트가 없으면 표시된 이름으로 가져옵니다. CSV도 같은 표시 이름을 사용하고 각 `#TYPE` 바로 아래의 `#VIEW_ID` 행에 안정적인 ID를 저장합니다.
 - Google Sheets에서는 `#ODDB_GROUP`/`#END_GROUP` 행을 하늘색, `#TABLE`/`#NAME`/`#TYPE` 행을 회색, `#END_TABLE` 행을 부드러운 붉은색으로 표시하며 모두 흰색 굵은 글자를 사용합니다. 서식은 ODDB 관리 컬럼 범위에만 적용됩니다.
 - 선택한 Table만 Export해도 같은 Root View의 모든 형제 Table을 함께 내보내 기존 블록 손실을 방지합니다.
+- View를 선택하면 모든 하위 Table을 대상으로 Export/Import Selected를 사용할 수 있습니다. 중첩 View도 재귀적으로 탐색하며, 그룹 Export는 안전한 물리 단위인 Root View 탭 전체를 갱신합니다.
 - Table의 부모 View가 바뀌면 새 그룹에 추가하고 이전 ODDB 그룹에서는 해당 블록을 제거합니다.
 - 기존 Table별 탭과 그룹 탭이 동시에 존재하면 현재 `Sheet Layout Mode`에 맞는 데이터를 우선 사용합니다.
 - 그룹 밖에 사용자가 추가한 행과 사용자 컬럼은 물론, 관리 컬럼 사이에 명시적으로 추가한 주석 컬럼도 보존됩니다.

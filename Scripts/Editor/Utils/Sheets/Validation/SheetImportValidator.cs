@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System;
+using System.Linq;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
@@ -24,12 +25,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 return report;
             }
 
+            var targetIds = scope.All
+                ? null
+                : SheetLayoutPlanner.ResolveTargetTableIds(database, scope);
             var seenTableIds = new HashSet<string>(StringComparer.Ordinal);
             for (var i = 0; i < sheets.Count; i++)
             {
                 var sheet = sheets[i];
                 if (sheet != null
-                    && (scope.All || string.Equals(sheet.ID, scope.TargetTableId, StringComparison.Ordinal))
+                    && (scope.All || targetIds.Contains(sheet.ID))
                     && !string.IsNullOrEmpty(sheet.ID)
                     && !seenTableIds.Add(sheet.ID))
                 {
@@ -40,7 +44,20 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                         -1,
                         $"Table '{sheet.ID}' appears in more than one imported sheet or group."));
                 }
-                ValidateSheet(sheet, scope, database, report);
+                ValidateSheet(sheet, scope, targetIds, database, report);
+            }
+
+            if (!scope.All)
+            {
+                foreach (var targetId in targetIds.Where(id => !seenTableIds.Contains(id)))
+                {
+                    report.Add(new SheetValidationIssue(
+                        SheetValidationSeverity.Error,
+                        string.Empty,
+                        targetId,
+                        -1,
+                        $"No imported sheet was found for selected table '{targetId}'."));
+                }
             }
 
             return report;
@@ -49,6 +66,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
         private static void ValidateSheet(
             SheetInfo sheet,
             ExportScope scope,
+            ISet<string> targetIds,
             ODDatabase database,
             SheetValidationReport report)
         {
@@ -63,7 +81,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 return;
             }
 
-            if (!scope.All && sheet.ID != scope.TargetTableId)
+            if (!scope.All && !targetIds.Contains(sheet.ID))
                 return;
 
             if (sheet.Name != null && sheet.Name.StartsWith(SheetConfig.IGNORE_PREFIX))

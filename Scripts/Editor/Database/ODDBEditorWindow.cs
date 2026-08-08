@@ -4,7 +4,6 @@ using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Runtime;
-using TeamODD.ODDB.Runtime.Enums;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -223,11 +222,7 @@ namespace TeamODD.ODDB.Editors.Window
         private void PushSelectionContext(string viewId)
         {
             if (_editorUseCase == null) return;
-            var tableId = !string.IsNullOrEmpty(viewId)
-                          && _editorUseCase.GetViewTypeByKey(viewId) == ODDBViewType.Table
-                ? viewId
-                : null;
-            _editorUseCase.SetSelectionContext(tableId);
+            _editorUseCase.SetSelectionContext(viewId);
         }
 
         private void OnDestroy()

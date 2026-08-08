@@ -100,8 +100,9 @@ namespace TeamODD.ODDB.Editors.Window
         public void JumpToHistory(ICommand command);
 
         // Selection push model (UI -> UseCase). UI pushes changes; UseCase never polls.
-        public void SetSelectionContext(string tableId);
+        public void SetSelectionContext(string viewId);
         public bool TryGetSelectedTableId(out string tableId);
+        public bool TryGetSelectedSheetScope(out ExportScope scope);
 
         // Sheet export/import via pluggable backend.
         public Task ExportAsync(

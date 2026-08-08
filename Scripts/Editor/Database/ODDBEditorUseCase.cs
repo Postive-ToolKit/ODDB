@@ -44,7 +44,7 @@ namespace TeamODD.ODDB.Editors.Window
         private ODDatabase _database;
         private readonly CommandProcessor _commandProcessor = new();
         private readonly Dictionary<string, IReadOnlyList<Table>> _inheritedTablesCache = new();
-        private string _selectedTableId;
+        private string _selectedViewId;
         private const int PreImportBackupKeep = 3;
         private const int PreSaveBackupKeep = 3;
         private ODDBLoadReport _loadReport;
@@ -178,7 +178,7 @@ namespace TeamODD.ODDB.Editors.Window
             _loadReport = loadReport;
             AttachDatabaseEvents(_database);
             _inheritedTablesCache.Clear();
-            _selectedTableId = null;
+            _selectedViewId = null;
             ODDBEditorDI.RegisterSelfAndInterfaces(_database);
 
             if (clearHistory)
@@ -270,8 +270,8 @@ namespace TeamODD.ODDB.Editors.Window
                 viewId => _database.NotifyDataChanged(new ODDBID(viewId)));
             _commandProcessor.Execute(command);
 
-            if (string.Equals(_selectedTableId, id, StringComparison.Ordinal))
-                _selectedTableId = newId;
+            if (string.Equals(_selectedViewId, id, StringComparison.Ordinal))
+                _selectedViewId = newId;
         }
 
         /// <summary>
@@ -602,15 +602,36 @@ namespace TeamODD.ODDB.Editors.Window
         public IEnumerable<ICommand> GetRedoHistory() => _commandProcessor.GetRedoList();
         public void JumpToHistory(ICommand command) => _commandProcessor.JumpTo(command);
 
-        public void SetSelectionContext(string tableId)
+        public void SetSelectionContext(string viewId)
         {
-            _selectedTableId = string.IsNullOrEmpty(tableId) ? null : tableId;
+            _selectedViewId = string.IsNullOrEmpty(viewId) ? null : viewId;
         }
 
         public bool TryGetSelectedTableId(out string tableId)
         {
-            tableId = _selectedTableId;
-            return !string.IsNullOrEmpty(tableId);
+            tableId = _selectedViewId;
+            return !string.IsNullOrEmpty(tableId)
+                   && _database?.Tables.Read(new ODDBID(tableId)) is Table;
+        }
+
+        public bool TryGetSelectedSheetScope(out ExportScope scope)
+        {
+            scope = default;
+            if (string.IsNullOrEmpty(_selectedViewId) || _database == null)
+                return false;
+
+            var selected = _database.GetView(new ODDBID(_selectedViewId));
+            if (selected is Table)
+            {
+                scope = ExportScope.SingleTable(_selectedViewId);
+                return true;
+            }
+            if (selected is View)
+            {
+                scope = ExportScope.ViewSubtree(_selectedViewId);
+                return true;
+            }
+            return false;
         }
 
         public async Task ExportAsync(
@@ -769,15 +790,19 @@ namespace TeamODD.ODDB.Editors.Window
                 return applied;
             }
 
-            var targetSheet = sheets.FirstOrDefault(s => s != null && s.ID == scope.TargetTableId);
-            if (targetSheet == null)
-                throw new InvalidOperationException(
-                    $"No sheet found for table id '{scope.TargetTableId}'.");
-            if (database.Tables.Read(new ODDBID(scope.TargetTableId)) is not Table targetTable)
-                throw new InvalidOperationException(
-                    $"Table '{scope.TargetTableId}' not found in current database.");
-            converter.ApplySheetToTable(targetTable, targetSheet);
-            applied.Add(targetSheet);
+            var targetIds = SheetLayoutPlanner.ResolveTargetTableIds(database, scope);
+            foreach (var targetTable in database.Tables.GetAll().OfType<Table>()
+                         .Where(table => targetIds.Contains(table.ID.ToString())))
+            {
+                var tableId = targetTable.ID.ToString();
+                var targetSheet = sheets.FirstOrDefault(sheet =>
+                    sheet != null && string.Equals(sheet.ID, tableId, StringComparison.Ordinal));
+                if (targetSheet == null)
+                    throw new InvalidOperationException($"No sheet found for table id '{tableId}'.");
+
+                converter.ApplySheetToTable(targetTable, targetSheet);
+                applied.Add(targetSheet);
+            }
             return applied;
         }
 

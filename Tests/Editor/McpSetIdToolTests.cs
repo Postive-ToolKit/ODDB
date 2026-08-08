@@ -141,10 +141,15 @@ namespace TeamODD.ODDB.Tests.Editor
             public IEnumerable<ICommand> GetUndoHistory() => throw new NotImplementedException();
             public IEnumerable<ICommand> GetRedoHistory() => throw new NotImplementedException();
             public void JumpToHistory(ICommand command) => throw new NotImplementedException();
-            public void SetSelectionContext(string tableId) => throw new NotImplementedException();
+            public void SetSelectionContext(string viewId) => throw new NotImplementedException();
             public bool TryGetSelectedTableId(out string tableId)
             {
                 tableId = null;
+                return false;
+            }
+            public bool TryGetSelectedSheetScope(out ExportScope scope)
+            {
+                scope = default;
                 return false;
             }
             public Task ExportAsync(ExportScope scope, ISheetBackend backend, IProgress<float> progress = null, CancellationToken ct = default) => throw new NotImplementedException();
