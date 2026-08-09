@@ -4,6 +4,10 @@ This source is versioned with the Unity package under `Source~/ODDB.Core`. The t
 
 ## Unreleased
 
+## v2.8.3 — 2026-08-09
+
+### fix(sheets): tolerate import schema differences
+
 - Allowed Google Sheets and CSV imports to reconcile columns by local field name: extra source columns are ignored, missing local columns preserve existing-row values, and new rows use defaults.
 - Expanded fatal import validation messages and their scrollable error window with actionable structural-error guidance while keeping ambiguous headers and row IDs blocked.
 - Applied the gray background and bold white text metadata style to `#NAME` and `#TYPE` rows on normal per-table Google Sheet tabs, including newly created tabs.
