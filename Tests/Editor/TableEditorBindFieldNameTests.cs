@@ -5,12 +5,35 @@ using TeamODD.ODDB.Editors;
 using TeamODD.ODDB.Editors.UI;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
+using TeamODD.ODDB.Runtime.Enums;
 using TeamODD.ODDB.Runtime.Entities;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 using UnityEngine.UIElements;
 
 namespace TeamODD.ODDB.Tests.Editor
 {
+    public sealed class ODDBHeaderViewTests
+    {
+        [Test]
+        public void HeaderFields_NameCommitsDelayedAndIdIsReadOnly()
+        {
+            var database = new ODDatabase();
+            var view = database.Views.Create(new ODDBID("header-test"));
+            view.Name = "Header Test";
+            var header = new ODDBHeaderView(null);
+
+            header.UpdateView(view, ODDBViewType.View);
+
+            var nameField = header.Q<TextField>("oddb-view-name");
+            var idField = header.Q<TextField>("oddb-view-id");
+            Assert.That(nameField, Is.Not.Null);
+            Assert.That(nameField.isDelayed, Is.True);
+            Assert.That(idField, Is.Not.Null);
+            Assert.That(idField.isReadOnly, Is.True);
+            Assert.That(idField.value, Is.EqualTo("header-test"));
+        }
+    }
+
     public sealed class TableEditorBindFieldNameTests
     {
         [Test]

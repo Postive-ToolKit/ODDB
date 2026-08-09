@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Editors.CodeGen.UI;
-using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
@@ -269,13 +268,6 @@ namespace TeamODD.ODDB.Editors.UI
             }
 
             menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Change ID..."), false, () =>
-            {
-                if (_view == null)
-                    return;
-                ODDBChangeIdWindow.ShowForView(_editorUseCase, _view.ID.ToString());
-            });
-
             menu.AddItem(new GUIContent("Delete"), false, () =>
             {
                 if (_view == null)

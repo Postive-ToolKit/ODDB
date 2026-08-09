@@ -1,5 +1,4 @@
 using System;
-using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
@@ -63,10 +62,18 @@ namespace TeamODD.ODDB.Editors.UI
             var nameButton = new ToolbarButton { text = "Name" };
             nameButton.tooltip = "The name of this View/Table";
             _toolbar.Add(nameButton);
-            var nameTextField = new TextField { value = _view.Name, style = { minWidth = 200 } };
-            nameTextField.tooltip = "Edit the display name used inside the ODDB editor";
+            var nameTextField = new TextField
+            {
+                name = "oddb-view-name",
+                value = _view.Name,
+                isDelayed = true,
+                style = { minWidth = 200 }
+            };
+            nameTextField.tooltip = "Edit the display name. Changes are committed on Enter or when focus moves away.";
             nameTextField.RegisterValueChangedCallback(evt =>
             {
+                if (string.Equals(_view?.Name, evt.newValue, StringComparison.Ordinal))
+                    return;
                 _editorUseCase.SetViewName(_view.ID, evt.newValue);
             });
             _toolbar.Add(nameTextField);
@@ -83,23 +90,12 @@ namespace TeamODD.ODDB.Editors.UI
             
             var idTextField = new TextField
             {
+                name = "oddb-view-id",
                 value = _view.ID,
                 isReadOnly = true,
                 style = { flexGrow = 0, flexShrink = 1 }
             };
-            idTextField.tooltip = "Right-click to change ID";
-            idTextField.RegisterCallback<ContextClickEvent>(evt =>
-            {
-                var capturedId = _view?.ID.ToString();
-                if (string.IsNullOrEmpty(capturedId))
-                    return;
-
-                var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Change ID..."), false,
-                    () => ODDBChangeIdWindow.ShowForView(_editorUseCase, capturedId));
-                menu.ShowAsContext();
-                evt.StopPropagation();
-            });
+            idTextField.tooltip = "Read-only View/Table ID. Click the ID button to copy it.";
             _toolbar.Add(idTextField);
 
             // Type Menu

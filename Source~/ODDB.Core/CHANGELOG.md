@@ -4,6 +4,8 @@ This source is versioned with the Unity package under `Source~/ODDB.Core`. The t
 
 ## Unreleased
 
+- Kept View/Table name editing focused by committing delayed text changes once, and made View/Table IDs read-only throughout the editor UI.
+
 ## v2.8.1 — 2026-08-09
 
 ### feat(sheets): export and import selected View subtrees
