@@ -52,7 +52,8 @@ OAuth Client 자격 증명은 암호화된 뒤 `ODDBEditorSettings`에 직렬화
 - `ItemView` 아래의 `WeaponItem`, `CurrencyItem` 같은 Table은 `ItemView` 탭 하나에 `#TABLE`/`#END_TABLE` 블록으로 기록됩니다.
 - 각 블록은 독립적인 `#NAME`과 `#TYPE` 행을 가지므로 서로 다른 필드 구성을 사용할 수 있습니다.
 - Google Sheets의 View 참조 타입은 `View-ItemData`처럼 읽기 쉬운 View 이름으로 표시되고, 안정적인 연결 ID는 해당 타입 셀의 `ODDB View ID: ...` 노트에 저장됩니다. View 이름이 바뀌어도 노트 ID로 연결을 복구하며, 노트가 없으면 표시된 이름으로 가져옵니다. CSV도 같은 표시 이름을 사용하고 각 `#TYPE` 바로 아래의 `#VIEW_ID` 행에 안정적인 ID를 저장합니다.
-- Google Sheets에서는 `#ODDB_GROUP`/`#END_GROUP` 행을 하늘색, `#TABLE`/`#NAME`/`#TYPE` 행을 회색, `#END_TABLE` 행을 부드러운 붉은색으로 표시하며 모두 흰색 굵은 글자를 사용합니다. 서식은 ODDB 관리 컬럼 범위에만 적용됩니다.
+- Google Sheets에서는 `#ODDB_GROUP`/`#END_GROUP` 행을 하늘색, `#TABLE`/`#NAME`/`#TYPE` 행을 회색, `#END_TABLE` 행을 부드러운 붉은색으로 표시하며 모두 흰색 굵은 글자를 사용합니다. 일반 테이블별 탭의 `#NAME`/`#TYPE` 행도 최초 Export부터 같은 회색 서식을 사용합니다. 서식은 ODDB 관리 컬럼 범위에만 적용됩니다.
+- Google Sheets와 CSV Import는 원본 컬럼 수나 순서의 완전 일치 대신 로컬 ODDB 필드 이름으로 컬럼을 연결합니다. 원본의 추가 컬럼은 무시하고, 원본에 없는 로컬 컬럼은 기존 행에서는 현재 값을 보존하며 새 행에서는 필드 기본값을 사용합니다. 중복 헤더, 필수 마커 누락, 비어 있거나 중복된 Row ID처럼 연결이 모호한 구조 오류는 상세 해결 안내와 함께 Import를 중단합니다.
 - 선택한 Table만 Export해도 같은 Root View의 모든 형제 Table을 함께 내보내 기존 블록 손실을 방지합니다.
 - View를 선택하면 모든 하위 Table을 대상으로 Export/Import Selected를 사용할 수 있습니다. 중첩 View도 재귀적으로 탐색하며, 그룹 Export는 안전한 물리 단위인 Root View 탭 전체를 갱신합니다.
 - Table의 부모 View가 바뀌면 새 그룹에 추가하고 이전 ODDB 그룹에서는 해당 블록을 제거합니다.

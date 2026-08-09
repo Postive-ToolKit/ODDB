@@ -486,13 +486,10 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
                 }
             }
 
-            if (GroupedSheetCodec.IsGrouped(pending.Desired))
-            {
-                requests.AddRange(CreateGroupedRowFormatRequests(
-                    sheetId,
-                    pending.Desired,
-                    pending.ColumnPlan.ManagedColumnIndices));
-            }
+            requests.AddRange(CreateMarkerRowFormatRequests(
+                sheetId,
+                pending.Desired,
+                pending.ColumnPlan.ManagedColumnIndices));
 
             if (!pending.Current.HasTableMetadata)
                 requests.Add(CreateSheetMetadata(sheetId, GoogleSheetConfig.TABLE_ID_METADATA_KEY, pending.Desired.ID));
@@ -545,27 +542,27 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             };
         }
 
-        private static IEnumerable<Request> CreateGroupedRowFormatRequests(
+        private static IEnumerable<Request> CreateMarkerRowFormatRequests(
             int sheetId,
             SheetInfo sheet,
             IReadOnlyList<int> managedColumnIndices)
         {
             var managedRowCount = GroupedSheetCodec.GetManagedRowCount(sheet);
-            var runStyle = GroupedRowStyle.None;
+            var runStyle = MarkerRowStyle.None;
             var runStart = 0;
             for (var rowIndex = 0; rowIndex <= managedRowCount; rowIndex++)
             {
                 var style = rowIndex < managedRowCount
-                    ? GetGroupedRowStyle(GetCell(sheet.Values, rowIndex, 0))
-                    : GroupedRowStyle.None;
+                    ? GetMarkerRowStyle(GetCell(sheet.Values, rowIndex, 0))
+                    : MarkerRowStyle.None;
                 if (style == runStyle)
                     continue;
 
-                if (runStyle != GroupedRowStyle.None)
+                if (runStyle != MarkerRowStyle.None)
                 {
                     foreach (var segment in GetManagedColumnSegments(managedColumnIndices))
                     {
-                        yield return CreateGroupedRowFormatRequest(
+                        yield return CreateMarkerRowFormatRequest(
                             sheetId,
                             runStart,
                             rowIndex,
@@ -580,31 +577,31 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             }
         }
 
-        private static GroupedRowStyle GetGroupedRowStyle(string marker)
+        private static MarkerRowStyle GetMarkerRowStyle(string marker)
         {
             if (string.Equals(marker, SheetConfig.GROUP_MARKER, StringComparison.Ordinal)
                 || string.Equals(marker, SheetConfig.GROUP_END_MARKER, StringComparison.Ordinal))
-                return GroupedRowStyle.Group;
+                return MarkerRowStyle.Group;
             if (string.Equals(marker, SheetConfig.TABLE_MARKER, StringComparison.Ordinal)
                 || string.Equals(marker, SheetConfig.ROW_NAME_MARKER, StringComparison.Ordinal)
                 || string.Equals(marker, SheetConfig.ROW_TYPE_MARKER, StringComparison.Ordinal))
             {
-                return GroupedRowStyle.Metadata;
+                return MarkerRowStyle.Metadata;
             }
             if (string.Equals(marker, SheetConfig.TABLE_END_MARKER, StringComparison.Ordinal))
             {
-                return GroupedRowStyle.End;
+                return MarkerRowStyle.End;
             }
-            return GroupedRowStyle.None;
+            return MarkerRowStyle.None;
         }
 
-        private static Request CreateGroupedRowFormatRequest(
+        private static Request CreateMarkerRowFormatRequest(
             int sheetId,
             int startRowIndex,
             int endRowIndex,
             int startColumnIndex,
             int columnCount,
-            GroupedRowStyle style)
+            MarkerRowStyle style)
         {
             return new Request
             {
@@ -640,15 +637,15 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             };
         }
 
-        private static Color BackgroundColor(GroupedRowStyle style)
+        private static Color BackgroundColor(MarkerRowStyle style)
         {
             switch (style)
             {
-                case GroupedRowStyle.Group:
+                case MarkerRowStyle.Group:
                     return Rgb(0.29f, 0.64f, 0.89f); // Sky blue
-                case GroupedRowStyle.Metadata:
+                case MarkerRowStyle.Metadata:
                     return Rgb(0.38f, 0.41f, 0.46f); // Neutral gray
-                case GroupedRowStyle.End:
+                case MarkerRowStyle.End:
                     return Rgb(0.79f, 0.42f, 0.42f); // Soft red
                 default:
                     throw new ArgumentOutOfRangeException(nameof(style), style, null);
@@ -1217,7 +1214,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.GoogleSheets
             public int Count { get; }
         }
 
-        private enum GroupedRowStyle
+        private enum MarkerRowStyle
         {
             None,
             Group,

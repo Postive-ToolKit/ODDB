@@ -180,11 +180,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 if (table != null && !ContainsField(table, fieldName))
                 {
                     report.Add(new SheetValidationIssue(
-                        SheetValidationSeverity.Error,
+                        SheetValidationSeverity.Warning,
                         sheet.Name,
                         sheet.ID,
                         0,
-                        $"Field header '{fieldName}' does not exist in ODDB table '{sheet.ID}'."));
+                        $"Column '{fieldName}' is not part of the local ODDB table schema and will be ignored."));
                 }
             }
 
@@ -198,11 +198,11 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
                 if (!string.IsNullOrEmpty(fieldName) && !seen.Contains(fieldName))
                 {
                     report.Add(new SheetValidationIssue(
-                        SheetValidationSeverity.Error,
+                        SheetValidationSeverity.Warning,
                         sheet.Name,
                         sheet.ID,
                         0,
-                        $"Google Sheet is missing ODDB field column '{fieldName}'. Export the current ODDB schema before importing."));
+                        $"Local field '{fieldName}' has no imported column; existing rows keep their current value and new rows use the field default."));
                 }
             }
         }

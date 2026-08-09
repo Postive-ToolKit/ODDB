@@ -212,6 +212,36 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
+        public async Task SaveCoreAsync_FormatsMetadataRowsWhenPerTableSheetIsCreated()
+        {
+            var desired = Sheet(
+                new[] { "#NAME", "ID", "Value", "Grade" },
+                new[] { "#TYPE", "ID", "string", "int" },
+                new[] { "", "one", "A", "1" });
+            var client = new RecordingGoogleSheetsApiClient
+            {
+                VerificationResults = new List<List<List<string>>> { desired.Values.Take(2).ToList() }
+            };
+
+            await GoogleSheetsSyncService.SaveCoreAsync(
+                new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
+
+            var metadata = client.StructuralRequests
+                .Where(request => Convert.ToString(request.RepeatCell?.Fields)
+                    .Contains("userEnteredFormat"))
+                .Select(request => request.RepeatCell)
+                .Single();
+            Assert.That(metadata.Range.SheetId, Is.EqualTo(1000));
+            Assert.That(metadata.Range.StartRowIndex, Is.EqualTo(0));
+            Assert.That(metadata.Range.EndRowIndex, Is.EqualTo(2));
+            Assert.That(metadata.Range.StartColumnIndex, Is.EqualTo(0));
+            Assert.That(metadata.Range.EndColumnIndex, Is.EqualTo(4));
+            AssertColor(metadata.Cell.UserEnteredFormat.BackgroundColorStyle.RgbColor, 0.38f, 0.41f, 0.46f);
+            Assert.That(metadata.Cell.UserEnteredFormat.TextFormat.Bold, Is.True);
+            AssertColor(metadata.Cell.UserEnteredFormat.TextFormat.ForegroundColor, 1f, 1f, 1f);
+        }
+
+        [Test]
         public async Task SaveCoreAsync_GroupedSheetWritesAroundInterleavedCommentColumn()
         {
             var desired = GroupedSheetCodec.Pack(
@@ -953,7 +983,7 @@ namespace TeamODD.ODDB.Tests.Editor
                 new[] { desired }, null, CancellationToken.None, client, "spreadsheet-id");
 
             var noteRequests = client.StructuralRequests
-                .Where(request => request.RepeatCell != null)
+                .Where(request => Convert.ToString(request.RepeatCell?.Fields) == "note")
                 .ToList();
             Assert.That(noteRequests, Has.Count.EqualTo(1));
             Assert.That(noteRequests[0].RepeatCell.Range.StartColumnIndex, Is.EqualTo(2));
