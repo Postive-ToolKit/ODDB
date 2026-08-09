@@ -34,7 +34,7 @@ namespace TeamODD.ODDB.Editors
         private static double _nextBootRetryAt;
 
         private const double BootRetryDelaySeconds = 2.0d;
-        internal const string EmbeddedPackageVersion = "2.8.1";
+        internal const string EmbeddedPackageVersion = "2.8.2";
 
         private const string ServerInstructions =
 @"This server controls a Unity ODDB database — a hierarchical view/table store

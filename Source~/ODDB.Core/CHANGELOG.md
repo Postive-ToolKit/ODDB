@@ -4,6 +4,10 @@ This source is versioned with the Unity package under `Source~/ODDB.Core`. The t
 
 ## Unreleased
 
+## v2.8.2 — 2026-08-09
+
+### fix(editor): preserve header editing focus
+
 - Kept View/Table name editing focused by committing delayed text changes once, and made View/Table IDs read-only throughout the editor UI.
 
 ## v2.8.1 — 2026-08-09
