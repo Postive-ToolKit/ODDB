@@ -713,7 +713,7 @@ namespace TeamODD.ODDB.Editors.Window
                 {
                     var summary = validationReport.ToSummaryString();
                     if (validationReport.HasErrors)
-                        throw new InvalidOperationException(summary);
+                        throw new InvalidOperationException(validationReport.ToFailureString());
                     Debug.LogWarning(summary);
                 }
 

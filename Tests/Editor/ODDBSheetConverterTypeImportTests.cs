@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using System.Collections.Generic;
 using TeamODD.ODDB.Editors.Utils.Sheets;
+using TeamODD.ODDB.Editors.Utils.Sheets.Validation;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Utils.Converters;
 
@@ -73,6 +74,62 @@ namespace TeamODD.ODDB.Tests.Editor
             Assert.That(table.GetRow("row1").GetData(1).SerializedData, Is.EqualTo("25"));
             Assert.That(table.TotalFields[0].Type.TypeKey, Is.EqualTo("string"));
             Assert.That(table.TotalFields[1].Type.TypeKey, Is.EqualTo("int"));
+        }
+
+        [Test]
+        public void ApplySheetToTable_AllowsSchemaWidthDifferences()
+        {
+            var database = new ODDatabase();
+            var table = (Table)database.Tables.Create(new ODDBID("item"));
+            table.AddField(new Field("Name", new FieldType("string", string.Empty)));
+            table.AddField(new Field("Power", new FieldType("int", string.Empty)));
+            var existing = table.AddRow(new ODDBID("row1"));
+            existing.SetData(0, "Old Sword", true);
+            existing.SetData(1, "25", true);
+
+            var sheet = new SheetInfo("ItemData", "item");
+            sheet.Values.Add(new List<string> { "#NAME", "ID", "Name", "RemoteOnly" });
+            sheet.Values.Add(new List<string> { "#TYPE", "ID", "string", "string" });
+            sheet.Values.Add(new List<string> { string.Empty, "row1", "Iron Sword", "ignored" });
+            sheet.Values.Add(new List<string> { string.Empty, "row2", "Wooden Sword", "ignored" });
+
+            new ODDBSheetConverter(database).ApplySheetToTable(table, sheet);
+
+            Assert.That(table.TotalFields, Has.Count.EqualTo(2));
+            Assert.That(table.GetRow("row1").GetData(0).SerializedData, Is.EqualTo("Iron Sword"));
+            Assert.That(table.GetRow("row1").GetData(1).SerializedData, Is.EqualTo("25"));
+            Assert.That(table.GetRow("row2").GetData(0).SerializedData, Is.EqualTo("Wooden Sword"));
+            Assert.That(table.GetRow("row2").GetData(1).SerializedData, Is.Null.Or.Empty);
+        }
+
+        [Test]
+        public void ImportValidator_ReportsSchemaWidthDifferencesAsWarnings()
+        {
+            var database = new ODDatabase();
+            var table = (Table)database.Tables.Create(new ODDBID("item"));
+            table.AddField(new Field("Name", new FieldType("string", string.Empty)));
+            table.AddField(new Field("Power", new FieldType("int", string.Empty)));
+            var sheet = new SheetInfo("ItemData", "item")
+            {
+                Values = new List<List<string>>
+                {
+                    new List<string> { "#NAME", "ID", "Name", "RemoteOnly" },
+                    new List<string> { "#TYPE", "ID", "string", "string" },
+                    new List<string> { string.Empty, "row1", "Iron Sword", "ignored" }
+                }
+            };
+
+            var report = SheetImportValidator.Validate(
+                new[] { sheet },
+                ExportScope.EntireDatabase,
+                database);
+
+            Assert.That(report.HasErrors, Is.False);
+            Assert.That(report.WarningCount, Is.EqualTo(2));
+            Assert.That(report.Issues, Has.Some.Matches<SheetValidationIssue>(issue =>
+                issue.Message.Contains("RemoteOnly") && issue.Message.Contains("ignored")));
+            Assert.That(report.Issues, Has.Some.Matches<SheetValidationIssue>(issue =>
+                issue.Message.Contains("Power") && issue.Message.Contains("keep")));
         }
 
         [Test]

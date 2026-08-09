@@ -45,5 +45,20 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets.Validation
 
             return sb.ToString();
         }
+
+        public string ToFailureString(int maxIssues = 25)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Import cannot continue because the source contains structural errors.");
+            sb.AppendLine();
+            sb.AppendLine(ToSummaryString(maxIssues));
+            sb.AppendLine();
+            sb.AppendLine("How to fix:");
+            sb.AppendLine($"- Keep {SheetConfig.ROW_NAME_MARKER} as the first row of every table block.");
+            sb.AppendLine("- Give every data row a non-empty, unique ID in the ID column.");
+            sb.AppendLine("- Keep each imported field header unique and include every selected table/group.");
+            sb.Append("Extra source columns and missing local columns are supported and do not block import.");
+            return sb.ToString();
+        }
     }
 }

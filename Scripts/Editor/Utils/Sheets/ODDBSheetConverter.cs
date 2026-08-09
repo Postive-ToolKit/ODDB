@@ -189,7 +189,8 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             Table table,
             List<string> nameRow,
             List<string> rowData,
-            SheetHeaderInfo headerInfo)
+            SheetHeaderInfo headerInfo,
+            IReadOnlyDictionary<string, string[]> existingRows)
         {
             if (rowData.Count <= headerInfo.IdColumnIndex)
                 return;
@@ -206,15 +207,43 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
 
             var newRow = table.AddRow(new ODDBID(rowId));
 
+            // A source sheet is allowed to contain only a subset of the local schema.
+            // Restore the previous values first, then overwrite the fields that are
+            // explicitly present in the imported #NAME row. Rows that are new to the
+            // local table naturally keep their field defaults.
+            if (existingRows != null && existingRows.TryGetValue(rowId, out var existingData))
+            {
+                for (var fieldIndex = 0; fieldIndex < table.TotalFields.Count; fieldIndex++)
+                {
+                    if (fieldIndex < existingData.Length)
+                        newRow.SetData(fieldIndex, existingData[fieldIndex], true);
+                }
+            }
+
             for (int columnOffset = 0; columnOffset < headerInfo.DataColumnIndices.Count; columnOffset++)
             {
                 var columnIndex = headerInfo.DataColumnIndices[columnOffset];
                 var fieldIndex = FindFieldIndex(table, columnIndex < nameRow.Count ? nameRow[columnIndex] : null);
                 if (fieldIndex < 0)
                     continue;
-                if (columnIndex < rowData.Count)
-                    newRow.SetData(fieldIndex, rowData[columnIndex], true);
+                newRow.SetData(
+                    fieldIndex,
+                    columnIndex < rowData.Count ? rowData[columnIndex] : string.Empty,
+                    true);
             }
+        }
+
+        private static IReadOnlyDictionary<string, string[]> CaptureExistingRows(Table table)
+        {
+            var result = new Dictionary<string, string[]>(StringComparer.Ordinal);
+            foreach (var row in table.Rows)
+            {
+                var values = new string[table.TotalFields.Count];
+                for (var fieldIndex = 0; fieldIndex < table.TotalFields.Count; fieldIndex++)
+                    values[fieldIndex] = row.GetData(fieldIndex)?.SerializedData ?? string.Empty;
+                result[row.ID.ToString()] = values;
+            }
+            return result;
         }
 
         private static int FindFieldIndex(Table table, string fieldName)
@@ -332,6 +361,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
             if (!TryParseSheetHeader(sheet, out var headerInfo))
                 return;
 
+            var existingRows = CaptureExistingRows(table);
             ApplyFieldTypesToTable(_dB, table, sheet, headerInfo);
             table.Clear();
             var nameRow = sheet.Values[0];
@@ -341,7 +371,7 @@ namespace TeamODD.ODDB.Editors.Utils.Sheets
                 var rowData = sheet.Values[i];
                 if (rowData == null || rowData.Count == 0) continue;
                 if (IsCommentRow(rowData)) continue;
-                ApplyRowDataToTable(table, nameRow, rowData, headerInfo);
+                ApplyRowDataToTable(table, nameRow, rowData, headerInfo, existingRows);
             }
         }
 
