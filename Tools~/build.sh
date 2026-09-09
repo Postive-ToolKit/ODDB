@@ -8,13 +8,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CORE_PROJECT="$(cd "$PACKAGE_ROOT/Source~/ODDB.Core" && pwd)"
+CORE_PROJECT_PATH="${ODDB_CORE_PROJECT_PATH:-$PACKAGE_ROOT/Source~/ODDB.Core}"
+CORE_PROJECT="$(cd "$CORE_PROJECT_PATH" && pwd)"
 PLUGINS_DIR="$PACKAGE_ROOT/Plugins"
 
 CONFIG="${1:-Release}"
 DLL="$CORE_PROJECT/bin/$CONFIG/netstandard2.1/ODDB.Core.dll"
 
-echo "→ building ODDB.Core ($CONFIG)"
+echo "→ building ODDB.Core ($CONFIG) from $CORE_PROJECT"
 dotnet build "$CORE_PROJECT/ODDB.Core.csproj" -c "$CONFIG" --nologo -v quiet
 
 if [[ ! -f "$DLL" ]]; then

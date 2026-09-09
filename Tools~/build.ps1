@@ -6,18 +6,25 @@
 
 [CmdletBinding()]
 param(
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+    [string]$CoreProjectPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
 $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PackageRoot  = Resolve-Path (Join-Path $ScriptDir '..')
-$CoreProject  = Resolve-Path (Join-Path $PackageRoot 'Source~/ODDB.Core')
+$DefaultCoreProjectPath = Join-Path $PackageRoot 'Source~/ODDB.Core'
+$CoreProjectPath = if ([string]::IsNullOrWhiteSpace($CoreProjectPath)) {
+    $DefaultCoreProjectPath
+} else {
+    $CoreProjectPath
+}
+$CoreProject  = (Resolve-Path $CoreProjectPath).Path
 $PluginsDir   = Join-Path $PackageRoot 'Plugins'
 $Dll          = Join-Path $CoreProject "bin/$Configuration/netstandard2.1/ODDB.Core.dll"
 
-Write-Host "-> building ODDB.Core ($Configuration)"
+Write-Host "-> building ODDB.Core ($Configuration) from $CoreProject"
 dotnet build (Join-Path $CoreProject 'ODDB.Core.csproj') -c $Configuration --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { throw "dotnet build failed (exit $LASTEXITCODE)" }
 
