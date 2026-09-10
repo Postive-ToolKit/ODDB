@@ -1,43 +1,42 @@
 #!/usr/bin/env pwsh
-# Rebuild ODDB.Core and drop the fresh dll into the Unity package.
-#
-# Run from anywhere — paths are resolved relative to this script's location.
-# Requires .NET SDK (https://dotnet.microsoft.com).
-
 [CmdletBinding()]
 param(
-    [string]$Configuration = 'Release',
+    [ValidateSet('Release', 'Debug')][string]$Configuration = 'Release',
     [string]$CoreProjectPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
-
-$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PackageRoot  = Resolve-Path (Join-Path $ScriptDir '..')
-$DefaultCoreProjectPath = Join-Path $PackageRoot 'Source~/ODDB.Core'
-$CoreProjectPath = if ([string]::IsNullOrWhiteSpace($CoreProjectPath)) {
-    $DefaultCoreProjectPath
-} else {
-    $CoreProjectPath
+. "$PSScriptRoot/core-artifact.ps1"
+$packageRoot = Split-Path -Parent $PSScriptRoot
+$pin = Get-Content "$packageRoot/Source~/core-source.json" -Raw | ConvertFrom-Json
+if ([string]::IsNullOrWhiteSpace($CoreProjectPath)) {
+    $CoreProjectPath = "$packageRoot/Source~/ODDB.Core"
 }
-$CoreProject  = (Resolve-Path $CoreProjectPath).Path
-$PluginsDir   = Join-Path $PackageRoot 'Plugins'
-$Dll          = Join-Path $CoreProject "bin/$Configuration/netstandard2.1/ODDB.Core.dll"
+$coreRoot = (Resolve-Path $CoreProjectPath).Path
+Assert-CoreSource $coreRoot $pin
 
-Write-Host "-> building ODDB.Core ($Configuration) from $CoreProject"
-dotnet build (Join-Path $CoreProject 'ODDB.Core.csproj') -c $Configuration --nologo -v quiet
-if ($LASTEXITCODE -ne 0) { throw "dotnet build failed (exit $LASTEXITCODE)" }
-
-if (-not (Test-Path $Dll)) {
-    throw "expected dll not found at $Dll"
+dotnet build "$coreRoot/ODDB.Core.csproj" -c $Configuration --nologo -v quiet
+if ($LASTEXITCODE -ne 0) { throw "Core build failed: $LASTEXITCODE" }
+Assert-CoreSource $coreRoot $pin
+$dll = "$coreRoot/bin/$Configuration/netstandard2.1/ODDB.Core.dll"
+$hash = (Get-FileHash $dll -Algorithm SHA256).Hash.ToLowerInvariant()
+$sdk = & dotnet --version
+if ($LASTEXITCODE -ne 0) { throw 'Cannot determine build SDK.' }
+[xml]$project = Get-Content "$coreRoot/ODDB.Core.csproj" -Raw
+$artifact = [ordered]@{
+    assembly = 'ODDB.Core'
+    version = [string]$project.Project.PropertyGroup.Version
+    targetFramework = 'netstandard2.1'
+    sourceRepository = $pin.repository
+    sourceCommit = $pin.commit
+    sourceTree = $pin.tree
+    sha256 = $hash
+    buildSdk = $sdk.Trim()
+    configuration = $Configuration
+    dependency = 'Newtonsoft.Json 13.0.3'
+    license = 'MIT'
 }
-
-if (-not (Test-Path $PluginsDir)) {
-    New-Item -ItemType Directory -Path $PluginsDir | Out-Null
-}
-
-Copy-Item -Path $Dll -Destination (Join-Path $PluginsDir 'ODDB.Core.dll') -Force
-$Size = (Get-Item (Join-Path $PluginsDir 'ODDB.Core.dll')).Length
-Write-Host "-> copied $([System.IO.Path]::GetFileName($Dll)) -> $PluginsDir\"
-Write-Host "   $Size bytes"
-Write-Host 'done. Unity will recompile on next focus.'
+Copy-Item $dll "$packageRoot/Plugins/ODDB.Core.dll" -Force
+Write-CoreText "$packageRoot/Plugins/ODDB.Core.dll.sha256" "$hash  ODDB.Core.dll`n"
+Write-CoreText "$packageRoot/Plugins/core-artifact.json" (($artifact | ConvertTo-Json) + "`n")
+& "$PSScriptRoot/verify-core.ps1"

@@ -57,6 +57,7 @@ sysinfo.txt
 
 # Versioned standalone Core source. Unity ignores Source~; Git retains its build inputs.
 !Source~/ODDB.Core/ODDB.Core.csproj
+!Source~/ODDB.Core/tests/ODDB.Core.Checks.csproj
 Source~/ODDB.Core/bin/
 Source~/ODDB.Core/obj/
 

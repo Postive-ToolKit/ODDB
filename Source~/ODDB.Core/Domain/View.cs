@@ -8,7 +8,7 @@ using TeamODD.ODDB.Runtime.Utils.Converters;
 
 namespace TeamODD.ODDB.Runtime
 {
-    public class View : IView
+    public class View : IView, IHasUnresolvedBindType
     {
         public event Action OnFieldsChanged;
 
@@ -20,6 +20,7 @@ namespace TeamODD.ODDB.Runtime
         public ODDBID ID { get; set; }
         public string Name { get; set; }
         public Type BindType { get; set; }
+        public string UnresolvedBindType { get; set; } = string.Empty;
 
         public IView ParentView
         {
@@ -57,7 +58,8 @@ namespace TeamODD.ODDB.Runtime
 
                 if (BindType == null)
                 {
-                    BindType = _parentView.BindType;
+                    if (string.IsNullOrEmpty(UnresolvedBindType))
+                        BindType = _parentView.BindType;
                     return;
                 }
                 if (_parentView.BindType == null)
@@ -269,7 +271,10 @@ namespace TeamODD.ODDB.Runtime
 
             ID = new ODDBID(dto.ID);
             Name = dto.Name;
+            UnresolvedBindType = string.Empty;
             BindType = ODDBTypeUtility.TryConvertBindType(dto.BindType, out var bindType) ? bindType : null;
+            if (BindType == null && !string.IsNullOrWhiteSpace(dto.BindType))
+                UnresolvedBindType = dto.BindType;
 
             _parentViewKey = new ODDBID(dto.ParentView);
             ScopedFields.Clear();

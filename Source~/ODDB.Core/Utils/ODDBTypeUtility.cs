@@ -9,11 +9,13 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
     public static class ODDBTypeUtility
     {
         private static readonly Dictionary<string, Type> _typeCache = new();
+        private static readonly HashSet<string> _warnedUnresolvedBindTypes = new();
         private static bool _isFullIndexed = false;
 
         internal static void ResetCache()
         {
             _typeCache.Clear();
+            _warnedUnresolvedBindTypes.Clear();
             _isFullIndexed = false;
         }
 
@@ -32,7 +34,8 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             {
                 if (!type.IsSubclassOf(typeof(ODDBEntity)))
                 {
-                    ODDB.Logger.Error($"[ODDBImporter] '{bindType}' is not a subclass of ODDBEntity.");
+                    WarnUnresolvedBindType(bindType,
+                        $"[ODDBImporter] '{bindType}' is not a subclass of ODDBEntity; binding is preserved as unresolved.");
                     type = null;
                     return false;
                 }
@@ -53,8 +56,15 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                     return type != null;
             }
 
-            ODDB.Logger.Error($"[ODDBImporter] Cannot find or convert bind type: '{bindType}'");
+            WarnUnresolvedBindType(bindType,
+                $"[ODDBImporter] Cannot find or convert bind type: '{bindType}'; binding is preserved as unresolved.");
             return false;
+        }
+
+        private static void WarnUnresolvedBindType(string bindType, string message)
+        {
+            if (_warnedUnresolvedBindTypes.Add(bindType ?? string.Empty))
+                ODDB.Logger.Warn(message);
         }
 
         private static void PerformFullIndex()

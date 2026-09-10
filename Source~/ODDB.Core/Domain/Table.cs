@@ -163,7 +163,10 @@ namespace TeamODD.ODDB.Runtime
 
             ID = new ODDBID(tableDto.ID);
             Name = tableDto.Name;
+            UnresolvedBindType = string.Empty;
             BindType = ODDBTypeUtility.TryConvertBindType(tableDto.BindType, out var bindType) ? bindType : null;
+            if (BindType == null && !string.IsNullOrWhiteSpace(tableDto.BindType))
+                UnresolvedBindType = tableDto.BindType;
             _parentViewKey = new ODDBID(tableDto.ParentView);
 
             ScopedFields.Clear();

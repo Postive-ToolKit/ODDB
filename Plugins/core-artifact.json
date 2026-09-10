@@ -1,0 +1,13 @@
+{
+    "assembly":  "ODDB.Core",
+    "version":  "2.7.2",
+    "targetFramework":  "netstandard2.1",
+    "sourceRepository":  "https://github.com/Postive-ToolKit/ODDB.Core",
+    "sourceCommit":  "1e9702b6c896895cd09a6fffb53edf76884e4ef1",
+    "sourceTree":  "77d40376d06593897c44dff40c9b0d37817022f3",
+    "sha256":  "8284e1ba774820525b3967ca971c220ad382a0bacf694d08f9252d2f539bc93c",
+    "buildSdk":  "8.0.425",
+    "configuration":  "Release",
+    "dependency":  "Newtonsoft.Json 13.0.3",
+    "license":  "MIT"
+}

@@ -48,6 +48,8 @@ namespace TeamODD.ODDB.Runtime.DTO.Builders
             var tableMetas = _fieldsInterface?.ScopedFields ?? null;
             var convertedMeta = tableMetas == null ? new List<Field>() : new List<Field>(tableMetas);
             var convertedBindType = _bindTypeInterface?.BindType?.FullName ?? string.Empty;
+            if (string.IsNullOrEmpty(convertedBindType) && _bindTypeInterface is IHasUnresolvedBindType unresolved)
+                convertedBindType = unresolved.UnresolvedBindType ?? string.Empty;
             var parentView = _parentViewInterface?.ParentView?.ID ?? string.Empty;
 
             return new ViewDTO(

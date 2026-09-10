@@ -210,10 +210,45 @@ namespace TeamODD.ODDB.Runtime
                 return false;
             }
 
+            return TryLoadBytes(bytes, out database, out report);
+        }
+
+        private static readonly object SafeLoadLock = new object();
+
+        /// <summary>
+        /// Safe-load a compressed payload from an engine asset, package or stream.
+        /// Applies exactly the same validation and hydration as TryLoad(path).
+        /// </summary>
+        public static bool TryLoadBytes(byte[] bytes, out ODDatabase database, out ODDBLoadReport report)
+        {
+            lock (SafeLoadLock)
+            {
+                try
+                {
+                    _ = TypeRegistry.All;
+                    return TryRestoreBytes(bytes, out database, out report);
+                }
+                catch (Exception exception)
+                {
+                    database = null;
+                    report = ODDBLoadReport.Failure(ODDBLoadFailureStage.Restore, exception.Message,
+                        bytes?.LongLength ?? 0, 0, 0, 0, 0, 0, "ambiguous");
+                    return false;
+                }
+                finally
+                {
+                    ODDBConverter.OnDatabaseCreated.Clear();
+                }
+            }
+        }
+
+        private static bool TryRestoreBytes(byte[] bytes, out ODDatabase database, out ODDBLoadReport report)
+        {
+            database = null;
+            var size = bytes?.LongLength ?? 0;
             var converter = new ODDBConverter();
             if (!converter.TryImportDTO(bytes, out var dto, out var stage, out var reason))
             {
-                ODDBConverter.OnDatabaseCreated.Clear();
                 report = ODDBLoadReport.Failure(stage, reason, size, 0, 0, 0, 0, 0, "ambiguous");
                 return false;
             }
@@ -250,23 +285,19 @@ namespace TeamODD.ODDB.Runtime
                 return false;
             }
 
-            // CRITICAL: drain OnDatabaseCreated to hydrate Table rows + view parent-bindings
-            // BEFORE the unmapped-field-type check. Table.FromDTO caches row data in
-            // _cachedData and queues OnDatabaseInitialize; without this call rows stay
-            // unhydrated and `Tables[].Rows` is empty even though the file has data.
+            // CRITICAL: drain OnDatabaseCreated to hydrate Table rows + view parent-bindings.
+            // Table.FromDTO caches row data in _cachedData and queues OnDatabaseInitialize;
+            // without this call rows stay unhydrated even though the file has data.
             FireOnDatabaseCreated(db);
 
+            // A v2 file carries an explicit string key for every field. A key that this
+            // process does not know belongs to a consumer extension (for example a
+            // Unity-only serializer), not to a corrupt database. Cell falls back to a
+            // string serializer, so the original key and serialized value can be
+            // round-tripped without pretending that the type is materializable here.
             var unmapped = CountUnmappedFieldTypes(db);
-            if (unmapped > 0)
-            {
-                report = ODDBLoadReport.Failure(ODDBLoadFailureStage.UnmappedFieldType,
-                    $"{unmapped} field(s) have unregistered _typeKey",
-                    size, dtoTableCount, dtoViewCount, restoredT, restoredV, unmapped, sourceFormat);
-                database = db;
-                return false;
-            }
-
-            report = ODDBLoadReport.Success(size, dtoTableCount, dtoViewCount, restoredT, restoredV, sourceFormat);
+            report = ODDBLoadReport.Success(size, dtoTableCount, dtoViewCount, restoredT, restoredV,
+                sourceFormat, unmapped);
             database = db;
             return true;
         }
@@ -375,6 +406,14 @@ namespace TeamODD.ODDB.Runtime
         private Dictionary<Type, Dictionary<string, ODDBEntity>> _entityTypeCache;
         private readonly List<Action> _onDataPortedCallbacks = new List<Action>();
         private bool _isPorted;
+        private ODDBPortOperation _activePortOperation;
+
+        internal sealed class PortWorkItem
+        {
+            public Type TargetType;
+            public List<Field> Fields;
+            public List<Row> Rows;
+        }
 
         /// <summary>
         /// Whether PortData has materialized entities from rows on this instance.
@@ -387,8 +426,29 @@ namespace TeamODD.ODDB.Runtime
         /// </summary>
         public void PortData()
         {
+            using var operation = BeginPortData();
+            operation.Complete();
+        }
+
+        /// <summary>
+        /// Starts generation-safe, incremental entity materialization.
+        /// Call <see cref="ODDBPortOperation.Step"/> from the engine main loop and
+        /// return control between batches. The operation must be completed or
+        /// cancelled before starting another operation on this database.
+        /// </summary>
+        public ODDBPortOperation BeginPortData()
+        {
+            if (_isPorted)
+                return ODDBPortOperation.Completed(this);
+            if (_activePortOperation != null && !_activePortOperation.IsCompleted)
+                throw new InvalidOperationException("Entity materialization is already in progress.");
+
             _entityCache = new Dictionary<string, ODDBEntity>();
             _entityTypeCache = new Dictionary<Type, Dictionary<string, ODDBEntity>>();
+            _onDataPortedCallbacks.Clear();
+
+            var workItems = new List<PortWorkItem>();
+            var totalRows = 0;
 
             foreach (var view in Tables.GetAll())
             {
@@ -406,26 +466,57 @@ namespace TeamODD.ODDB.Runtime
                 if (!_entityTypeCache.ContainsKey(targetType))
                     _entityTypeCache[targetType] = new Dictionary<string, ODDBEntity>();
 
-                foreach (var row in table.Rows)
+                var rows = table.Rows;
+                workItems.Add(new PortWorkItem
                 {
-                    var entity = Activator.CreateInstance(targetType) as ODDBEntity;
-                    if (entity == null)
-                    {
-                        ODDB.Logger.Error($"Failed to create instance of {targetType}");
-                        continue;
-                    }
-
-                    entity.Import(this, table.TotalFields, row);
-                    _entityCache[row.ID] = entity;
-                    _entityTypeCache[targetType][row.ID] = entity;
-                }
+                    TargetType = targetType,
+                    Fields = table.TotalFields,
+                    Rows = rows,
+                });
+                totalRows += rows.Count;
             }
 
+            _activePortOperation = new ODDBPortOperation(this, workItems, totalRows);
+            return _activePortOperation;
+        }
+
+        internal void MaterializePortRow(Type targetType, List<Field> fields, Row row)
+        {
+            var entity = Activator.CreateInstance(targetType) as ODDBEntity;
+            if (entity == null)
+            {
+                ODDB.Logger.Error($"Failed to create instance of {targetType}");
+                return;
+            }
+
+            entity.Import(this, fields, row);
+            _entityCache[row.ID] = entity;
+            _entityTypeCache[targetType][row.ID] = entity;
+        }
+
+        internal void CompletePortData(ODDBPortOperation operation)
+        {
+            if (!ReferenceEquals(_activePortOperation, operation))
+                throw new InvalidOperationException("Entity materialization operation is no longer active.");
+
             _isPorted = true;
+            _activePortOperation = null;
 
             foreach (var cb in _onDataPortedCallbacks)
                 cb?.Invoke();
             _onDataPortedCallbacks.Clear();
+        }
+
+        internal void AbortPortData(ODDBPortOperation operation)
+        {
+            if (_activePortOperation != null && !ReferenceEquals(_activePortOperation, operation))
+                return;
+
+            _activePortOperation = null;
+            _entityCache = null;
+            _entityTypeCache = null;
+            _onDataPortedCallbacks.Clear();
+            _isPorted = false;
         }
 
         private void EnsurePorted()

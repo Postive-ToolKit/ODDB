@@ -45,7 +45,8 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
             int dtoViewCount,
             int restoredTableCount,
             int restoredViewCount,
-            string sourceFormatVersion)
+            string sourceFormatVersion,
+            int unmappedFieldTypeCount = 0)
             => new ODDBLoadReport(
                 isSafeToSave: true,
                 failureStage: ODDBLoadFailureStage.None,
@@ -55,7 +56,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
                 dtoViewCount: dtoViewCount,
                 restoredTableCount: restoredTableCount,
                 restoredViewCount: restoredViewCount,
-                unmappedFieldTypeCount: 0,
+                unmappedFieldTypeCount: unmappedFieldTypeCount,
                 sourceFormatVersion: sourceFormatVersion);
 
         public static ODDBLoadReport Failure(
@@ -86,6 +87,7 @@ namespace TeamODD.ODDB.Runtime.Utils.Converters
         public const string None = null;
         public const string FileMissing = "file-missing";
         public const string Read = "read";
+        public const string Restore = "restore";
         public const string Gzip = "gzip";
         public const string Json = "json";
         public const string EmptyDtoOnExistingFile = "empty-dto-on-existing-file";
