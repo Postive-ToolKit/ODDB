@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -20,22 +22,57 @@ namespace TeamODD.ODDB.Tests.Editor
         private const string GeneratedCodeFolderPath = TestFolderPath + "/GeneratedCode";
         private const string RuntimeSettingsAssetPath = "Assets/Resources/ODDBRuntimeSettings.asset";
         private const string TestMarker = "ODDBEditorSettingsTests";
+        private readonly List<(string assetPath, string backupPath)> _settingsBackups = new();
+        private string _backupDirectory;
 
         [SetUp]
         public void SetUp()
         {
             DeleteTestGeneratedAssets();
 
-            var existingSettings = FindSettingsAssetPaths();
-            Assume.That(existingSettings, Is.Empty, "These tests require no pre-existing ODDBEditorSettings assets.");
-
-            EnsureFolder(TestFolderPath);
+            try
+            {
+                // Other editor tests and startup services can create settings before this fixture.
+                // Preserve asset bytes and GUIDs while giving each test an empty settings namespace.
+                _backupDirectory = Path.Combine(Path.GetTempPath(), "oddb-settings-tests-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(_backupDirectory);
+                foreach (var path in FindSettingsAssetPaths())
+                {
+                    var backupPath = Path.Combine(_backupDirectory, _settingsBackups.Count + ".asset");
+                    File.Copy(path, backupPath);
+                    File.Copy(path + ".meta", backupPath + ".meta");
+                    _settingsBackups.Add((path, backupPath));
+                    Assert.That(AssetDatabase.DeleteAsset(path), Is.True, path);
+                }
+                EnsureFolder(TestFolderPath);
+            }
+            catch
+            {
+                RestoreSettingsAssets();
+                throw;
+            }
         }
 
         [TearDown]
         public void TearDown()
         {
-            DeleteTestGeneratedAssets();
+            try { DeleteTestGeneratedAssets(); }
+            finally { RestoreSettingsAssets(); }
+        }
+
+        private void RestoreSettingsAssets()
+        {
+            foreach (var backup in _settingsBackups)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(backup.assetPath));
+                File.Copy(backup.backupPath, backup.assetPath, overwrite: true);
+                File.Copy(backup.backupPath + ".meta", backup.assetPath + ".meta", overwrite: true);
+            }
+            if (_settingsBackups.Count > 0) AssetDatabase.Refresh();
+            _settingsBackups.Clear();
+            if (_backupDirectory != null && Directory.Exists(_backupDirectory))
+                Directory.Delete(_backupDirectory, recursive: true);
+            _backupDirectory = null;
         }
 
         [Test]
