@@ -10,7 +10,7 @@ namespace TeamODD.ODDB.Editors
 {
     /// <summary>
     /// Public integration point for custom Unity editor tools that edit ODDB data.
-    /// The built-in ODDB window, MCP server, and external editor windows all share
+    /// The built-in ODDB window, CLI bridge, and external editor windows all share
     /// this process-lifetime session and therefore share data, undo history, and save state.
     /// </summary>
     public sealed class ODDBEditorSession

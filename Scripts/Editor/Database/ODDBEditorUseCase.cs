@@ -382,7 +382,7 @@ namespace TeamODD.ODDB.Editors.Window
         /// <summary>
         /// Routes a single-cell mutation through the command pipeline (undo/redo, history).
         /// UI passes a pre-serialized string with direct=true; programmatic callers
-        /// (e.g. MCP) pass a typed value with direct=false.
+        /// (e.g. the CLI bridge) pass a typed value with direct=false.
         /// </summary>
         public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue, bool direct = false)
         {
