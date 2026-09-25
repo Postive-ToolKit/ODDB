@@ -224,6 +224,19 @@ To remove a Row, click the `-` button on the right side of that Row.
 When a Row is removed, all data stored in that Row is also deleted.
 
 ## Usage
+
+### Command-line editing
+
+Import the **ODDB CLI** sample from Package Manager. Its `oddb.bat`, `oddb.ps1`,
+and `oddb.sh` launchers run the packaged CLI with the .NET 10 runtime. Pass
+`--project` with the Unity project root and `--json` for automation:
+
+```sh
+./oddb.sh --project /path/to/UnityProject views list --json
+```
+
+The CLI targets each project by path and does not start an HTTP server. The
+sample includes `AGENT.md` with the complete query and mutation command map.
 ODDB initializes the database when the game enters runtime.
 Therefore, you do not need to write separate initialization code.
 After the database is initialized, you can access the database through the `ODDBPort` class.
@@ -311,4 +324,3 @@ ODDB can be installed through the Unity Package Manager.
 1. Open the Unity editor and select `Window > Package Manager` from the top menu.
 2. When the Package Manager window opens, click the `+` button in the upper left corner and select `Add package from git URL...`.
 3. Enter `https://github.com/Postive-ToolKit/ODDB.git` in the popup window and click the `Add` button.
-

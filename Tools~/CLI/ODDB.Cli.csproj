@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>ODDB.Cli</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ODDB.Core">
+      <HintPath>../../Plugins/ODDB.Core.dll</HintPath>
+    </Reference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Include="../../Scripts/Editor/Database/Commands/*.cs" Exclude="../../Scripts/Editor/Database/Commands/CommandProcessor.cs" Link="Shared/Commands/%(Filename)%(Extension)" />
+    <Compile Include="../../Scripts/Editor/CLI/Tools/**/*.cs" Exclude="../../Scripts/Editor/CLI/Tools/System/*.cs" Link="Shared/Tools/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../Scripts/Editor/CLI/Resources/*.cs" Exclude="../../Scripts/Editor/CLI/Resources/DatabaseResource.cs" Link="Shared/Resources/%(Filename)%(Extension)" />
+    <Compile Include="../../Scripts/Editor/CLI/Serialization/*.cs" Link="Shared/Serialization/%(Filename)%(Extension)" />
+    <Compile Include="../../Scripts/Editor/CLI/CliErrorKind.cs" Link="Shared/CliErrorKind.cs" />
+    <Compile Include="../../Scripts/Editor/CLI/CliHistoryStore.cs" Link="Shared/CliHistoryStore.cs" />
+  </ItemGroup>
+</Project>
