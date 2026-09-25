@@ -29,14 +29,17 @@ internal static class Program
         try
         {
             var (words, options) = Parse(commandLine);
-            if (words.Count == 0 || words[0] is "help" or "--help" or "-h")
-            {
-                Console.WriteLine(Help);
-                return 0;
-            }
-            if (words[0] is "--version" or "version")
+            if (options.ContainsKey("version")
+                || (words.Count > 0 && words[0].Equals("version", StringComparison.OrdinalIgnoreCase)))
             {
                 Console.WriteLine("ODDB CLI 2.9.0");
+                return 0;
+            }
+            if (words.Count == 0 || options.ContainsKey("help")
+                || words.Any(word => word.Equals("help", StringComparison.OrdinalIgnoreCase)))
+            {
+                var topic = words.Where(word => !word.Equals("help", StringComparison.OrdinalIgnoreCase)).ToList();
+                Console.WriteLine(GetHelp(topic));
                 return 0;
             }
             if (!options.TryGetValue("project", out var projectToken) || string.IsNullOrWhiteSpace(projectToken?.ToString()))
@@ -220,9 +223,14 @@ internal static class Program
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
+            if (arg is "-h" or "-v")
+            {
+                options[arg == "-h" ? "help" : "version"] = true;
+                continue;
+            }
             if (!arg.StartsWith("--", StringComparison.Ordinal)) { words.Add(arg); continue; }
             var name = arg[2..];
-            if (name == "json") { options[name] = true; continue; }
+            if (name is "json" or "help" or "version") { options[name] = true; continue; }
             if (i + 1 >= args.Length) throw new ArgumentException($"{arg} needs a value");
             options[name] = args[++i];
         }
@@ -259,14 +267,75 @@ internal static class Program
     }
     private static string ToKebab(string value) => Regex.Replace(value, "[A-Z]", match => "-" + match.Value.ToLowerInvariant());
 
-    private const string Help = """
-ODDB CLI
-  oddb --project <Unity project> <group> <action> [--name value ...] [--json]
-  oddb --project <Unity project> read oddb://views [--json]
-  oddb --project <Unity project> call oddb_add_table --args '{"name":"Items"}' --json
+    private static readonly (string Command, string Usage, string Description)[] HelpEntries =
+    {
+        ("database info", "database info", "Show database counts and path."),
+        ("database save", "database save", "Save changes in the open Unity Editor."),
+        ("views list", "views list", "List views and tables."),
+        ("views pure", "views pure", "List views only."),
+        ("views show", "views show --view-id ID", "Show one view or table."),
+        ("views schema", "views schema --view-id ID", "Show fields and inheritance."),
+        ("views add", "views add [--name NAME]", "Add a view."),
+        ("views remove", "views remove --view-id ID", "Remove a view."),
+        ("views set-name", "views set-name --view-id ID --name NAME", "Rename a view or table."),
+        ("views set-id", "views set-id --view-id ID --new-view-id ID", "Change a view or table ID."),
+        ("views set-parent", "views set-parent --view-id ID --parent-view-id ID|null", "Set or clear inheritance."),
+        ("views set-bind-type", "views set-bind-type --view-id ID --type-name TYPE|null", "Set or clear a bind type."),
+        ("tables inherited", "tables inherited --view-id ID", "List descendant tables."),
+        ("tables add", "tables add [--name NAME] [--parent-view-id ID] [--bind-type TYPE]", "Add a table."),
+        ("tables remove", "tables remove --table-id ID", "Remove a table."),
+        ("rows list", "rows list --table-id ID", "List table rows."),
+        ("rows show", "rows show --table-id ID --row-id ID", "Show one row."),
+        ("rows add", "rows add --table-id ID", "Append a row."),
+        ("rows remove", "rows remove --table-id ID --row-id ID", "Remove a row."),
+        ("rows set-id", "rows set-id --table-id ID --row-id ID --new-row-id ID", "Change a row ID."),
+        ("cells set", "cells set --table-id ID --row-id ID --field-index N --value JSON", "Set a cell value."),
+        ("fields add", "fields add --view-id ID --field-name NAME --field-type TYPE [--param PARAM]", "Add a field."),
+        ("fields remove", "fields remove --view-id ID --index N", "Remove a field."),
+        ("fields move", "fields move --view-id ID --old-index N --new-index N", "Move a field."),
+        ("fields set-type", "fields set-type --view-id ID --field-index N --field-type TYPE [--param PARAM]", "Change a field type."),
+        ("types data", "types data", "List data types."),
+        ("types bind", "types bind", "List available bind types."),
+        ("history list", "history list", "Show Editor Undo/Redo or the offline CLI audit log."),
+        ("code generate", "code generate [--view-ids JSON_ARRAY]", "Generate classes in Unity."),
+        ("read", "read oddb://RESOURCE", "Read a resource using its original MCP URI."),
+        ("call", "call oddb_OPERATION --args JSON_OBJECT", "Call an operation using its original MCP name."),
+    };
 
-Groups: database, views, tables, rows, cells, fields, types, history.
-Run with --json for machine-readable output. Standalone mutations save automatically.
-Use database save after mutations sent to an open Unity Editor.
-""";
+    private static string GetHelp(IReadOnlyList<string> topicWords)
+    {
+        var topic = string.Join(' ', topicWords);
+        var entries = topicWords.Count == 0
+            ? HelpEntries
+            : HelpEntries.Where(entry => entry.Command.Equals(topic, StringComparison.OrdinalIgnoreCase)
+                || (topicWords.Count == 1 && entry.Command.StartsWith(topic + " ", StringComparison.OrdinalIgnoreCase)))
+                .ToArray();
+        if (entries.Length == 0)
+            throw new ArgumentException($"Unknown help topic: {topic}");
+
+        var lines = new List<string>
+        {
+            "ODDB CLI 2.9.0",
+            "Usage: oddb --project <Unity project> <group> <action> [options] [--json]",
+            "       oddb help [group [action]] | oddb <group> <action> --help",
+            "       oddb --version",
+            "",
+            "Commands:"
+        };
+        foreach (var entry in entries)
+        {
+            lines.Add("  " + entry.Usage);
+            lines.Add("      " + entry.Description);
+        }
+        lines.AddRange(new[]
+        {
+            "",
+            "Options: --project PATH (required for data commands), --db PATH (offline Core only),",
+            "         --unity PATH (Unity batch executable), --json (compact JSON output),",
+            "         --args JSON_OBJECT (with call), --help/-h, --version/-v.",
+            "Standalone mutations save automatically. Run database save after live Editor edits.",
+            "Import the CLI Sample for oddb.bat, oddb.ps1, and oddb.sh launchers."
+        });
+        return string.Join(Environment.NewLine, lines);
+    }
 }

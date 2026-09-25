@@ -1,9 +1,27 @@
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$CliArguments)
+if (-not $CliArguments) { $CliArguments = @() }
 $projectIndex = [Array]::IndexOf($CliArguments, '--project')
-if ($projectIndex -lt 0 -or $projectIndex + 1 -ge $CliArguments.Count) {
-    throw 'Pass --project with the Unity project root.'
+if ($projectIndex -ge 0) {
+    if ($projectIndex + 1 -ge $CliArguments.Count) {
+        throw '--project needs a Unity project root.'
+    }
+    $projectRoot = (Resolve-Path $CliArguments[$projectIndex + 1]).Path
+} else {
+    $cursor = (Resolve-Path (Split-Path -Parent $MyInvocation.MyCommand.Path)).Path
+    while ($cursor) {
+        if ((Test-Path (Join-Path $cursor 'Assets') -PathType Container) -and
+            (Test-Path (Join-Path $cursor 'Packages') -PathType Container)) {
+            $projectRoot = $cursor
+            break
+        }
+        $parent = Split-Path -Parent $cursor
+        if (-not $parent -or $parent -eq $cursor) { break }
+        $cursor = $parent
+    }
+    if (-not $projectRoot) {
+        throw 'Cannot locate the Unity project; pass --project with its root.'
+    }
 }
-$projectRoot = (Resolve-Path $CliArguments[$projectIndex + 1]).Path
 $candidates = @(
     (Join-Path $projectRoot 'Assets/Plugins/ODDB'),
     (Join-Path $projectRoot 'Packages/com.team-odd.oddb')
