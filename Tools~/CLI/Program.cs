@@ -36,7 +36,7 @@ internal static class Program
             }
             if (words[0] is "--version" or "version")
             {
-                Console.WriteLine("ODDB CLI 2.8.6-dev");
+                Console.WriteLine("ODDB CLI 2.9.0");
                 return 0;
             }
             if (!options.TryGetValue("project", out var projectToken) || string.IsNullOrWhiteSpace(projectToken?.ToString()))

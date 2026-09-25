@@ -11,7 +11,7 @@ namespace TeamODD.ODDB.Editors
     {
         private static IODDBEditorUseCase _useCase;
         private static ODDBEditorSession _session;
-        internal const string EmbeddedPackageVersion = "2.8.6";
+        internal const string EmbeddedPackageVersion = "2.9.0";
 
         static ODDBEditorRuntime()
         {
