@@ -4,7 +4,8 @@ Use the ODDB CLI for database reads and edits in this Unity project. Invoke the
 sample launcher for your platform (`oddb.bat`, `oddb.ps1`, or `oddb.sh`). Always
 pass the exact Unity project root with `--project` and use `--json` when reading
 results. The path identifies the target project; no MCP server or TCP port is
-needed.
+needed. Run `help` for all commands or `help <group> <action>` for one command;
+these help forms do not need `--project` when the Sample is inside the project.
 
 Before a mutation, read the relevant view/table and row with `views list`,
 `views schema --view-id ID`, and `rows show --table-id ID --row-id ID`. Prefer

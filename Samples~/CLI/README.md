@@ -2,18 +2,22 @@
 
 These scripts locate the ODDB package in the selected Unity project, then run
 its packaged standalone CLI. Install the .NET 10 runtime and pass the **Unity project
-root** with `--project`. The scripts contain no ODDB data logic.
+root** with `--project` for data commands. From an imported Sample, `help`,
+`--help`, and `--version` work without `--project`. The scripts contain no ODDB
+data logic.
 
 Windows PowerShell:
 
 ```powershell
+./oddb.ps1 help
+./oddb.ps1 help rows add
 ./oddb.ps1 --project C:/path/to/UnityProject views list --json
 ./oddb.ps1 --project C:/path/to/UnityProject tables add --name Items --json
 ```
 
 Windows Command Prompt: `oddb.bat --project C:\path\to\UnityProject views list --json`
 
-macOS/Linux: `./oddb.sh --project /path/to/UnityProject views list --json`
+macOS/Linux: `./oddb.sh help` or `./oddb.sh --project /path/to/UnityProject views list --json`
 
 Use `read oddb://views` or `call oddb_add_table --args '{"name":"Items"}'`
 for direct migration from the old MCP tool and resource names. Mutations save
