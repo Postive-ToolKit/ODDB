@@ -1,5 +1,4 @@
 using System;
-using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime;
 using TeamODD.ODDB.Runtime.Enums;
@@ -15,7 +14,6 @@ namespace TeamODD.ODDB.Editors.UI
     {
         private readonly IODDBEditorUseCase _editorUseCase;
         private readonly Toolbar _toolbar;
-        private readonly VisualElement _tableAppearanceRow;
         private IView _view;
         private ODDBViewType _mode;
         public Action<ODDBViewType> OnTypeChanged;
@@ -25,20 +23,6 @@ namespace TeamODD.ODDB.Editors.UI
             _editorUseCase = editorUseCase;
             _toolbar = new Toolbar { style = { flexShrink = 1 } };
             Add(_toolbar);
-            _tableAppearanceRow = new VisualElement
-            {
-                style =
-                {
-                    flexDirection = FlexDirection.Row,
-                    alignItems = Align.Center,
-                    flexShrink = 0,
-                    paddingLeft = 5,
-                    paddingRight = 5,
-                }
-            };
-            Add(_tableAppearanceRow);
-            RegisterCallback<AttachToPanelEvent>(_ => Undo.undoRedoPerformed += Rebuild);
-            RegisterCallback<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= Rebuild);
         }
 
         public void UpdateView(IView view, ODDBViewType mode)
@@ -53,14 +37,11 @@ namespace TeamODD.ODDB.Editors.UI
             _view = null;
             _mode = ODDBViewType.None;
             _toolbar.Clear();
-            _tableAppearanceRow.Clear();
-            _tableAppearanceRow.style.display = DisplayStyle.None;
         }
 
         private void Rebuild()
         {
             _toolbar.Clear();
-            _tableAppearanceRow.Clear();
             if (_view == null) return;
 
             var selectedType = _view is Table ? ODDBViewType.Table : ODDBViewType.View;
@@ -127,47 +108,6 @@ namespace TeamODD.ODDB.Editors.UI
                 editorMenu.menu.AppendAction("Table Rows", _ => OnTypeChanged?.Invoke(ODDBViewType.Table));
             }
             _toolbar.Add(editorMenu);
-
-            if (_view is Table table)
-                DrawTableAppearance(table);
-            else
-                _tableAppearanceRow.style.display = DisplayStyle.None;
-        }
-
-        private void DrawTableAppearance(Table table)
-        {
-            _tableAppearanceRow.style.display = DisplayStyle.Flex;
-            var settings = ODDBEditorSettings.Setting;
-            var tableId = table.ID;
-
-            var tagField = new TextField("Tag")
-            {
-                value = settings.GetTableTag(tableId),
-                isDelayed = true,
-                style = { flexGrow = 1, minWidth = 140, marginRight = 8 }
-            };
-            tagField.tooltip = "Editor-only table tag. Search for it in the left panel.";
-            tagField.RegisterValueChangedCallback(evt => settings.SetTableTag(tableId, evt.newValue));
-            _tableAppearanceRow.Add(tagField);
-
-            var colorField = new ColorField("Color")
-            {
-                value = settings.GetTableColor(tableId),
-                showAlpha = false,
-                style = { width = 160, marginRight = 6 }
-            };
-            colorField.tooltip = "Color of this table in the left panel.";
-            colorField.RegisterValueChangedCallback(evt => settings.SetTableColor(tableId, evt.newValue));
-            _tableAppearanceRow.Add(colorField);
-
-            var resetButton = new Button(() =>
-            {
-                settings.SetTableAppearance(tableId, string.Empty, ODDBEditorSettings.DefaultTableColor);
-                tagField.SetValueWithoutNotify(string.Empty);
-                colorField.SetValueWithoutNotify(ODDBEditorSettings.DefaultTableColor);
-            }) { text = "Reset" };
-            resetButton.tooltip = "Clear the tag and restore the default table color.";
-            _tableAppearanceRow.Add(resetButton);
         }
 
         private static string GetModeLabel(ODDBViewType mode)

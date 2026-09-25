@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Editors.CodeGen.UI;
 using TeamODD.ODDB.Editors.Settings;
+using TeamODD.ODDB.Editors.UI.Dialogs;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
@@ -337,6 +338,9 @@ namespace TeamODD.ODDB.Editors.UI
             if (_view is Table contextTable)
             {
                 var capturedTableId = contextTable.ID;
+                menu.AddSeparator(string.Empty);
+                menu.AddItem(new GUIContent("Edit Tag and Color..."), false, () =>
+                    ODDBTableAppearanceWindow.ShowForTable(_editorUseCase, capturedTableId));
                 menu.AddSeparator(string.Empty);
                 ODDBImportExportMenu.AppendTableContextMenu(menu, _editorUseCase, capturedTableId);
             }
