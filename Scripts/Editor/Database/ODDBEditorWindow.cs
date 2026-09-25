@@ -34,7 +34,7 @@ namespace TeamODD.ODDB.Editors.Window
 
         public void CreateGUI()
         {
-            // Use case + DI are now owned by ODDBEditorRuntime so the MCP server
+            // Use case + DI are now owned by ODDBEditorRuntime so the CLI bridge
             // and the window share the same instance. Accessing the property here
             // triggers lazy creation and DI registration if this is the first use.
             _session = ODDBEditorSession.Current;

@@ -255,11 +255,6 @@ namespace TeamODD.ODDB.Editors.Settings
             _googleOAuthClientSecretEncrypted = string.Empty;
         }
 
-        public bool EnableMCPServer => _enableMCPServer;
-        public int MCPServerPort => _mcpServerPort;
-        public string MCPServerHost => _mcpServerHost;
-        public bool MCPServerVerbose => _mcpServerVerbose;
-
         [Header("Editor Settings")]
         [Tooltip("The maximum number of history items to keep in the undo stack.")]
         [SerializeField, Min(1)] private int _maxHistoryCount = 50;
@@ -273,17 +268,6 @@ namespace TeamODD.ODDB.Editors.Settings
         [Tooltip("Output folder for generated POCO classes (Assets-relative). Leave empty to disable code generation.")]
         [PathSelector(true)]
         [SerializeField] private string _generatedCodePath = string.Empty;
-
-        [Space(10)]
-        [Header("MCP Server")]
-        [Tooltip("Enable the in-Editor MCP server that exposes ODDB to AI clients via HTTP.")]
-        [SerializeField] private bool _enableMCPServer = true;
-        [Tooltip("TCP port for the MCP HTTP server. If busy, ODDB retries this same port instead of switching ports.")]
-        [SerializeField] private int _mcpServerPort = 9123;
-        [Tooltip("Bind host. 127.0.0.1 keeps the server loopback-only.")]
-        [SerializeField] private string _mcpServerHost = "127.0.0.1";
-        [Tooltip("Log every MCP call to the Unity console.")]
-        [SerializeField] private bool _mcpServerVerbose = false;
 
         [Space(10)]
         [Header("Sheet Import / Export")]

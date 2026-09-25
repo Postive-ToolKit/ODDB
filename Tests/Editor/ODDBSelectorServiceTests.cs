@@ -34,13 +34,13 @@ namespace TeamODD.ODDB.Tests.Editor
         }
 
         [Test]
-        public void McpServerVersion_MatchesPackageJson()
+        public void PackageVersion_MatchesPackageJson()
         {
             var packagePath = Path.Combine(Application.dataPath, "Plugins", "ODDB", "package.json");
             var packageVersion = JObject.Parse(File.ReadAllText(packagePath))["version"]?.ToString();
 
             Assert.That(ODDBEditorRuntime.EmbeddedPackageVersion, Is.EqualTo(packageVersion));
-            Assert.That(ODDBEditorRuntime.ResolveServerVersion(), Is.EqualTo(packageVersion));
+            Assert.That(ODDBEditorRuntime.ResolvePackageVersion(), Is.EqualTo(packageVersion));
         }
     }
 }

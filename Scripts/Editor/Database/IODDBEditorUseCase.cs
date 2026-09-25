@@ -40,7 +40,7 @@ namespace TeamODD.ODDB.Editors.Window
         /// <summary>
         /// Mutates a single cell through the command pipeline so the change is undoable
         /// and shows up in history. UI passes a pre-serialized string with direct=true;
-        /// programmatic callers (e.g. MCP) pass a typed value with direct=false.
+        /// programmatic callers (e.g. the CLI bridge) pass a typed value with direct=false.
         /// </summary>
         public void SetCellData(string tableId, string rowId, int fieldIndex, object newValue, bool direct = false);
 

@@ -32,6 +32,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
             var ids = viewIds?.Where(id => !string.IsNullOrEmpty(id)).ToList();
             if (ids == null || ids.Count == 0)
             {
+                if (Application.isBatchMode)
+                    throw new System.InvalidOperationException("No views were selected for code generation.");
                 _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", "No views were selected.", isError: true);
                 return;
             }
@@ -43,6 +45,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
             // 1. Pre-flight
             if (!OutputPathResolver.TryGetValidOutputFolder(out var outputFolder, out var folderReason))
             {
+                if (Application.isBatchMode)
+                    throw new System.InvalidOperationException(folderReason);
                 FocusSettingsAsset();
                 _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", folderReason, isError: true);
                 return;
@@ -62,6 +66,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 var fallbackPath = ODDBRuntimeSettings.ResolveDatabasePath();
                 if (!dataService.LoadDatabase(fallbackPath, out database) || database == null)
                 {
+                    if (Application.isBatchMode)
+                        throw new System.InvalidOperationException($"Failed to load database at {fallbackPath}");
                     _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", $"Failed to load database at {fallbackPath}", isError: true);
                     return;
                 }
@@ -74,6 +80,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
                 : allViews.Where(v => targetViewIds.Contains(v.ID.ToString())).ToList();
             if (targets.Count == 0)
             {
+                if (Application.isBatchMode)
+                    throw new System.InvalidOperationException("No views to generate.");
                 _ = ODDBResultWindow.ShowAsync("ODDB CodeGen", "No views to generate.", isError: true);
                 return;
             }
@@ -89,6 +97,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
             {
                 var message = "Generation aborted. Fix the following and re-run:\n\n"
                               + string.Join("\n", errors.Select(e => e.ToDisplayLine()));
+                if (Application.isBatchMode)
+                    throw new System.InvalidOperationException(message);
                 _ = ODDBResultWindow.ShowAsync("ODDB CodeGen — Validation Failed", message, isError: true);
                 return;
             }
@@ -99,7 +109,8 @@ namespace TeamODD.ODDB.Editors.CodeGen
             var pendingPairs = new List<(string viewId, string className)>(targets.Count);
             try
             {
-                EditorUtility.DisplayProgressBar("ODDB CodeGen", "Writing classes...", 0f);
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayProgressBar("ODDB CodeGen", "Writing classes...", 0f);
                 for (int i = 0; i < targets.Count; i++)
                 {
                     var view = targets[i];
@@ -109,8 +120,9 @@ namespace TeamODD.ODDB.Editors.CodeGen
                     File.WriteAllText(filePath, source);
                     written.Add(filePath);
                     pendingPairs.Add((view.ID.ToString(), className));
-                    EditorUtility.DisplayProgressBar("ODDB CodeGen", $"Writing {className}.cs",
-                        (i + 1f) / targets.Count);
+                    if (!Application.isBatchMode)
+                        EditorUtility.DisplayProgressBar("ODDB CodeGen", $"Writing {className}.cs",
+                            (i + 1f) / targets.Count);
                 }
                 PendingRemapStore.UpsertMany(pendingPairs);
 
@@ -124,17 +136,19 @@ namespace TeamODD.ODDB.Editors.CodeGen
             }
             finally
             {
-                EditorUtility.ClearProgressBar();
+                if (!Application.isBatchMode)
+                    EditorUtility.ClearProgressBar();
             }
 
             // 8. Refresh — Unity compiles, then PendingBindAssigner runs on reload.
             AssetDatabase.Refresh();
             CompilationPipeline.RequestScriptCompilation();
-            _ = ODDBResultWindow.ShowAsync(
-                "ODDB CodeGen",
-                $"{written.Count} class(es) written to {OutputPathResolver.ToAssetsRelative(outputFolder)}.\n" +
-                "BindType will be assigned automatically after the compile finishes.",
-                isError: false);
+            if (!Application.isBatchMode)
+                _ = ODDBResultWindow.ShowAsync(
+                    "ODDB CodeGen",
+                    $"{written.Count} class(es) written to {OutputPathResolver.ToAssetsRelative(outputFolder)}.\n" +
+                    "BindType will be assigned automatically after the compile finishes.",
+                    isError: false);
         }
 
         private static List<ValidationError> Validate(
