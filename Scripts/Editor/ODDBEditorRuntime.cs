@@ -1,3 +1,4 @@
+using TeamODD.ODDB.Editors.CLI.Tools;
 using TeamODD.ODDB.Editors.Utils;
 using TeamODD.ODDB.Editors.Window;
 using TeamODD.ODDB.Runtime.Interfaces;
@@ -11,7 +12,8 @@ namespace TeamODD.ODDB.Editors
     {
         private static IODDBEditorUseCase _useCase;
         private static ODDBEditorSession _session;
-        internal const string EmbeddedPackageVersion = "2.9.0";
+        private static CliOperationRegistry _tools;
+        internal const string EmbeddedPackageVersion = "2.9.1";
 
         static ODDBEditorRuntime()
         {
@@ -37,6 +39,9 @@ namespace TeamODD.ODDB.Editors
         public static IODDatabase Database => UseCase.DataBase;
         public static ODDBEditorSession Session => _session ??= new ODDBEditorSession(UseCase);
 
+        /// <summary>In-process CLI operations for existing Unity Editor integrations.</summary>
+        public static CliOperationRegistry Tools => _tools ??= new CliOperationRegistry(UseCase);
+
         internal static string ResolvePackageVersion()
         {
             try
@@ -61,6 +66,7 @@ namespace TeamODD.ODDB.Editors
             _useCase?.Dispose();
             _useCase = null;
             _session = null;
+            _tools = null;
         }
     }
 }
