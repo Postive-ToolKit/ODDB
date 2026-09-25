@@ -6,9 +6,6 @@ using Newtonsoft.Json.Linq;
 using TeamODD.ODDB.Editors.CLI;
 using TeamODD.ODDB.Editors.CLI.Resources;
 using TeamODD.ODDB.Editors.CLI.Tools;
-using TeamODD.ODDB.Editors.CLI.Tools.Data;
-using TeamODD.ODDB.Editors.CLI.Tools.Schema;
-using TeamODD.ODDB.Editors.CLI.Tools.System;
 using TeamODD.ODDB.Editors.Window;
 using UnityEditor;
 using UnityEngine;
@@ -101,16 +98,8 @@ namespace TeamODD.ODDB.Editors.CLI
             }
 
             var name = request.Value<string>("operation");
-            ICliOperation[] tools =
-            {
-                new AddRowTool(useCase), new RemoveRowTool(useCase), new SetRowIdTool(useCase), new SetCellTool(useCase),
-                new AddViewTool(useCase), new AddTableTool(useCase), new RemoveViewTool(useCase), new RemoveTableTool(useCase),
-                new AddFieldTool(useCase), new RemoveFieldTool(useCase), new MoveFieldTool(useCase), new SetFieldTypeTool(useCase),
-                new SetViewNameTool(useCase), new SetViewIdTool(useCase), new SetViewBindTypeTool(useCase),
-                new SetViewParentTool(useCase), new GenerateCodeTool(useCase), new SaveDatabaseTool(useCase)
-            };
-            var tool = tools.FirstOrDefault(item => item.Name == name);
-            if (tool == null) throw new CliOperationException(CliErrorKind.NotFound, $"Operation not found: {name}");
+            if (!ODDBEditorRuntime.Tools.TryGet(name, out var tool))
+                throw new CliOperationException(CliErrorKind.NotFound, $"Operation not found: {name}");
             return tool.Execute(request["args"] ?? new JObject());
         }
 

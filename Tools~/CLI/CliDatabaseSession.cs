@@ -75,7 +75,9 @@ internal sealed class CliDatabaseSession : IODDBEditorUseCase, IDisposable
             folder = Path.Combine(projectPath, "Assets");
         else if (configured.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             folder = Path.Combine(projectPath, configured.Replace('/', Path.DirectorySeparatorChar));
-        else if (Path.IsPathRooted(configured) && (OperatingSystem.IsWindows() || Directory.Exists(configured)))
+        else if (configured.StartsWith("//", StringComparison.Ordinal)
+                 || (configured.Length >= 3 && char.IsLetter(configured[0]) && configured[1] == ':' && configured[2] == '/')
+                 || (configured.StartsWith("/", StringComparison.Ordinal) && Directory.Exists(configured)))
             folder = configured;
         else
             folder = Path.Combine(projectPath, "Assets", configured.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
@@ -84,7 +86,7 @@ internal sealed class CliDatabaseSession : IODDBEditorUseCase, IDisposable
 
     private static string ReadUnityScalar(string yaml, string key)
     {
-        var match = Regex.Match(yaml, @"(?m)^\s*" + Regex.Escape(key) + @":\s*(?<value>[^\r\n]*)");
+        var match = Regex.Match(yaml, @"(?m)^[ \t]*" + Regex.Escape(key) + @":[ \t]*(?<value>[^\r\n]*)");
         var value = match.Success ? match.Groups["value"].Value.Trim() : string.Empty;
         if (value.Length >= 2 && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\'')))
             value = value[1..^1];

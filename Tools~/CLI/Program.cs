@@ -32,7 +32,7 @@ internal static class Program
             if (options.ContainsKey("version")
                 || (words.Count > 0 && words[0].Equals("version", StringComparison.OrdinalIgnoreCase)))
             {
-                Console.WriteLine("ODDB CLI 2.9.0");
+                Console.WriteLine("ODDB CLI 2.9.1");
                 return 0;
             }
             if (words.Count == 0 || options.ContainsKey("help")
@@ -315,7 +315,7 @@ internal static class Program
 
         var lines = new List<string>
         {
-            "ODDB CLI 2.9.0",
+            "ODDB CLI 2.9.1",
             "Usage: oddb --project <Unity project> <group> <action> [options] [--json]",
             "       oddb help [group [action]] | oddb <group> <action> --help",
             "       oddb --version",
