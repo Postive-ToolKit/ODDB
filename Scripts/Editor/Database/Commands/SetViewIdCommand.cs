@@ -11,6 +11,7 @@ namespace TeamODD.ODDB.Editors.Commands
         private readonly ODDBID _oldId;
         private readonly ODDBID _newId;
         private readonly Action<string> _notifyChanged;
+        private readonly Action<string, string> _onRekey;
         private bool _captured;
 
         public override string Name => "Set View ID";
@@ -19,12 +20,14 @@ namespace TeamODD.ODDB.Editors.Commands
             IRepository<IView> repository,
             ODDBID oldId,
             ODDBID newId,
-            Action<string> notifyChanged)
+            Action<string> notifyChanged,
+            Action<string, string> onRekey = null)
         {
             _repository = repository;
             _oldId = oldId;
             _newId = newId;
             _notifyChanged = notifyChanged;
+            _onRekey = onRekey;
         }
 
         public override void Execute()
@@ -57,6 +60,7 @@ namespace TeamODD.ODDB.Editors.Commands
         private void ReKey(ODDBID fromId, ODDBID toId)
         {
             ODDBMutations.RekeyRepositoryItem(_repository, fromId, toId);
+            _onRekey?.Invoke(fromId.ToString(), toId.ToString());
         }
 
         private void Notify(ODDBID staleId, ODDBID activeId)

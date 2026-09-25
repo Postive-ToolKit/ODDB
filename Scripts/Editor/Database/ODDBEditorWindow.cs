@@ -133,7 +133,7 @@ namespace TeamODD.ODDB.Editors.Window
             var topToolbar = new Toolbar();
             var toolBarMenu = new ToolbarMenu();
             toolBarMenu.text = "All";
-            toolBarMenu.tooltip = "Filter the tree to show all items or only Views";
+            toolBarMenu.tooltip = "Filter the tree to show all items, Views, or Tables";
             toolBarMenu.menu.AppendAction("All", action =>
             {
                 _tableTreeView.SetTypes(typeof(View), typeof(Table));
@@ -143,6 +143,11 @@ namespace TeamODD.ODDB.Editors.Window
             {
                 _tableTreeView.SetTypes(typeof(View));
                 toolBarMenu.text = "Views";
+            });
+            toolBarMenu.menu.AppendAction("Tables", action =>
+            {
+                _tableTreeView.SetTypes(typeof(Table));
+                toolBarMenu.text = "Tables";
             });
             topToolbar.Add(toolBarMenu);
 
@@ -205,7 +210,11 @@ namespace TeamODD.ODDB.Editors.Window
                 fixedPaneInitialDimension = 250
             };
             var treeViewContainer = new VisualElement() { style = { flexGrow = 1 } };
-            
+
+            var searchField = new ToolbarSearchField { style = { marginLeft = 4, marginRight = 4 } };
+            searchField.tooltip = "Search table and view names, IDs, and table tags";
+            searchField.RegisterValueChangedCallback(evt => _tableTreeView.SetSearchText(evt.newValue));
+            treeViewContainer.Add(searchField);
             treeViewContainer.Add(_tableTreeView);
             
             _historyView = new ODDBHistoryView { style = { display = DisplayStyle.None, height = 150 } };

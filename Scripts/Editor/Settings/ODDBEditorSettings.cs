@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using TeamODD.ODDB.Runtime.Attributes;
@@ -17,6 +18,17 @@ namespace TeamODD.ODDB.Editors.Settings
     /// </summary>
     public class ODDBEditorSettings : ScriptableObject
     {
+        [Serializable]
+        private sealed class TableAppearance
+        {
+            public string TableId;
+            public string Tag;
+            public Color Color;
+        }
+
+        public static readonly Color DefaultTableColor = new Color(0.357f, 0.608f, 0.835f);
+        public static event Action<string> TableAppearanceChanged;
+
         private const string DefaultFolderPath = "Assets/Settings";
         private const string DefaultAssetPath = DefaultFolderPath + "/ODDBEditorSettings.asset";
         private const string LegacyAssetPath = "Assets/Editor/ODDBEditorSettings.asset";
@@ -91,6 +103,89 @@ namespace TeamODD.ODDB.Editors.Settings
         public string GoogleSpreadsheetId => _googleSpreadsheetId;
         public bool ConfirmGoogleSheetColumnDeletion => _confirmGoogleSheetColumnDeletion;
         public SheetLayoutMode SheetLayoutMode => _sheetLayoutMode;
+
+        public string GetTableTag(string tableId) => FindTableAppearance(tableId)?.Tag ?? string.Empty;
+
+        public Color GetTableColor(string tableId) => FindTableAppearance(tableId)?.Color ?? DefaultTableColor;
+
+        public void SetTableTag(string tableId, string tag)
+        {
+            SetTableAppearance(tableId, tag, GetTableColor(tableId));
+        }
+
+        public void SetTableColor(string tableId, Color color)
+        {
+            SetTableAppearance(tableId, GetTableTag(tableId), color);
+        }
+
+        public void SetTableAppearance(string tableId, string tag, Color color)
+        {
+            if (string.IsNullOrEmpty(tableId))
+                return;
+
+            tag = tag?.Trim() ?? string.Empty;
+            color.a = 1f;
+            var existing = FindTableAppearance(tableId);
+            if (existing != null && existing.Tag == tag && existing.Color == color)
+                return;
+            if (existing == null && tag.Length == 0 && color == DefaultTableColor)
+                return;
+
+#if UNITY_EDITOR
+            Undo.RecordObject(this, "Change ODDB Table Appearance");
+#endif
+            if (existing == null)
+            {
+                _tableAppearances ??= new List<TableAppearance>();
+                _tableAppearances.Add(new TableAppearance { TableId = tableId, Tag = tag, Color = color });
+            }
+            else if (tag.Length == 0 && color == DefaultTableColor)
+            {
+                _tableAppearances.Remove(existing);
+            }
+            else
+            {
+                existing.Tag = tag;
+                existing.Color = color;
+            }
+
+#if UNITY_EDITOR
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+#endif
+            TableAppearanceChanged?.Invoke(tableId);
+        }
+
+        public void MoveTableAppearance(string oldTableId, string newTableId)
+        {
+            if (string.IsNullOrEmpty(oldTableId) || string.IsNullOrEmpty(newTableId)
+                || string.Equals(oldTableId, newTableId, StringComparison.Ordinal))
+                return;
+
+            var appearance = FindTableAppearance(oldTableId);
+            if (appearance == null)
+                return;
+
+            var staleDestination = FindTableAppearance(newTableId);
+            if (staleDestination != null)
+                _tableAppearances.Remove(staleDestination);
+            appearance.TableId = newTableId;
+#if UNITY_EDITOR
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+#endif
+            TableAppearanceChanged?.Invoke(oldTableId);
+            TableAppearanceChanged?.Invoke(newTableId);
+        }
+
+        private TableAppearance FindTableAppearance(string tableId)
+        {
+            if (string.IsNullOrEmpty(tableId) || _tableAppearances == null)
+                return null;
+
+            return _tableAppearances.Find(entry => entry != null &&
+                string.Equals(entry.TableId, tableId, StringComparison.Ordinal));
+        }
 
         internal bool HasGoogleOAuthClientConfiguration =>
             TryGetGoogleOAuthClientConfiguration(out _, out _, out _);
@@ -170,6 +265,8 @@ namespace TeamODD.ODDB.Editors.Settings
         [SerializeField, Min(1)] private int _maxHistoryCount = 50;
         [Tooltip("Use the first column of the row as the row name when show dropdown selector in the editor.")]
         [SerializeField] private bool _useFirstColumnAsRowName = false;
+
+        [SerializeField, HideInInspector] private List<TableAppearance> _tableAppearances = new();
 
         [Space(10)]
         [Header("Code Generation")]

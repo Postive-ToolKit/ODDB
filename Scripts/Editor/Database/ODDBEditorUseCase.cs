@@ -263,11 +263,16 @@ namespace TeamODD.ODDB.Editors.Window
                 throw new InvalidOperationException($"View or Table ID '{newId}' already exists.");
 
             var repository = view is Table ? _database.Tables : _database.Views;
+            Action<string, string> rekeyAppearance = null;
+            if (view is Table)
+                rekeyAppearance = (oldId, replacementId) =>
+                    ODDBEditorSettings.TryLoad()?.MoveTableAppearance(oldId, replacementId);
             var command = new SetViewIdCommand(
                 repository,
                 new ODDBID(id),
                 new ODDBID(newId),
-                viewId => _database.NotifyDataChanged(new ODDBID(viewId)));
+                viewId => _database.NotifyDataChanged(new ODDBID(viewId)),
+                rekeyAppearance);
             _commandProcessor.Execute(command);
 
             if (string.Equals(_selectedViewId, id, StringComparison.Ordinal))

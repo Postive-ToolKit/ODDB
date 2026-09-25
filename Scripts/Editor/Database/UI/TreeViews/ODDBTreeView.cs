@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TeamODD.ODDB.Editors.CodeGen.UI;
+using TeamODD.ODDB.Editors.Settings;
 using TeamODD.ODDB.Editors.UI.Interfaces;
 using TeamODD.ODDB.Editors.UI.Menus;
 using TeamODD.ODDB.Editors.Utils;
@@ -27,6 +28,7 @@ namespace TeamODD.ODDB.Editors.UI
         private IView _view;
         private int _structureHash;
         private bool _isSubscribed;
+        private string _searchText = string.Empty;
 
         private int _itemIds = 0;
         
@@ -69,14 +71,14 @@ namespace TeamODD.ODDB.Editors.UI
             var icon = new VisualElement
             {
                 style = {
-                    width = 8,
-                    height = 8,
+                    width = 12,
+                    height = 12,
                     marginRight = 4,
                     marginLeft = 2,
-                    borderTopLeftRadius = 2,
-                    borderTopRightRadius = 2,
-                    borderBottomLeftRadius = 2,
-                    borderBottomRightRadius = 2,
+                    borderTopLeftRadius = 3,
+                    borderTopRightRadius = 3,
+                    borderBottomLeftRadius = 3,
+                    borderBottomRightRadius = 3,
                 }
             };
 
@@ -85,11 +87,31 @@ namespace TeamODD.ODDB.Editors.UI
                 style = {
                     unityTextAlign = TextAnchor.MiddleLeft,
                     flexGrow = 1,
+                    flexShrink = 1,
                 },
+            };
+
+            var tagLabel = new Label
+            {
+                style = {
+                    fontSize = 10,
+                    marginLeft = 4,
+                    marginRight = 2,
+                    opacity = 0.75f,
+                    flexShrink = 0,
+                    maxWidth = 90,
+                    paddingLeft = 3,
+                    paddingRight = 3,
+                    borderTopLeftRadius = 3,
+                    borderTopRightRadius = 3,
+                    borderBottomLeftRadius = 3,
+                    borderBottomRightRadius = 3,
+                }
             };
 
             container.Add(icon);
             container.Add(label);
+            container.Add(tagLabel);
 
             container.RegisterCallback<ContextClickEvent>(evt =>
             {
@@ -113,46 +135,55 @@ namespace TeamODD.ODDB.Editors.UI
             ScheduleRebuild();
         }
 
+        public void SetSearchText(string searchText)
+        {
+            var value = searchText?.Trim() ?? string.Empty;
+            if (string.Equals(_searchText, value, StringComparison.Ordinal))
+                return;
+
+            _searchText = value;
+            ScheduleRebuild();
+        }
+
         private void CreateVisualElement(VisualElement element, int index)
         {
             var data = GetItemDataForIndex<IView>(index);
             var container = element;
             var icon = container[0];
             var label = (Label)container[1];
+            var tagLabel = (Label)container[2];
             label.userData = data;
-            
-            bool isTable = data is Table;
-            label.text = data.Name;
-            
-            if (isTable)
+            void RefreshItem()
             {
-                icon.style.backgroundColor = new Color(0.357f, 0.608f, 0.835f);
-                label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            }
-            else
-            {
-                icon.style.backgroundColor = new Color(0.439f, 0.678f, 0.278f);
-                label.style.unityFontStyleAndWeight = FontStyle.Normal;
-            }
-            
-            label.tooltip = $"{(isTable ? "Table" : "View")}: {data.Name}\nID: {data.ID}";
-            
-            _itemActions[data.ID] = () =>
-            {
-                bool table = data is Table;
-                label.text = data.Name;
-                if (table)
+                var current = _editorUseCase.GetViewByKey(data.ID) ?? data;
+                var isTable = current is Table;
+                var tag = isTable ? ODDBEditorSettings.Setting.GetTableTag(current.ID) : string.Empty;
+                label.text = current.Name;
+                tagLabel.text = tag.Length > 0 ? $"#{tag}" : string.Empty;
+                tagLabel.style.display = tag.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                if (isTable)
                 {
-                    icon.style.backgroundColor = new Color(0.357f, 0.608f, 0.835f);
+                    var color = ODDBEditorSettings.Setting.GetTableColor(current.ID);
+                    icon.style.backgroundColor = color;
+                    color.a = 0.25f;
+                    tagLabel.style.backgroundColor = color;
                     label.style.unityFontStyleAndWeight = FontStyle.Bold;
                 }
                 else
                 {
                     icon.style.backgroundColor = new Color(0.439f, 0.678f, 0.278f);
+                    tagLabel.style.backgroundColor = Color.clear;
                     label.style.unityFontStyleAndWeight = FontStyle.Normal;
                 }
-                label.tooltip = $"{(table ? "Table" : "View")}: {data.Name}\nID: {data.ID}";
-            };
+                var tooltip = $"{(isTable ? "Table" : "View")}: {current.Name}\nID: {current.ID}";
+                if (tag.Length > 0)
+                    tooltip += $"\nTag: {tag}";
+                label.tooltip = tooltip;
+                tagLabel.tooltip = tooltip;
+            }
+
+            RefreshItem();
+            _itemActions[data.ID] = RefreshItem;
         }
         private void UpdateItemSource()
         {
@@ -163,6 +194,16 @@ namespace TeamODD.ODDB.Editors.UI
                 .GetViews()
                 .Where(v => _viewTypes.Contains(v.GetType()))
                 .ToList();
+            if (_searchText.Length > 0)
+            {
+                var visibleIds = new HashSet<string>();
+                foreach (var view in views.Where(MatchesSearch))
+                {
+                    for (var current = view; current != null; current = current.ParentView)
+                        visibleIds.Add(current.ID);
+                }
+                views = views.Where(view => visibleIds.Contains(view.ID)).ToList();
+            }
             _structureHash = ComputeStructureHash(views);
             var targets = new List<ViewContainer>();
             var dict = new Dictionary<string, ViewContainer>();
@@ -198,6 +239,19 @@ namespace TeamODD.ODDB.Editors.UI
             }
             
             SetRootItems(results);
+        }
+
+        private bool MatchesSearch(IView view)
+        {
+            return ContainsSearchText(view.Name)
+                   || ContainsSearchText(view.ID)
+                   || (view is Table && ContainsSearchText(ODDBEditorSettings.Setting.GetTableTag(view.ID)));
+        }
+
+        private bool ContainsSearchText(string value)
+        {
+            return !string.IsNullOrEmpty(value)
+                   && value.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0;
         }
         
         private TreeViewItemData<IView> TraverseContainer(ViewContainer container)
@@ -402,6 +456,8 @@ namespace TeamODD.ODDB.Editors.UI
         {
             if (_isSubscribed || panel == null || _editorUseCase == null) return;
             _editorUseCase.OnViewChanged += UpdateView;
+            ODDBEditorSettings.TableAppearanceChanged += OnTableAppearanceChanged;
+            Undo.undoRedoPerformed += OnUndoRedo;
             _isSubscribed = true;
         }
 
@@ -409,8 +465,14 @@ namespace TeamODD.ODDB.Editors.UI
         {
             if (!_isSubscribed || _editorUseCase == null) return;
             _editorUseCase.OnViewChanged -= UpdateView;
+            ODDBEditorSettings.TableAppearanceChanged -= OnTableAppearanceChanged;
+            Undo.undoRedoPerformed -= OnUndoRedo;
             _isSubscribed = false;
         }
+
+        private void OnTableAppearanceChanged(string tableId) => ScheduleRebuild();
+
+        private void OnUndoRedo() => ScheduleRebuild();
 
         private int ComputeCurrentStructureHash()
         {
